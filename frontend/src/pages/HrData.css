@@ -1,0 +1,251 @@
+/* HR Data Page Styles - Faithful to Figma Design */
+
+.hr-data-container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 1400px;
+  margin: 0 auto;
+  color: #1e293b;
+  font-family: 'Stack Sans Text', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Page Header */
+.hr-data-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hr-data-header h1 {
+  font-family: 'Stack Sans Text', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 20px;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.hr-data-header p {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Upload Dropzone Container */
+.hr-upload-dropzone {
+  background: #ffffff;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 16px;
+  padding: 44px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.hr-upload-dropzone:hover,
+.hr-upload-dropzone.dragging {
+  border-color: #0ca678;
+  background: #f0fdf9;
+}
+
+.hr-upload-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #e6fcf5;
+  color: #0ca678;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  border: 1px solid #c3fae8;
+}
+
+.hr-upload-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.2px;
+}
+
+.hr-upload-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  max-width: 540px;
+  line-height: 1.5;
+}
+
+.hr-choose-file-btn {
+  margin-top: 6px;
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 9px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hr-choose-file-btn:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}
+
+/* Uploaded Files Section */
+.hr-uploaded-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hr-uploaded-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.hr-table-wrapper {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.hr-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.hr-data-table th {
+  padding: 14px 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.hr-data-table td {
+  padding: 16px 20px;
+  font-size: 13px;
+  color: #475569;
+  border-bottom: 1px solid #f8fafc;
+  vertical-align: middle;
+}
+
+.hr-data-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.hr-data-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.hr-data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.hr-file-name-cell {
+  font-weight: 500;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hr-holds-cell {
+  color: #64748b;
+  font-size: 12.5px;
+}
+
+.hr-rows-cell {
+  color: #334155;
+  font-weight: 500;
+}
+
+.hr-period-cell {
+  color: #334155;
+  font-weight: 500;
+}
+
+.hr-check-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #ecfdf5;
+  border: 1px solid #d1fae5;
+  color: #10b981;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+/* Modal for Google Sheets / Paste */
+.hr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.hr-modal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hr-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hr-modal-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.hr-modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0f172a;
+  outline: none;
+}
+
+.hr-modal-input:focus {
+  border-color: #0ca678;
+}
+
+.hr-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

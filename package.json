@@ -1,0 +1,9 @@
+{
+  "name": "ai-business-brain-mern",
+  "version": "1.0.0",
+  "scripts": {
+    "server": "npm --prefix backend run dev",
+    "client": "npm --prefix frontend run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  }
+}

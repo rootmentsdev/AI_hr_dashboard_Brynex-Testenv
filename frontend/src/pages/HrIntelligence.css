@@ -1,0 +1,901 @@
+/* HR Intelligence Page Styles - Faithful to Figma Design */
+
+.hr-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1600px;
+  margin: 0 auto;
+  color: #1e293b;
+  font-family: 'Stack Sans Text', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* --- Top Header Row inside Page / Top Bar --- */
+.hr-top-banner-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+  .hr-top-banner-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Banner Card */
+.hr-welcome-banner {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.hr-welcome-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  max-width: 60%;
+  z-index: 2;
+}
+
+.hr-banner-icon-wrapper {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #f3e8ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9333ea;
+  flex-shrink: 0;
+  border: 1px solid #e9d5ff;
+}
+
+.hr-banner-text h2 {
+  font-family: 'Stack Sans Text', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 20px;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.hr-banner-text p {
+  font-size: 13.5px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.hr-welcome-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+  z-index: 2;
+}
+
+.hr-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hr-date-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hr-date-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.hr-export-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hr-export-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.hr-banner-illustration {
+  position: absolute;
+  right: 180px;
+  bottom: 0;
+  top: 0;
+  width: 240px;
+  opacity: 0.85;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Top Right Column (AI Pill & HR Health Score) */
+.hr-top-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* AI Prompt Pill */
+.hr-ai-ask-pill {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 28px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.hr-ai-ask-pill:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.hr-ai-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #22d3ee;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.3);
+  flex-shrink: 0;
+}
+
+.hr-ai-input-text {
+  font-size: 13px;
+  color: #64748b;
+  flex: 1;
+}
+
+/* HR Health Score Card */
+.hr-health-score-card {
+  height: 141px;
+  border-radius: 16px;
+  background: radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.15) 0%, transparent 60%),
+              linear-gradient(135deg, #071914 0%, #0c2b22 50%, #03140e 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.hr-health-score-card::after {
+  content: '';
+  position: absolute;
+  right: -20px;
+  top: 10px;
+  width: 150px;
+  height: 120px;
+  background: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.2) 0%, transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.hr-health-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hr-health-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.2px;
+}
+
+.hr-health-badge {
+  background: #10b981;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hr-health-value {
+  font-size: 38px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.hr-health-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #34d399;
+}
+
+/* --- 5 Metric Cards Row --- */
+.hr-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1200px) {
+  .hr-metrics-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .hr-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.hr-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 116px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.hr-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.hr-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hr-kpi-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.hr-kpi-icon-pill {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hr-kpi-icon-purple {
+  background: #f3e8ff;
+  color: #9333ea;
+}
+
+.hr-kpi-icon-red {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.hr-kpi-icon-green {
+  background: #dcfce7;
+  color: #10b981;
+}
+
+.hr-kpi-icon-orange {
+  background: #ffedd5;
+  color: #f97316;
+}
+
+.hr-kpi-icon-blue {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.hr-kpi-val {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 6px 0 4px 0;
+  line-height: 1.1;
+}
+
+.hr-kpi-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #10b981;
+}
+
+.hr-kpi-trend-sub {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+/* --- Main Split Layout: Management Attention (Left) + Detail View (Right) --- */
+.hr-split-grid {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .hr-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Column: Management Attention */
+.hr-attention-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hr-attention-header-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.hr-attention-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.hr-attention-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.hr-attention-desc {
+  font-size: 12.5px;
+  color: #64748b;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.hr-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hr-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hr-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hr-filter-pill:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.hr-filter-pill.active {
+  background: #e0f2fe;
+  color: #0284c7;
+  border-color: #bae6fd;
+  font-weight: 600;
+}
+
+.hr-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.hr-dot-red {
+  background-color: #ef4444;
+}
+
+.hr-dot-yellow {
+  background-color: #eab308;
+}
+
+.hr-dot-green {
+  background-color: #10b981;
+}
+
+.hr-filter-icon-btn {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 5px 8px;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hr-filter-icon-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+/* Issue Cards List */
+.hr-issue-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hr-issue-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hr-issue-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+}
+
+.hr-issue-card.selected {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 1.5px #cbd5e1, 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.hr-issue-card-tags {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hr-priority-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2.5px 8px;
+  border-radius: 12px;
+}
+
+.hr-priority-high {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.hr-priority-low {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.hr-status-badge-outline {
+  font-size: 11px;
+  font-weight: 500;
+  color: #d97706;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.hr-issue-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.hr-issue-card-desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.hr-issue-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.hr-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Right Column: Detailed Investigation View (738 Fill) */
+.hr-detail-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hr-detail-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hr-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.hr-back-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.hr-detail-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+}
+
+.hr-detail-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12.5px;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.hr-detail-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hr-confidence-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+/* Detail Navigation Tabs (738 Fill x 31 Hug) */
+.hr-tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.hr-tabs-container::-webkit-scrollbar {
+  display: none;
+}
+
+.hr-tab-btn {
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 2px 10px 2px;
+  position: relative;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.hr-tab-btn:hover {
+  color: #0f172a;
+}
+
+.hr-tab-btn.active {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.hr-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #0f172a;
+  border-radius: 2px;
+}
+
+/* Tab Content */
+.hr-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Section Box ("What's happening?", "Why does it matter?") */
+.hr-section-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hr-section-header-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.hr-section-paragraph {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.55;
+}
+
+/* 4 Metric Callout Boxes in "What's happening?" */
+.hr-four-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .hr-four-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.hr-mini-metric-tile {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hr-mini-metric-title {
+  font-size: 11.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.hr-mini-metric-val {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hr-mini-metric-note {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* 2 Side-by-Side Impact Cards in "Why does it matter?" */
+.hr-impact-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .hr-impact-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hr-impact-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hr-impact-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.hr-impact-card-p {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* Custom interactive evidence/options blocks */
+.hr-evidence-list,
+.hr-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hr-evidence-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.hr-evidence-item-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0284c7;
+  flex-shrink: 0;
+}
+
+.hr-evidence-item-content h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.hr-evidence-item-content p {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.hr-action-btn-primary {
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.hr-action-btn-primary:hover {
+  background: #1e293b;
+}
+
+.hr-action-btn-outline {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hr-action-btn-outline:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
