@@ -63,6 +63,11 @@ button {
   user-select: none;
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-layout.sidebar-closed .sidebar {
+  margin-left: -260px;
 }
 
 .sidebar::-webkit-scrollbar {

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import botLogo from '../assets/bot-logo.png';
+import bannerImg from '../assets/banner-illustration.png';
 import {
   Settings,
   Calendar,
@@ -22,7 +24,15 @@ import {
   Sparkles,
   Search,
   Filter,
-  Users
+  Users,
+  Network,
+  AppWindow,
+  UserCheck,
+  BarChart2,
+  ClipboardList,
+  Wallet,
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import './HrIntelligence.css';
 
@@ -43,7 +53,7 @@ export default function HrIntelligence() {
       trend: '3% vs previous 30 Days',
       trendPositive: true,
       colorClass: 'hr-kpi-icon-purple',
-      icon: <AlertTriangle size={14} />
+      icon: <Network size={14} />
     },
     {
       id: 'decisions',
@@ -61,7 +71,7 @@ export default function HrIntelligence() {
       trend: '2% vs previous 30 Days',
       trendPositive: true,
       colorClass: 'hr-kpi-icon-green',
-      icon: <Clock size={14} />
+      icon: <AppWindow size={14} />
     },
     {
       id: 'opportunities',
@@ -70,7 +80,7 @@ export default function HrIntelligence() {
       trend: '3% vs previous 30 Days',
       trendPositive: true,
       colorClass: 'hr-kpi-icon-orange',
-      icon: <User size={14} />
+      icon: <UserCheck size={14} />
     },
     {
       id: 'productivity',
@@ -176,51 +186,61 @@ export default function HrIntelligence() {
     <div className="hr-page-container">
       {/* 1. Top Section: Banner + AI Assistant & HR Health Score */}
       <div className="hr-top-banner-grid">
-        {/* Left Banner Card */}
-        <div className="hr-welcome-banner">
-          <div className="hr-welcome-left">
-            <div className="hr-banner-icon-wrapper">
-              <Settings size={22} />
+        {/* Left Banner Wrapper */}
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', paddingTop: '15px' }}>
+          {/* Floating Actions overlapping the top border */}
+          <div className="hr-page-header-actions" style={{ position: 'absolute', top: '0', right: '24px', zIndex: 10 }}>
+            <button className="hr-date-btn hr-date-btn-shadow" onClick={() => alert('Change date range')} style={{ background: '#fff', height: '36px' }}>
+              <Calendar size={14} />
+              <span>{dateRange}</span>
+              <ChevronDown size={14} />
+            </button>
+            <button className="hr-export-btn hr-btn-shadow" onClick={handleExport} style={{ background: '#fff', height: '36px' }}>
+              <Download size={14} />
+              <span>Export Report</span>
+            </button>
+          </div>
+
+          {/* Left Banner Card */}
+          <div className="hr-welcome-banner" style={{ flex: 1 }}>
+            <div className="hr-welcome-left">
+              <div className="hr-banner-icon-wrapper">
+                <Settings size={22} />
+              </div>
+              <div className="hr-banner-text">
+                <h2>HR Intelligence</h2>
+                <p>Understand what's happening in your workforce, why it's happening, and what to do next.</p>
+              </div>
             </div>
-            <div className="hr-banner-text">
-              <h2>HR Intelligence</h2>
-              <p>Understand what's happening in your workforce, why it's happening, and what to do next.</p>
+
+            <div className="hr-welcome-right">
+              {/* Actions moved to page header */}
+            </div>
+
+            {/* Background Graphic */}
+            <div className="hr-banner-illustration">
+              <img src={bannerImg} alt="Analytics graphic" style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scale(1.8) translate(-1%, 10%)' }} />
             </div>
           </div>
 
-          <div className="hr-welcome-right">
-            <div className="hr-banner-actions">
-              <button className="hr-date-btn" onClick={() => alert('Change date range')}>
-                <Calendar size={14} />
-                <span>{dateRange}</span>
-                <ChevronDown size={14} />
-              </button>
-              <button className="hr-export-btn" onClick={handleExport}>
-                <Download size={14} />
-                <span>Export Report</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Background Vector Graphic */}
-          <div className="hr-banner-illustration">
-            <svg viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-              <path d="M10 80 Q 50 20, 100 60 T 190 20" stroke="url(#cyanGrad)" strokeWidth="3" fill="none" strokeDasharray="4 2" />
-              <path d="M10 90 Q 60 50, 120 70 T 190 40" stroke="#38bdf8" strokeWidth="2.5" fill="none" opacity="0.6" />
-              <rect x="70" y="55" width="12" height="35" rx="3" fill="#a7f3d0" opacity="0.7" />
-              <rect x="90" y="40" width="12" height="50" rx="3" fill="#38bdf8" opacity="0.8" />
-              <rect x="110" y="30" width="12" height="60" rx="3" fill="#818cf8" opacity="0.8" />
-              <circle cx="150" cy="45" r="18" fill="#e0e7ff" opacity="0.9" />
-              <circle cx="150" cy="40" r="6" fill="#6366f1" />
-              <path d="M140 54 C140 48, 160 48, 160 54" stroke="#6366f1" strokeWidth="2" fill="none" />
-              <defs>
-                <linearGradient id="cyanGrad" x1="0" y1="0" x2="200" y2="100" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#10b981" />
-                  <stop offset="0.5" stopColor="#06b6d4" />
-                  <stop offset="1" stopColor="#3b82f6" />
-                </linearGradient>
-              </defs>
-            </svg>
+          {/* 2. Row of 5 Metric KPI Cards (Moved into Left Column) */}
+          <div className="hr-metrics-grid" style={{ marginTop: '12px' }}>
+            {kpiMetrics.map((kpi) => (
+              <div key={kpi.id} className="hr-kpi-card">
+                <div className="hr-kpi-top">
+                  <span className="hr-kpi-label">{kpi.title}</span>
+                  <div className={`hr-kpi-icon-pill ${kpi.colorClass}`}>
+                    {kpi.icon}
+                  </div>
+                </div>
+                <div className="hr-kpi-val">{kpi.value}</div>
+                <div className="hr-kpi-trend">
+                  <ArrowUpRight size={14} />
+                  <span>{kpi.trend.split(' ')[0]}</span>
+                  <span className="hr-kpi-trend-sub"> {kpi.trend.substring(kpi.trend.indexOf(' '))}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -229,7 +249,7 @@ export default function HrIntelligence() {
           {/* AI Search / Prompt Pill */}
           <form className="hr-ai-ask-pill" onSubmit={handleAskAi}>
             <div className="hr-ai-avatar">
-              <Bot size={18} />
+              <img src={botLogo} alt="AI Bot" style={{ width: '110%', height: '110%', objectFit: 'contain' }} />
             </div>
             <input
               type="text"
@@ -256,25 +276,7 @@ export default function HrIntelligence() {
         </div>
       </div>
 
-      {/* 2. Row of 5 Metric KPI Cards */}
-      <div className="hr-metrics-grid">
-        {kpiMetrics.map((kpi) => (
-          <div key={kpi.id} className="hr-kpi-card">
-            <div className="hr-kpi-top">
-              <span className="hr-kpi-label">{kpi.title}</span>
-              <div className={`hr-kpi-icon-pill ${kpi.colorClass}`}>
-                {kpi.icon}
-              </div>
-            </div>
-            <div className="hr-kpi-val">{kpi.value}</div>
-            <div className="hr-kpi-trend">
-              <ArrowUpRight size={14} />
-              <span>{kpi.trend.split(' ')[0]}</span>
-              <span className="hr-kpi-trend-sub"> {kpi.trend.substring(kpi.trend.indexOf(' '))}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+
 
       {/* 3. Main Split Grid: Left (Management Attention) & Right (Investigation Detail) */}
       <div className="hr-split-grid">
@@ -283,10 +285,10 @@ export default function HrIntelligence() {
           <div className="hr-attention-header-card">
             <div className="hr-attention-title-row">
               <h3 className="hr-attention-title">Management Attention</h3>
-              <button className="hr-date-btn" style={{ padding: '4px 10px', fontSize: '12px' }}>
-                <Calendar size={12} />
-                <span>01-30 Sep 2026</span>
-                <ChevronDown size={12} />
+              <button className="hr-date-btn hr-date-btn-small">
+                <Calendar size={14} color="#64748b" />
+                <span style={{ color: '#0f172a', fontWeight: '500' }}>01-30 Sep 2026</span>
+                <ChevronDown size={14} color="#64748b" />
               </button>
             </div>
             <p className="hr-attention-desc">
@@ -314,7 +316,7 @@ export default function HrIntelligence() {
                   onClick={() => setActiveFilter('Need investigation')}
                 >
                   <span className="hr-dot hr-dot-yellow"></span>
-                  Need investigation (1)
+                  Need investication (1)
                 </button>
                 <button
                   className={`hr-filter-pill ${activeFilter === 'Opportunity' ? 'active' : ''}`}
@@ -324,8 +326,8 @@ export default function HrIntelligence() {
                   Opportunity (1)
                 </button>
               </div>
-              <button className="hr-filter-icon-btn" title="Filter settings">
-                <Filter size={14} />
+              <button className="hr-filter-icon-btn-borderless" title="Filter settings">
+                <Filter size={16} />
               </button>
             </div>
           </div>
@@ -446,10 +448,10 @@ export default function HrIntelligence() {
               </div>
 
               {/* Section 2: "Why does it matter?" */}
-              <div className="hr-section-box">
-                <h4 className="hr-section-header-title">Why does it matter?</h4>
+              <div style={{ marginTop: '8px', padding: '0 4px' }}>
+                <h4 className="hr-section-header-title" style={{ marginBottom: '16px' }}>Why does it matter?</h4>
                 <div className="hr-impact-cards-grid">
-                  <div className="hr-impact-card">
+                  <div className="hr-impact-text-block">
                     <div className="hr-impact-card-header">
                       <Target size={18} color="#f97316" />
                       <span>Workforce continuity</span>
@@ -459,7 +461,7 @@ export default function HrIntelligence() {
                     </p>
                   </div>
 
-                  <div className="hr-impact-card">
+                  <div className="hr-impact-text-block">
                     <div className="hr-impact-card-header">
                       <AlertTriangle size={18} color="#ef4444" />
                       <span>Business performance</span>
@@ -476,27 +478,44 @@ export default function HrIntelligence() {
           {activeTab === 'Evidence' && (
             <div className="hr-tab-content">
               <div className="hr-section-box">
-                <h4 className="hr-section-header-title">Empirical Evidence & Telemetry</h4>
+                <h4 className="hr-section-header-title" style={{ marginBottom: '16px' }}>Key evidence</h4>
+
                 <div className="hr-evidence-list">
                   <div className="hr-evidence-item">
-                    <div className="hr-evidence-item-icon"><FileText size={16} /></div>
-                    <div className="hr-evidence-item-content">
-                      <h4>Exit Interview Pattern Analysis</h4>
-                      <p>64% of departing sales reps cited aggressive quota shifts and lack of tier-2 incentive structures.</p>
+                    <div className="hr-evidence-text">
+                      <div className="hr-evidence-title">Exit interview feedback</div>
+                      <div className="hr-evidence-desc">7 of 14 cited career growth</div>
+                    </div>
+                    <div className="hr-evidence-record-pill">7 records</div>
+                  </div>
+
+                  <div className="hr-evidence-item">
+                    <div className="hr-evidence-text">
+                      <div className="hr-evidence-title">Department attrition</div>
+                      <div className="hr-evidence-desc">Sales: 12.4% · Retail: 10.8% · Others: 3.2%</div>
+                    </div>
+                    <div className="hr-evidence-icon-circle">
+                      <BarChart2 size={16} />
                     </div>
                   </div>
+
                   <div className="hr-evidence-item">
-                    <div className="hr-evidence-item-icon"><Activity size={16} /></div>
-                    <div className="hr-evidence-item-content">
-                      <h4>Manager Disconnect Index</h4>
-                      <p>Frontline satisfaction scores dropped from 88% to 64% in the Midwest and East Coast branches.</p>
+                    <div className="hr-evidence-text">
+                      <div className="hr-evidence-title">Engagement survey</div>
+                      <div className="hr-evidence-desc">Overall score decreased from 78% to 71%</div>
+                    </div>
+                    <div className="hr-evidence-icon-circle">
+                      <ClipboardList size={16} />
                     </div>
                   </div>
+
                   <div className="hr-evidence-item">
-                    <div className="hr-evidence-item-icon"><Clock size={16} /></div>
-                    <div className="hr-evidence-item-content">
-                      <h4>Time to Fill Vacancies</h4>
-                      <p>Average replacement recruitment cycle currently stands at 38 days, incurring $18.4k in temp staffing.</p>
+                    <div className="hr-evidence-text">
+                      <div className="hr-evidence-title">Payroll & overtime</div>
+                      <div className="hr-evidence-desc">Overtime cost increased by 18%</div>
+                    </div>
+                    <div className="hr-evidence-icon-circle">
+                      <Wallet size={16} />
                     </div>
                   </div>
                 </div>
@@ -507,21 +526,40 @@ export default function HrIntelligence() {
           {activeTab === 'Possible Causes' && (
             <div className="hr-tab-content">
               <div className="hr-section-box">
-                <h4 className="hr-section-header-title">AI Root Cause Diagnostics</h4>
-                <div className="hr-evidence-list">
-                  <div className="hr-evidence-item">
-                    <div className="hr-evidence-item-icon" style={{ color: '#ef4444' }}><AlertTriangle size={16} /></div>
-                    <div className="hr-evidence-item-content">
-                      <h4>1. Compensation Gap with Market Rates (85% Probability)</h4>
-                      <p>Frontline compensation is trailing regional market benchmarks by 8.4% after Q1 inflation adjustments.</p>
+                <h4 className="hr-section-header-title" style={{ marginBottom: '16px' }}>Possible Causes</h4>
+
+                <div className="hr-causes-list">
+                  <div className="hr-cause-item">
+                    <div className="hr-cause-icon-wrapper">
+                      <AlertCircle size={16} strokeWidth={2.5} />
                     </div>
+                    <div className="hr-cause-text">
+                      <div className="hr-cause-title">Limited career growth</div>
+                      <div className="hr-cause-desc">Exit feedback may indicate limited promotion or internal mobility opportunities.</div>
+                    </div>
+                    <div className="hr-cause-confidence high-confidence">High Confidence</div>
                   </div>
-                  <div className="hr-evidence-item">
-                    <div className="hr-evidence-item-icon" style={{ color: '#f59e0b' }}><TrendingUp size={16} /></div>
-                    <div className="hr-evidence-item-content">
-                      <h4>2. Overtime Burnout & Shift Imbalances (72% Probability)</h4>
-                      <p>Understaffing during weekend surges led to a 28% increase in mandatory overtime per headcount.</p>
+
+                  <div className="hr-cause-item">
+                    <div className="hr-cause-icon-wrapper">
+                      <AlertCircle size={16} strokeWidth={2.5} />
                     </div>
+                    <div className="hr-cause-text">
+                      <div className="hr-cause-title">Compensation concerns</div>
+                      <div className="hr-cause-desc">Compare salary, incentives and pay progression with internal role structures.</div>
+                    </div>
+                    <div className="hr-cause-confidence medium-confidence">Medium Confidence</div>
+                  </div>
+
+                  <div className="hr-cause-item">
+                    <div className="hr-cause-icon-wrapper">
+                      <AlertCircle size={16} strokeWidth={2.5} />
+                    </div>
+                    <div className="hr-cause-text">
+                      <div className="hr-cause-title">Limited career growth</div>
+                      <div className="hr-cause-desc">Exit feedback may indicate limited promotion or internal mobility opportunities.</div>
+                    </div>
+                    <div className="hr-cause-confidence high-confidence">High Confidence</div>
                   </div>
                 </div>
               </div>
@@ -531,20 +569,39 @@ export default function HrIntelligence() {
           {activeTab === 'Options' && (
             <div className="hr-tab-content">
               <div className="hr-section-box">
-                <h4 className="hr-section-header-title">Recommended Intervention Strategies</h4>
-                <div className="hr-evidence-list">
-                  <div className="hr-evidence-item">
-                    <div className="hr-evidence-item-icon" style={{ color: '#10b981' }}><CheckCircle2 size={16} /></div>
-                    <div className="hr-evidence-item-content">
-                      <h4>Option A: Targeted Retention Bonus & Shift Stipend (Recommended)</h4>
-                      <p>Deploy $1,200 retention stipends for critical frontline roles with &gt; 6 months tenure. Expected retention recovery: +3.2% within 60 days.</p>
+                <h4 className="hr-section-header-title" style={{ marginBottom: '16px' }}>Management Options</h4>
+
+                <div className="hr-options-grid">
+                  <div className="hr-option-card">
+                    <div className="hr-option-badge">Option A</div>
+                    <div className="hr-option-title">Improve career growth and internal mobility</div>
+                    <div className="hr-option-desc">Define career paths, review promotion opportunities and establish development plans for eligible employees.</div>
+                    <div className="hr-option-tags">
+                      <span className="hr-option-tag">Impact: Potentially high</span>
+                      <span className="hr-option-tag">Effort: Medium</span>
+                      <span className="hr-option-tag">Risk: Low</span>
                     </div>
                   </div>
-                  <div className="hr-evidence-item">
-                    <div className="hr-evidence-item-icon"><Sparkles size={16} /></div>
-                    <div className="hr-evidence-item-content">
-                      <h4>Option B: Automated Scheduling & Flexible Hours Pilot</h4>
-                      <p>Introduce algorithmic scheduling shifts to balance workload evenly across regional branches.</p>
+
+                  <div className="hr-option-card">
+                    <div className="hr-option-badge">Option B</div>
+                    <div className="hr-option-title">Review workload and team structure</div>
+                    <div className="hr-option-desc">Analyse overtime, shift coverage and role expectations in departments with higher attrition.</div>
+                    <div className="hr-option-tags">
+                      <span className="hr-option-tag">Impact: medium</span>
+                      <span className="hr-option-tag">Effort: Medium</span>
+                      <span className="hr-option-tag">Risk: Low</span>
+                    </div>
+                  </div>
+
+                  <div className="hr-option-card">
+                    <div className="hr-option-badge">Option A</div>
+                    <div className="hr-option-title">Review compensation and incentives</div>
+                    <div className="hr-option-desc">Compare pay structures and incentive criteria for affected roles before considering changes.</div>
+                    <div className="hr-option-tags">
+                      <span className="hr-option-tag">Impact: To be assessed</span>
+                      <span className="hr-option-tag">Effort: High</span>
+                      <span className="hr-option-tag">Risk: Medium</span>
                     </div>
                   </div>
                 </div>
@@ -552,51 +609,23 @@ export default function HrIntelligence() {
             </div>
           )}
 
-          {activeTab === 'Decision & Actions' && (
+          {(activeTab === 'Decision & Actions' || activeTab === 'Outcome') && (
             <div className="hr-tab-content">
               <div className="hr-section-box">
-                <h4 className="hr-section-header-title">Action Execution Pipeline</h4>
-                <p className="hr-section-paragraph">Select approved actions to auto-assign tasks into the HR Workstream Queue.</p>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                  <button className="hr-action-btn-primary" onClick={() => alert('Action approved & assigned to HR Director!')}>
-                    <CheckCircle2 size={16} />
-                    Approve Retention Plan
-                  </button>
-                  <button className="hr-action-btn-outline" onClick={() => alert('Exporting proposal for Executive Board...')}>
-                    <Download size={16} />
-                    Share with Executive Team
-                  </button>
+                <h4 className="hr-section-header-title" style={{ marginBottom: '16px' }}>Next Step</h4>
+                <div className="hr-next-step-desc">Validate the causes and select an appropriate management action.</div>
+                <div className="hr-next-step-info">
+                  <Info size={16} />
+                  <span>Human approval required for consequential employment decisions.</span>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {activeTab === 'Outcome' && (
-            <div className="hr-tab-content">
-              <div className="hr-section-box">
-                <h4 className="hr-section-header-title">Forecasted Impact & KPIs</h4>
-                <p className="hr-section-paragraph">
-                  Estimated workforce stability normalization by Q3 2026. Target attrition reduction: 7.8% &rarr; 4.8%.
-                </p>
-                <div className="hr-impact-cards-grid">
-                  <div className="hr-impact-card">
-                    <div className="hr-impact-card-header">
-                      <TrendingUp size={18} color="#10b981" />
-                      <span>Projected Cost Savings</span>
-                    </div>
-                    <p className="hr-impact-card-p">
-                      Estimated $142,000 saved in replacement hiring and ramp-up loss over the next 6 months.
-                    </p>
-                  </div>
-                  <div className="hr-impact-card">
-                    <div className="hr-impact-card-header">
-                      <Users size={18} color="#0284c7" />
-                      <span>Employee Satisfaction Recovery</span>
-                    </div>
-                    <p className="hr-impact-card-p">
-                      Pulse survey sentiment expected to rebound by +18 NPS points.
-                    </p>
-                  </div>
+                <div className="hr-next-step-actions">
+                  <button className="hr-action-btn-primary">
+                    Assign owner <ArrowUpRight size={16} style={{ marginLeft: '6px' }} />
+                  </button>
+                  <button className="hr-action-btn-outline">Review evidence</button>
+                  <button className="hr-action-btn-outline">Set deadline</button>
+                  <button className="hr-action-btn-outline">Define KPI</button>
                 </div>
               </div>
             </div>

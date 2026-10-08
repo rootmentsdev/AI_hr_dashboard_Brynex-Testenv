@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Bell, ChevronDown, User } from 'lucide-react';
+import { Search, Bell, ChevronDown, User, Menu } from 'lucide-react';
 
-export default function Header() {
+export default function Header({ toggleSidebar }) {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -46,13 +46,23 @@ export default function Header() {
 
   return (
     <header className="top-navbar">
-      {/* Left: Title & Breadcrumbs */}
-      <div className="top-navbar-title-group">
-        <h1 className="top-navbar-heading">{title}</h1>
-        <div className="top-navbar-breadcrumb">
-          <span>{parent}</span>
-          <span className="crumb-separator">&gt;</span>
-          <span className="crumb-current">{title}</span>
+      {/* Left: Hamburger + Title & Breadcrumbs */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <button 
+          onClick={toggleSidebar} 
+          style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
+          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+        >
+          <Menu size={20} />
+        </button>
+        <div className="top-navbar-title-group">
+          <h1 className="top-navbar-heading">{title}</h1>
+          <div className="top-navbar-breadcrumb">
+            <span>{parent}</span>
+            <span className="crumb-separator">&gt;</span>
+            <span className="crumb-current">{title}</span>
+          </div>
         </div>
       </div>
 
