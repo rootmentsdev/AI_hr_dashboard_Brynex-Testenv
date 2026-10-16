@@ -1,0 +1,36 @@
+employee_id,full_name,branch,department,role_id,reporting_manager_id,joining_date,employment_type,base_salary_monthly,status
+EMP-100,Kiran Menon,HQ,Executive Management,ROLE-REGIONAL-HEAD,,2019-01-07,Full-time,95000,Active
+EMP-101,Ananya Menon,West Branch,Retail Operations,ROLE-STORE-MGR,EMP-100,2023-04-10,Full-time,52000,Active
+EMP-102,Arjun Nair,West Branch,Sales,ROLE-SALES-EXEC,EMP-101,2024-01-15,Full-time,28000,Active
+EMP-103,Meera Thomas,West Branch,Sales,ROLE-SALES-EXEC,EMP-101,2025-06-02,Full-time,26500,Active
+EMP-104,Rahul Das,West Branch,Retail Operations,ROLE-CASHIER,EMP-101,2025-09-18,Full-time,24000,Probation
+EMP-105,Nisha Varma,West Branch,Inventory,ROLE-INVENTORY-ASSOC,EMP-101,2024-08-12,Full-time,25500,Active
+EMP-106,Vishnu Kumar,Central,Retail Operations,ROLE-STORE-MGR,EMP-100,2022-11-01,Full-time,55000,Active
+EMP-107,Diya Joseph,Central,Sales,ROLE-SALES-EXEC,EMP-106,2023-07-20,Full-time,29500,Active
+EMP-108,Faisal Rahman,Central,Sales,ROLE-SALES-EXEC,EMP-106,2025-02-10,Full-time,27000,Active
+EMP-109,Sneha Pillai,Central,Retail Operations,ROLE-CASHIER,EMP-106,2024-03-25,Part-time,16000,Active
+EMP-110,Akhil Suresh,Central,Inventory,ROLE-INVENTORY-ASSOC,EMP-106,2025-11-03,Contract,22000,Active
+EMP-111,Kavya Raj,HQ,HR,ROLE-HR-EXEC,EMP-100,2021-05-17,Full-time,41000,Active
+EMP-112,Joel Mathew,HQ,Finance,ROLE-FINANCE-ANALYST,EMP-100,2022-02-07,Full-time,46000,Active
+EMP-113,Priya Krishnan,HQ,Sales,ROLE-SALES-LEAD,EMP-100,2020-09-14,Full-time,62000,Active
+EMP-114,Sanjay Babu,West Branch,Sales,ROLE-SALES-EXEC,EMP-101,2026-08-01,Full-time,25000,Probation
+EMP-115,Isha George,Central,Sales,ROLE-SALES-EXEC,EMP-106,2023-12-11,Full-time,30000,Notice
+EMP-116,Aarav Pillai,West Branch,Inventory,ROLE-INVENTORY-ASSOC,EMP-101,2025-10-06,Part-time,26000,Active
+EMP-117,Aparna Thomas,Central,Sales,ROLE-SALES-EXEC,EMP-106,2022-08-13,Full-time,31000,Active
+EMP-118,Basil Kumar,West Branch,Sales,ROLE-SALES-EXEC,EMP-101,2025-02-01,Full-time,32000,Active
+EMP-119,Chitra Raj,Central,Sales,ROLE-SALES-EXEC,EMP-106,2022-07-12,Full-time,28000,Probation
+EMP-120,Devika Pillai,West Branch,Retail Operations,ROLE-CASHIER,EMP-101,2025-03-28,Full-time,25500,Active
+EMP-121,Ebin Thomas,Central,Inventory,ROLE-INVENTORY-ASSOC,EMP-106,2026-04-26,Full-time,26500,Active
+EMP-122,Farah Kumar,West Branch,Sales,ROLE-SALES-EXEC,EMP-101,2024-05-05,Full-time,25000,Active
+EMP-123,Gokul Raj,Central,Sales,ROLE-SALES-EXEC,EMP-106,2024-05-23,Part-time,27500,Active
+EMP-124,Haritha Pillai,West Branch,Retail Operations,ROLE-CASHIER,EMP-101,2023-10-14,Full-time,23500,Probation
+EMP-125,Irfan Thomas,Central,Sales,ROLE-SALES-EXEC,EMP-106,2022-11-07,Contract,25000,Active
+EMP-126,Jeevan Kumar,West Branch,Inventory,ROLE-INVENTORY-ASSOC,EMP-101,2025-08-25,Full-time,23000,Active
+EMP-127,Keerthi Raj,Central,Sales,ROLE-SALES-EXEC,EMP-106,2024-05-07,Full-time,31500,Active
+EMP-128,Lakshmi Pillai,West Branch,Retail Operations,ROLE-CASHIER,EMP-101,2025-07-27,Full-time,25000,Active
+EMP-129,Manu Thomas,Central,Sales,ROLE-SALES-EXEC,EMP-106,2022-06-14,Full-time,24500,Probation
+EMP-130,Neethu Kumar,West Branch,Sales,ROLE-SALES-EXEC,EMP-101,2025-02-05,Part-time,26500,Active
+EMP-131,Nikhil Raj,Central,Inventory,ROLE-INVENTORY-ASSOC,EMP-106,2024-07-14,Full-time,26000,Active
+EMP-132,Parvathi Pillai,West Branch,Retail Operations,ROLE-CASHIER,EMP-101,2025-01-24,Full-time,25000,Active
+EMP-133,Rohan Thomas,Central,Sales,ROLE-SALES-EXEC,EMP-106,2024-09-15,Full-time,25500,Active
+EMP-134,Sreya Kumar,West Branch,Sales,ROLE-SALES-EXEC,EMP-101,2024-01-08,Contract,25000,Probation

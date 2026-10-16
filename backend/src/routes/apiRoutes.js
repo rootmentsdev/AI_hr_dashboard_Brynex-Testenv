@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { getDashboardSummary, getHealthCheck } from '../controllers/dashboardController.js';
+import { chatWithAi, getAiStatus, analyzeWorkforce, diagnoseHrIssue, generateDecisionOptions } from '../controllers/aiController.js';
 import {
   uploadHrFile,
   getUploadedFiles,
@@ -40,6 +41,13 @@ const upload = multer({
 // System Health & Overview
 router.get('/health', getHealthCheck);
 router.get('/summary', getDashboardSummary);
+
+// OpenRouter AI Routes
+router.post('/ai/chat', chatWithAi);
+router.get('/ai/status', getAiStatus);
+router.post('/ai/analyze', analyzeWorkforce);
+router.post('/ai/hr/diagnose', diagnoseHrIssue);
+router.post('/ai/hr/options', generateDecisionOptions);
 
 // HR Intelligence Ingestion & AI Analysis Routes
 router.post('/hr/upload', upload.single('file'), uploadHrFile);

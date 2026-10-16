@@ -1,0 +1,568 @@
+=== PAGE 1 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 1
+BRYNEX ONE AI
+HR Brain Development Brief
+Functional architecture, data model, workflows, management decision logic
+and MVP scope for the first departmental AI brain.
+Purpose
+Provide the IT and product team with a build-ready functional blueprint for an HR
+Intelligence System that captures the employee lifecycle, converts activity into
+measurable data, detects issues, supports management decisions and learns from
+outcomes.
+Core operating principle
+Employee Data → Activity → Performance → Diagnosis → Management Decision →
+Action → Outcome → Learning
+Version 0.1 | Product Architecture Draft
+Prepared for internal product and engineering discussion
+
+
+=== PAGE 2 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 2
+1. Product Objective
+The HR Brain should not be designed as a generic HR chatbot. It should function as an intelligence
+and decision-support layer over workforce data, business performance and management workflows.
+The product should answer three classes of questions:
+ • What is happening in the workforce?
+ • Why is it happening?
+ • What management action is most likely to improve the result?
+ The system must combine company-specific data with structured management
+logic, while keeping humans responsible for consequential employment decisions.
+2. Functional Scope
+ Module
+Primary Purpose
+Core Output
+Workforce Planning
+Determine required manpower and capacity
+Required vs actual manpower
+Recruitment
+Source and select suitable employees
+Hiring funnel, source quality, quality of hire
+Onboarding &
+Probation
+Make new hires productive faster
+Time-to-productivity, probation outcome
+Attendance &
+Scheduling
+Measure workforce availability and
+deployment
+Attendance, roster efficiency, productive hours
+Role & Responsibility
+Define accountability by position
+Role cards, KPI ownership, process ownership
+Performance
+Management
+Measure contribution continuously
+Role-specific performance score
+Learning &
+Development
+Close skill gaps
+Skill matrix, training impact
+Compensation &
+Payroll
+Understand people cost
+Payroll efficiency, incentive ROI
+Engagement &
+Retention
+Identify workforce risks
+Attrition and engagement signals
+Compliance & Exit
+Control lifecycle documentation
+Compliance status, exit intelligence
+
+
+=== PAGE 3 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 3
+3. Core Data Object: Employee Digital Profile
+Every employee must have a continuously evolving digital profile. This becomes the core right-brain
+HR entity and the common key that links HR, finance, sales and operations data.
+Data Group
+Examples
+Identity & Employment
+Employee ID, joining date, status, employment type, location, department
+Organisation
+Role, reporting manager, branch, team, hierarchy level
+Cost
+Salary, incentives, overtime, employer cost, allocated cost
+Capability
+Skills, certifications, experience, assessments, skill gaps
+Accountability
+Role purpose, responsibilities, owned processes, KPIs, targets
+Work Pattern
+Attendance, leave, roster, shift, working hours, overtime
+Activity & Output
+Tasks, sales, cases handled, transactions, output quantity, quality
+Performance
+KPI actuals, review history, manager assessment, performance trend
+Development
+Training assigned, completion, assessment, post-training impact
+Employee Relations
+Recognition, feedback, documented incidents, grievances, actions
+Lifecycle
+Probation, promotion, transfer, salary revision, exit reason, rehire status
+Data-design rule
+The profile should store both master data and time-series events. Do not overwrite important
+historical states such as role, salary, manager, branch or KPI target; preserve effective dates so AI
+can reason over change.
+4. Organisation & Role Architecture
+AI cannot evaluate people correctly unless roles and accountability are structured. Every position
+should therefore have a Role Card.
+Role Card Field
+Example
+Role purpose
+Deliver store revenue, customer experience and operating discipline
+Responsibilities
+Sales management, team supervision, inventory control, reporting
+Processes owned
+Opening/closing, cash control, stock review, roster approval
+KPIs
+Revenue, conversion, payroll ratio, stock variance, customer complaints
+Authority
+Approvals, escalation limits, employee actions
+Dependencies
+Marketing leads, inventory availability, finance controls
+Logical chain: Role → Responsibility → Process → Activity → KPI → Target → Actual →
+Performance
+
+
+=== PAGE 4 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 4
+5. Workforce Planning Workflow
+Business Target → Workload → Required Roles → Required Man-hours → Current
+Capacity → Gap Analysis → Management Action
+Input data
+ • Revenue and transaction targets
+ • Operating hours and shifts
+ • Footfall / workload / case volume
+ • Current headcount and productive hours
+ • Overtime and absenteeism
+ • Seasonality and branch demand
+ • Payroll cost and productivity benchmarks
+ 
+Decision outputs
+ • Hire
+ • Transfer
+ • Reschedule
+ • Reduce overlap
+ • Cross-train
+ • Automate process
+ • Improve individual or manager productivity
+ AI should challenge the manpower request. A manager asking for one more
+employee should trigger capacity analysis before recruitment approval.
+
+
+=== PAGE 5 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 5
+6. Recruitment Intelligence Workflow
+ Stage
+Data Captured
+AI / Management Use
+Manpower request
+Role, reason, workload gap, location
+Validate need
+Sourcing
+Channel, campaign, referral source, cost
+Source effectiveness
+Screening
+Eligibility, skills, experience, assessment
+Shortlisting support
+Interview
+Structured scores, comments, panel
+Consistency and evidence
+Offer
+CTC, proposed role, date
+Offer acceptance analytics
+Joining
+Joined / no-show / delay
+Conversion tracking
+30/90-day review
+Attendance, KPI progress, manager
+review
+Quality of hire
+6/12-month outcome
+Performance and retention
+Source and selection learning
+Critical link
+Candidate → Source → Screening → Interview → Hiring Decision → Onboarding → 90-day result →
+1-year performance → Retention. This allows Brynex to learn which recruiting sources and selection
+signals actually correlate with success for that business.
+
+
+=== PAGE 6 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 6
+7. Onboarding & Probation
+Each role should have a standard onboarding journey with milestones, assessments and productivity
+expectations.
+Milestone
+Illustrative Requirement
+Day 1
+Company orientation, policy acknowledgement, role briefing
+Week 1
+Systems, product/process, supervisor shadowing
+Day 30
+Knowledge check, attendance review, early KPI review
+Day 60
+Skill-gap review, manager feedback, corrective training
+Day 90
+Probation decision based on defined evidence
+Primary metric: Time to Productivity = number of days from joining until the
+employee consistently reaches the minimum expected output for the role.
+8. Attendance, Roster & Workforce Utilisation
+Attendance must not be treated as payroll-only data. The useful relationship is attendance +
+scheduled capacity + actual productive output.
+Metric
+Purpose
+Attendance %
+Availability
+Productive hours
+Actual usable working time
+Revenue per employee
+Headcount productivity
+Revenue per labour hour
+Time productivity
+Transactions / cases per employee
+Workload productivity
+Overtime dependency
+Structural staffing problem indicator
+Absenteeism rate
+Reliability and capacity risk
+Schedule efficiency
+Match between demand and staffing
+Context rule
+AI should compare an employee against role, branch, shift, customer traffic and operational
+conditions. Attendance or sales alone must not determine performance.
+
+
+=== PAGE 7 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 7
+9. Performance Management Engine
+Performance formulas must be role-specific. A configurable score engine should support weighted
+categories and effective dates.
+Component
+Illustrative
+Weight
+Examples
+Business KPIs
+40%
+Sales, output, conversion, productivity
+Process Compliance
+20%
+SOP adherence, reporting, task completion
+Customer / Quality
+15%
+Complaints, errors, quality scores
+Manager Assessment
+15%
+Reliability, initiative, leadership
+Learning
+10%
+Training, assessment, demonstrated skill progress
+
+
+=== PAGE 8 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 8
+10. AI Performance Diagnosis
+The system should never equate a low result directly with a poor employee. It should diagnose
+context and possible root causes before recommending action.
+Signal
+Diagnostic Questions
+Performance decline
+Attendance issue? Low traffic? Bad shift? Stock issue? Training gap? Manager problem?
+Target unrealistic?
+High payroll ratio
+Revenue decline? Excess staffing? Overtime? Shift overlap? Low productivity?
+High attrition
+Specific manager? Role? tenure band? location? pay structure? onboarding weakness?
+Low conversion
+Individual issue? lead quality? product availability? traffic mix? training? pricing?
+Expected output
+For each significant issue: evidence summary, likely causes, confidence level, missing data, 2-3
+management options, expected impact, risks and recommended next action.
+11. Learning & Skill Intelligence
+Every role should have a competency matrix. Training is successful only if capability and workplace
+results improve after the intervention.
+Skill
+Required Level
+Current Level
+Gap
+Action
+Product knowledge
+5
+4
+1
+Advanced module
+Customer communication
+5
+3
+2
+Coaching + observed
+practice
+Closing ability
+5
+2
+3
+Sales clinic + manager
+review
+POS usage
+4
+4
+0
+No action
+Closed loop: Skill Gap → Training → Assessment → Workplace KPI → Result
+12. Compensation & Workforce Economics
+ • Payroll / Revenue
+ • Payroll / Gross Profit
+ • Employee Cost / Revenue
+ • Revenue per ₹1 of salary
+ • Overtime cost
+ • Incentive ROI
+ • Cost per productive hour
+ • Headcount cost by branch / department / role
+ The goal is not to minimise salary. The goal is to optimise workforce cost relative
+to sustainable output, quality and customer experience.
+
+
+=== PAGE 9 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 9
+13. Engagement, Retention & Employee
+Relations
+The system can use operational signals to surface workforce risk, but consequential actions must
+remain human-reviewed.
+ • Attendance deterioration
+ • Repeated leave or shift conflicts
+ • Manager changes
+ • Performance decline
+ • Training disengagement
+ • Tenure-based attrition patterns
+ • Documented employee feedback
+ • Recognition frequency
+ • Role / location mismatch
+ 
+Safeguard
+Do not use sensitive or protected characteristics to score employee quality, retention risk or
+suitability. AI-generated risk indicators should trigger review, not automatic promotion, discipline,
+termination or compensation decisions.
+14. Compliance & Lifecycle Control
+ Lifecycle Area
+Controls / Data
+Joining
+Offer, contract, ID, statutory details, acknowledgements
+Active employment
+Policy acceptance, leave, attendance, payroll, role history
+Changes
+Transfer, promotion, manager, salary, branch, responsibilities
+Employee relations
+Grievance, inquiry, warning, resolution, approvals
+Exit
+Resignation/termination workflow, notice, handover, settlement, exit interview
+Post-exit
+Reason taxonomy, rehire status, alumni / reference controls
+15. Management Intelligence Layer
+The management dashboard should prioritise decisions and exceptions, not merely display
+employee counts.
+Priority
+Illustrative Insight
+Critical
+Store payroll increased 14% while revenue declined 8%
+Attention
+Seven sales employees remain below role benchmark for 3 months
+Opportunity
+Store Y generates 22% higher revenue per employee with similar staffing
+Hiring
+Operations capacity suggests two additional roles; Store Z appears overstaffed by two
+
+
+=== PAGE 10 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 10
+16. Standard Management Decision Workflow
+Data → Signal → Variance → Diagnosis → Root Cause → Options → Expected Impact →
+Risk → Human Decision → Action Plan → Owner → Deadline → Result → Learning
+Step
+Example
+Signal
+Payroll ratio reached 18% vs 12% target
+Diagnosis
+Revenue down, shift overlap high, overtime concentrated in two teams
+Option A
+Improve productivity without headcount reduction
+Option B
+Transfer excess capacity to understaffed branches
+Option C
+Roster optimisation and reduced overlap
+Decision
+Management selects B + C
+30-day outcome
+Payroll ratio improves to 14.5%; revenue maintained
+Learning
+Store staffing benchmark and roster rule updated
+17. High-Value Data Relationships
+Prioritise data relationships over collecting hundreds of disconnected fields.
+Employee → Role → Branch → Manager → Salary Cost → Attendance / Hours →
+Activities → Target → Actual Output → Performance → Training → Management
+Action → Outcome
+This creates the key business relationship: Cost → Activity → Output → Outcome.
+18. HR Left-Brain Knowledge Modules
+ Knowledge Domain
+Structured Content Needed
+Organisation Design
+Spans, layers, accountability, role clarity, RACI-like rules
+Workforce Planning
+Capacity planning, staffing economics, workload models
+Recruitment
+Structured selection, interview design, quality-of-hire
+Performance
+Objectives, KPIs, coaching, improvement plans
+Leadership
+Manager effectiveness, delegation, team development
+Learning
+Competency models, skill-gap closure
+Compensation
+Salary structure, incentives, productivity economics
+Employee Relations
+Grievance, discipline, documentation workflows
+Culture & Engagement
+Feedback loops, recognition, retention
+Compliance
+Employment documentation, approvals, audit trail
+Store the left-brain knowledge as frameworks, rules, diagnostic questions, metrics
+and playbooks - not as an unstructured collection of books.
+
+
+=== PAGE 11 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 11
+19. Suggested Core Data Entities for
+Development
+ Entity
+Key Relationships
+Employee
+Role, branch, manager, employment status
+Role
+Department, responsibilities, competencies, KPIs
+Organisation Unit
+Company, brand, branch, department, team
+Employment Event
+Join, transfer, promotion, salary revision, exit
+Attendance Event
+Employee, date, shift, in/out, status
+Roster / Shift
+Location, demand period, assigned employees
+KPI Definition
+Role, formula, target type, weight
+KPI Actual
+Employee/unit, period, value, source
+Performance Review
+Employee, reviewer, score, comments, actions
+Skill / Competency
+Role requirement, employee level
+Training Event
+Course, employee, assessment, follow-up KPI
+Recruitment Candidate
+Vacancy, source, stages, scores, outcome
+Decision Record
+Issue, evidence, options, approver, selected action
+Action / Task
+Decision, owner, deadline, KPI, status
+Outcome Record
+Action, result, measured impact, learning
+20. Access, Governance & Audit Requirements
+ • Role-based access by company, brand, branch and department
+ • Separate employee self-service, manager, HR, finance and executive permissions
+ • Field-level protection for compensation, disciplinary and personal data
+ • Complete audit log for data changes, recommendations, approvals and AI actions
+ • Source traceability for every AI conclusion where possible
+ • Human approval for high-impact employment actions
+ • Configurable data-retention and deletion policies
+ • Tenant isolation between customer companies
+ 
+
+=== PAGE 12 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 12
+21. Recommended MVP - HR Brain V1
+ Priority
+Capability
+P0
+Employee master + organisation hierarchy
+P0
+Role cards + responsibilities + KPI definitions
+P0
+Attendance / roster import or integration
+P0
+KPI actuals + performance score engine
+P0
+Workforce economics dashboard
+P0
+AI insights: detect → diagnose → recommend
+P0
+Management decision record + action tracking
+P1
+Recruitment funnel + quality-of-hire
+P1
+Onboarding / probation workflows
+P1
+Skill matrix + learning
+P2
+Engagement / retention intelligence
+P2
+Advanced compensation and incentive optimisation
+
+
+=== PAGE 13 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 13
+22. HR Brain V1 - Logical Flow
+EMPLOYEE MASTER DATA
+↓
+ORGANISATION + ROLE + KPI ENGINE
+↓
+ATTENDANCE / ROSTER + BUSINESS OUTPUT
+↓
+PERFORMANCE ENGINE
+↓
+WORKFORCE ECONOMICS
+↓
+AI DETECTION + DIAGNOSIS + RECOMMENDATION
+↓
+MANAGEMENT DECISION
+↓
+ACTION + OWNER + DEADLINE
+↓
+RESULT + LEARNING
+23. Development Principles
+ • Design for structured data first; use documents and chat as supporting interfaces.
+ • Keep historical states with effective dates so trends and cause/effect can be analysed.
+ • Every AI insight should identify the data used, missing data and confidence.
+ • Separate raw facts, derived metrics, AI hypotheses and approved management decisions.
+ • Make KPI formulas configurable by role and business.
+ • Integrate with Finance, Sales and Operations data early because HR productivity depends on
+ business context.
+• Do not automate high-impact employment decisions without explicit human approval.
+ • Capture the result of decisions so the system can learn what works for each business.
+ 
+
+=== PAGE 14 ===
+BRYNEX ONE AI | HR Brain Development Brief
+Page 14
+24. Success Definition
+The HR Brain succeeds when management can answer, with evidence:
+ • Do we have the right number of people?
+ • Are they in the right roles and shifts?
+ • What is each role expected to deliver?
+ • Who or what is causing performance variance?
+ • Is the problem people, process, manager, demand, inventory or target design?
+ • Which management action is most likely to improve the outcome?
+ • What happened after we acted?
+ 
+Long-term objective
+Right people + right role + right capacity + right cost + right management action =
+stronger business outcomes.
