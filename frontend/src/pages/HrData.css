@@ -14,11 +14,13 @@
 /* Page Header */
 .hr-data-header {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.hr-data-header h1 {
+.hr-data-header-left h1 {
   font-family: 'Stack Sans Text', 'Plus Jakarta Sans', system-ui, sans-serif;
   font-size: 20px;
   font-weight: 300;
@@ -27,9 +29,31 @@
   color: #0f172a;
 }
 
-.hr-data-header p {
+.hr-data-header-left p {
   font-size: 13px;
   color: #64748b;
+  margin-top: 4px;
+}
+
+.hr-admin-rules-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.hr-admin-rules-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 /* Upload Dropzone Container */
@@ -47,6 +71,7 @@
   transition: all 0.2s ease;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  position: relative;
 }
 
 .hr-upload-dropzone:hover,
@@ -148,6 +173,7 @@
 
 .hr-data-table tbody tr {
   transition: background-color 0.15s ease;
+  cursor: pointer;
 }
 
 .hr-data-table tbody tr:hover {
@@ -163,7 +189,12 @@
   color: #0f172a;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.hr-file-name-cell:hover span {
+  color: #0ca678;
+  text-decoration: underline;
 }
 
 .hr-holds-cell {
@@ -194,16 +225,17 @@
   border-radius: 20px;
 }
 
-/* Modal for Google Sheets / Paste */
+/* Modals */
 .hr-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 100;
+  padding: 20px;
 }
 
 .hr-modal-card {
@@ -211,11 +243,18 @@
   border-radius: 16px;
   padding: 24px;
   width: 90%;
-  max-width: 480px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  max-width: 520px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.hr-preview-modal-card {
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .hr-modal-header {
@@ -230,7 +269,8 @@
   color: #0f172a;
 }
 
-.hr-modal-input {
+.hr-modal-input,
+.hr-modal-textarea {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #e2e8f0;
@@ -238,14 +278,102 @@
   font-size: 13px;
   color: #0f172a;
   outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
 }
 
-.hr-modal-input:focus {
+.hr-modal-input:focus,
+.hr-modal-textarea:focus {
   border-color: #0ca678;
 }
 
 .hr-modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
+}
+
+/* Preview Modal Elements */
+.hr-preview-scroll-area {
+  overflow: auto;
+  max-height: 480px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.hr-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.hr-preview-table th {
+  background: #f8fafc;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  color: #475569;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.hr-preview-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.hr-action-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  color: #334155;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.hr-action-icon-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.hr-action-danger-btn {
+  color: #ef4444;
+  border-color: #fee2e2;
+  background: #fef2f2;
+}
+
+.hr-action-danger-btn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.hr-table-delete-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.hr-table-delete-btn:hover {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fee2e2;
+  transform: scale(1.05);
 }

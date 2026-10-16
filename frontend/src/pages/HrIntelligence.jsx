@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import botLogo from '../assets/bot-logo.png';
 import bannerImg from '../assets/banner-illustration.png';
 import {
@@ -32,7 +32,9 @@ import {
   ClipboardList,
   Wallet,
   AlertCircle,
-  Info
+  Info,
+  X,
+  Send
 } from 'lucide-react';
 import './HrIntelligence.css';
 
@@ -43,6 +45,41 @@ export default function HrIntelligence() {
   const [dateRange, setDateRange] = useState('01-30 Sep 2026');
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
+
+  // Small floating chat screen state (appears as modal above health bar)
+  const [showChatPopup, setShowChatPopup] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 1,
+      sender: 'assistant',
+      text: 'Hello! I am your HR Assistant. Ask me about attrition rates, department productivity, or workforce costs.'
+    }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Live dynamic analysis state from uploaded file
+  const [liveAnalysis, setLiveAnalysis] = useState(null);
+
+  useEffect(() => {
+    const fetchAnalysis = async () => {
+      try {
+        const res = await fetch('/api/hr/analysis');
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          setLiveAnalysis(json.data);
+          if (json.data.reportingPeriod) {
+            setDateRange(json.data.reportingPeriod);
+          }
+          if (json.data.attentionItems && json.data.attentionItems.length > 0) {
+            setSelectedIssueId(json.data.attentionItems[0].id);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load live HR analysis:', err);
+      }
+    };
+    fetchAnalysis();
+  }, []);
 
   // 5 Top Metric Cards Data
   const kpiMetrics = [
@@ -160,8 +197,16 @@ export default function HrIntelligence() {
     }
   ];
 
+  // Resolve active items and metrics from live analysis or fallback sample
+  const resolvedKpiMetrics = liveAnalysis?.kpiMetrics ? liveAnalysis.kpiMetrics.map((kpi, idx) => ({
+    ...kpi,
+    icon: kpiMetrics[idx]?.icon || <Activity size={14} />
+  })) : kpiMetrics;
+
+  const resolvedAttentionItems = liveAnalysis?.attentionItems || attentionItems;
+
   // Filter list
-  const filteredItems = attentionItems.filter(item => {
+  const filteredItems = resolvedAttentionItems.filter(item => {
     if (activeFilter === 'All') return true;
     if (activeFilter === 'Critical') return item.category === 'Critical';
     if (activeFilter === 'Need investigation') return item.category === 'Need investigation';
@@ -169,17 +214,42 @@ export default function HrIntelligence() {
     return true;
   });
 
-  const selectedItem = attentionItems.find(item => item.id === selectedIssueId) || attentionItems[0];
+  const selectedItem = resolvedAttentionItems.find(item => item.id === selectedIssueId) || resolvedAttentionItems[0] || attentionItems[0];
 
   const handleExport = () => {
     alert('Generating and exporting comprehensive HR Intelligence Report (PDF / Excel)...');
   };
 
   const handleAskAi = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!aiQuery.trim()) return;
-    alert(`AI Analysis query: "${aiQuery}"\nProcessing real-time HR insights...`);
+
+    const userText = aiQuery.trim();
     setAiQuery('');
+    setShowChatPopup(true);
+
+    const userMsg = { id: Date.now(), sender: 'user', text: userText };
+    setChatMessages((prev) => [...prev, userMsg]);
+    setIsTyping(true);
+
+    setTimeout(() => {
+      let replyText = `Cross-referencing connected workforce telemetry: Attrition is currently tracked at ${liveAnalysis?.attentionItems?.[0]?.metrics?.[0]?.val || '7.8%'}, with productivity at ${liveAnalysis?.kpiMetrics?.[4]?.value || '87%'}. Focus areas remain concentrated in ${liveAnalysis?.attentionItems?.[0]?.department || 'Sales & Operations'}.`;
+      
+      const lower = userText.toLowerCase();
+      if (lower.includes('attrition') || lower.includes('exit')) {
+        replyText = `Current attrition rate is ${liveAnalysis?.attentionItems?.[0]?.metrics?.[0]?.val || '7.8%'} vs ${liveAnalysis?.attentionItems?.[0]?.metrics?.[1]?.val || '5.0%'} target. Exit interviews cite compensation disparity and shift fatigue as primary drivers.`;
+      } else if (lower.includes('attendance') || lower.includes('productivity') || lower.includes('shift')) {
+        replyText = `Workforce attendance average is ${liveAnalysis?.kpiMetrics?.[4]?.value || '87%'}. Telemetry indicates shift coverage deficits in frontline operations with associated overtime surges.`;
+      } else if (lower.includes('cost') || lower.includes('payroll') || lower.includes('salary')) {
+        replyText = `People costs and overtime are currently elevated +14% relative to shift output. Potential savings of up to $42.6k projected through scheduling optimization.`;
+      }
+
+      setChatMessages((prev) => [
+        ...prev,
+        { id: Date.now() + 1, sender: 'assistant', text: replyText }
+      ]);
+      setIsTyping(false);
+    }, 600);
   };
 
   return (
@@ -209,7 +279,9 @@ export default function HrIntelligence() {
               </div>
               <div className="hr-banner-text">
                 <h2>HR Intelligence</h2>
-                <p>Understand what's happening in your workforce, why it's happening, and what to do next.</p>
+                <p>
+                  Understand what's happening in your workforce, why it's happening, and what to do next.
+                </p>
               </div>
             </div>
 
@@ -225,7 +297,7 @@ export default function HrIntelligence() {
 
           {/* 2. Row of 5 Metric KPI Cards (Moved into Left Column) */}
           <div className="hr-metrics-grid" style={{ marginTop: '12px' }}>
-            {kpiMetrics.map((kpi) => (
+            {resolvedKpiMetrics.map((kpi) => (
               <div key={kpi.id} className="hr-kpi-card">
                 <div className="hr-kpi-top">
                   <span className="hr-kpi-label">{kpi.title}</span>
@@ -247,7 +319,7 @@ export default function HrIntelligence() {
         {/* Right Column: AI Prompt Pill & HR Health Score Card */}
         <div className="hr-top-right-column">
           {/* AI Search / Prompt Pill */}
-          <form className="hr-ai-ask-pill" onSubmit={handleAskAi}>
+          <form className="hr-ai-ask-pill" onSubmit={handleAskAi} onClick={() => !showChatPopup && setShowChatPopup(true)}>
             <div className="hr-ai-avatar">
               <img src={botLogo} alt="AI Bot" style={{ width: '110%', height: '110%', objectFit: 'contain' }} />
             </div>
@@ -257,20 +329,123 @@ export default function HrIntelligence() {
               placeholder="Ask me anything about your business..."
               value={aiQuery}
               onChange={(e) => setAiQuery(e.target.value)}
+              onFocus={() => setShowChatPopup(true)}
               style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%' }}
             />
           </form>
+
+          {/* Small Floating Chat Screen - Appears as a sleek modal anchored above the health bar without altering layout */}
+          {showChatPopup && (
+            <div className="hr-inline-chat-popup">
+              <div className="hr-inline-chat-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="hr-inline-chat-avatar">
+                    <img src={botLogo} alt="AI Bot" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '12.5px', fontWeight: '700', color: '#0f172a', margin: 0 }}>HR Assistant</h4>
+                    <span style={{ fontSize: '10.5px', color: '#10b981', fontWeight: '500' }}>● Live Intelligence</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', padding: '2px' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowChatPopup(false);
+                  }}
+                  title="Close chat"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              {/* Chat Message Scroll */}
+              <div className="hr-inline-chat-body">
+                {chatMessages.map((msg) => (
+                  <div key={msg.id} className={`hr-inline-msg-bubble ${msg.sender}`}>
+                    {msg.text}
+                  </div>
+                ))}
+                {isTyping && (
+                  <div className="hr-inline-msg-bubble assistant typing">
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Prompts */}
+              <div className="hr-inline-quick-prompts">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAiQuery('Why is attrition increasing?');
+                    setTimeout(() => handleAskAi(), 50);
+                  }}
+                >
+                  Attrition root-causes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAiQuery('Which department has productivity gaps?');
+                    setTimeout(() => handleAskAi(), 50);
+                  }}
+                >
+                  Productivity gaps
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAiQuery('Analyze overtime and payroll');
+                    setTimeout(() => handleAskAi(), 50);
+                  }}
+                >
+                  Overtime vs payroll
+                </button>
+              </div>
+
+              {/* Interactive Input Dock inside Chat */}
+              <form
+                className="hr-inline-chat-input-row"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAskAi(e);
+                }}
+              >
+                <input
+                  type="text"
+                  placeholder="Ask a question..."
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  autoFocus
+                />
+                <button type="submit" title="Send">
+                  <Send size={13} />
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* HR Health Score Dark Card */}
           <div className="hr-health-score-card">
             <div className="hr-health-header">
               <span className="hr-health-title">HR Health Score</span>
-              <span className="hr-health-badge">Healthy</span>
+              <span className="hr-health-badge">
+                {liveAnalysis?.healthStatus || 'Healthy'}
+              </span>
             </div>
-            <div className="hr-health-value">82%</div>
+            <div className="hr-health-value">
+              {liveAnalysis?.healthScore || '82%'}
+            </div>
             <div className="hr-health-footer">
               <TrendingUp size={14} />
-              <span>3 areas need attention</span>
+              <span>
+                {liveAnalysis?.attentionItems?.length || 3} areas need attention
+              </span>
             </div>
           </div>
         </div>
@@ -292,7 +467,9 @@ export default function HrIntelligence() {
               </button>
             </div>
             <p className="hr-attention-desc">
-              Payroll ratio has increased from 12% to 18% (+6 pp) while revenue has declined by 8% over the last 3 months.
+              {liveAnalysis?.attentionSummary || (liveAnalysis?.fileScope?.includes('Attendance')
+                ? `Workforce attendance is currently tracked across ${liveAnalysis?.totalRecords || 146} employee records with ${resolvedAttentionItems.filter(i => i.category === 'Critical').length} critical shift deficits.`
+                : 'Payroll ratio has increased from 12% to 18% (+6 pp) while revenue has declined by 8% over the last 3 months.')}
             </p>
 
             {/* Filter Pills Row */}
@@ -302,28 +479,28 @@ export default function HrIntelligence() {
                   className={`hr-filter-pill ${activeFilter === 'All' ? 'active' : ''}`}
                   onClick={() => setActiveFilter('All')}
                 >
-                  All (3)
+                  All ({resolvedAttentionItems.length})
                 </button>
                 <button
                   className={`hr-filter-pill ${activeFilter === 'Critical' ? 'active' : ''}`}
                   onClick={() => setActiveFilter('Critical')}
                 >
                   <span className="hr-dot hr-dot-red"></span>
-                  Critical (1)
+                  Critical ({resolvedAttentionItems.filter(i => i.category === 'Critical').length})
                 </button>
                 <button
                   className={`hr-filter-pill ${activeFilter === 'Need investigation' ? 'active' : ''}`}
                   onClick={() => setActiveFilter('Need investigation')}
                 >
                   <span className="hr-dot hr-dot-yellow"></span>
-                  Need investication (1)
+                  Need investigation ({resolvedAttentionItems.filter(i => i.category === 'Need investigation').length})
                 </button>
                 <button
                   className={`hr-filter-pill ${activeFilter === 'Opportunity' ? 'active' : ''}`}
                   onClick={() => setActiveFilter('Opportunity')}
                 >
                   <span className="hr-dot hr-dot-green"></span>
-                  Opportunity (1)
+                  Opportunity ({resolvedAttentionItems.filter(i => i.category === 'Opportunity').length})
                 </button>
               </div>
               <button className="hr-filter-icon-btn-borderless" title="Filter settings">

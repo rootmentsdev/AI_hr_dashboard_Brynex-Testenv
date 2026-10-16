@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import botLogo from '../assets/bot-logo.png';
 import {
   BrainCircuit,
   TriangleAlert,
@@ -155,10 +156,7 @@ export default function AiAssistant() {
           <div className="ai-welcome-hero">
             {/* Mascot Robot */}
             <div className="ai-mascot-wrapper">
-              <div className="ai-mascot-face">
-                <div className="ai-mascot-eye"></div>
-                <div className="ai-mascot-eye"></div>
-              </div>
+              <img src={botLogo} alt="AI Bot Mascot" className="ai-mascot-img" />
             </div>
             <h3>Hello Good Morning!</h3>
             <p>What would you like to understand about your workforce?</p>

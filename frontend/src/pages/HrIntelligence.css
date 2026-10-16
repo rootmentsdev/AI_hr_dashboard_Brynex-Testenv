@@ -214,6 +214,7 @@
   flex-direction: column;
   gap: 23px;
   padding-top: 15px;
+  position: relative;
 }
 
 /* AI Prompt Pill */
@@ -268,7 +269,188 @@
   flex: 1;
 }
 
-/* HR Health Score Card */
+/* Small Floating Chat Screen */
+.hr-inline-chat-popup {
+  position: absolute;
+  top: 60px;
+  right: 0;
+  width: 360px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: hr-chat-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes hr-chat-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.hr-inline-chat-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+}
+
+.hr-inline-chat-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hr-inline-chat-body {
+  padding: 14px;
+  max-height: 240px;
+  min-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12.5px;
+  scrollbar-width: thin;
+}
+
+.hr-inline-msg-bubble {
+  max-width: 82%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  line-height: 1.45;
+}
+
+.hr-inline-msg-bubble.assistant {
+  align-self: flex-start;
+  background: #f1f5f9;
+  color: #1e293b;
+  border-bottom-left-radius: 3px;
+}
+
+.hr-inline-msg-bubble.user {
+  align-self: flex-end;
+  background: #0ca678;
+  color: #ffffff;
+  border-bottom-right-radius: 3px;
+}
+
+.hr-inline-msg-bubble.typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+}
+
+.hr-inline-msg-bubble.typing .dot {
+  width: 5px;
+  height: 5px;
+  background: #94a3b8;
+  border-radius: 50%;
+  animation: typing-blink 1.4s infinite both;
+}
+
+.hr-inline-msg-bubble.typing .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.hr-inline-msg-bubble.typing .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-blink {
+  0%, 80%, 100% {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.hr-inline-quick-prompts {
+  display: flex;
+  gap: 6px;
+  padding: 6px 14px;
+  overflow-x: auto;
+  background: #ffffff;
+}
+
+.hr-inline-quick-prompts button {
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 4px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hr-inline-quick-prompts button:hover {
+  background: #f1f5f9;
+  color: #0ca678;
+  border-color: #cbd5e1;
+}
+
+.hr-inline-chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+}
+
+.hr-inline-chat-input-row input {
+  flex: 1;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  outline: none;
+  background: #f8fafc;
+}
+
+.hr-inline-chat-input-row input:focus {
+  background: #ffffff;
+  border-color: #0ca678;
+}
+
+.hr-inline-chat-input-row button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #0ca678;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s;
+}
+
+.hr-inline-chat-input-row button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .hr-health-score-card {
   height: 141px;
   border-radius: 16px;

@@ -55,40 +55,12 @@ export default function Sidebar() {
 
       {/* Nav List */}
       <nav className="sidebar-nav">
-        {/* MAIN */}
-        <div className="nav-section-title">MAIN</div>
-        <NavLink 
-          to="/workspace" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <Home size={18} className="nav-icon" />
-            <span>AI Workspace</span>
-          </div>
-        </NavLink>
-
-        <NavLink 
-          to="/business-health" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <Activity size={18} className="nav-icon" />
-            <span>Business Health</span>
-          </div>
-        </NavLink>
-
         {/* INTELLIGENCE ENGINES */}
         <div className="nav-section-title">INTELLIGENCE ENGINES</div>
         <div className="nav-group">
           <NavLink 
             to="/intelligence/hr" 
             className={`nav-item ${isHrActive && location.pathname === '/intelligence/hr' ? 'active' : ''}`}
-            onClick={(e) => {
-              if (location.pathname.startsWith('/intelligence/hr')) {
-                // toggle collapse if clicking while already in HR
-                // e.preventDefault();
-              }
-            }}
           >
             <div className="nav-item-left">
               <UserCheck size={18} className="nav-icon" />
@@ -117,48 +89,8 @@ export default function Sidebar() {
           )}
         </div>
 
-        <NavLink 
-          to="/intelligence/sales" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <BarChart3 size={18} className="nav-icon" />
-            <span>Sales</span>
-          </div>
-        </NavLink>
-
-        <NavLink 
-          to="/intelligence/finance" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <Wallet size={18} className="nav-icon" />
-            <span>Finance</span>
-          </div>
-        </NavLink>
-
-        <NavLink 
-          to="/intelligence/operations" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <Clock size={18} className="nav-icon" />
-            <span>Operations</span>
-          </div>
-        </NavLink>
-
-        <NavLink 
-          to="/intelligence/marketing" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <Send size={18} className="nav-icon" />
-            <span>Marketing</span>
-          </div>
-        </NavLink>
-
         {/* AI TOOLS */}
-        <div style={{ margin: '8px 0' }}></div>
+        <div className="nav-section-title" style={{ marginTop: '16px' }}>AI TOOLS</div>
         <NavLink 
           to="/tasks" 
           className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -179,50 +111,6 @@ export default function Sidebar() {
             <span>AI Assistant</span>
           </div>
           <span className="badge badge-mint">New</span>
-        </NavLink>
-
-        {/* SYSTEM & GENERAL */}
-        <div className="nav-divider"></div>
-
-        <NavLink 
-          to="/integrations" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <Boxes size={18} className="nav-icon" />
-            <span>Integrations</span>
-          </div>
-        </NavLink>
-
-        <NavLink 
-          to="/reports" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <FileText size={18} className="nav-icon" />
-            <span>Reports</span>
-          </div>
-          <ChevronDown size={16} />
-        </NavLink>
-
-        <NavLink 
-          to="/team" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <Users size={18} className="nav-icon" />
-            <span>Team & Roles</span>
-          </div>
-        </NavLink>
-
-        <NavLink 
-          to="/settings" 
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <div className="nav-item-left">
-            <Settings size={18} className="nav-icon" />
-            <span>Settings</span>
-          </div>
         </NavLink>
       </nav>
     </aside>
