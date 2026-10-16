@@ -1,10 +1,17 @@
 import express from 'express';
 import { getDashboardSummary, getHealthCheck } from '../controllers/dashboardController.js';
+import { chatWithAi, getAiStatus, diagnoseHrIssue, generateDecisionOptions } from '../controllers/aiController.js';
 
 const router = express.Router();
 
 router.get('/health', getHealthCheck);
 router.get('/summary', getDashboardSummary);
+
+// OpenRouter AI Routes
+router.post('/ai/chat', chatWithAi);
+router.get('/ai/status', getAiStatus);
+router.post('/ai/hr/diagnose', diagnoseHrIssue);
+router.post('/ai/hr/options', generateDecisionOptions);
 
 // Module placeholder routes
 router.get('/hr', (req, res) => res.json({ module: 'HR Intelligence', status: 'ready' }));

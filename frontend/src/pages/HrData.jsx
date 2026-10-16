@@ -187,6 +187,81 @@ export default function HrData() {
         </div>
       </div>
 
+      {/* 4. Right Brain Live Roster Section */}
+      <div className="hr-uploaded-section" style={{ marginTop: '28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <div>
+            <h2 className="hr-uploaded-title" style={{ margin: 0 }}>
+              Right Brain: Synced Employee Digital Profiles
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
+              Company operational telemetry parsed from employee master and attendance records.
+            </p>
+          </div>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', background: '#e6fcf5', padding: '4px 12px', borderRadius: '16px' }}>
+            ● 32 Active Records Synced
+          </span>
+        </div>
+
+        <div className="hr-table-wrapper">
+          <table className="hr-data-table">
+            <thead>
+              <tr>
+                <th>Emp ID</th>
+                <th>Employee Name</th>
+                <th>Role Title</th>
+                <th>Branch</th>
+                <th>Department</th>
+                <th>Base Salary</th>
+                <th>Overtime (Mo)</th>
+                <th>Attendance</th>
+                <th>Retention Risk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { id: 'EMP-014', name: 'Sarah Jenkins', role: 'Retail Shift Supervisor', branch: 'West Branch', dept: 'Retail Ops', salary: '$3,800', ot: '28 hrs ($840)', att: '94%', risk: 'High (Scheduling Fatigue)' },
+                { id: 'EMP-018', name: 'David Miller', role: 'Frontline Sales Specialist', branch: 'Central Store', dept: 'Sales', salary: '$2,950', ot: '34 hrs ($1,020)', att: '88%', risk: 'High (Comp Benchmark)' },
+                { id: 'EMP-021', name: 'Elena Rostova', role: 'Branch General Manager', branch: 'West Branch', dept: 'Operations', salary: '$5,200', ot: '6 hrs ($180)', att: '99%', risk: 'Low (Stable)' },
+                { id: 'EMP-027', name: 'Marcus Vance', role: 'Retail Floor Associate', branch: 'Central Store', dept: 'Retail Ops', salary: '$2,400', ot: '22 hrs ($660)', att: '86%', risk: 'Medium (Comp Benchmark)' },
+                { id: 'EMP-031', name: 'Aaliyah Khan', role: 'Customer Success Rep', branch: 'North Depot', dept: 'Support', salary: '$3,100', ot: '8 hrs ($240)', att: '96%', risk: 'Low (Stable)' }
+              ].map((emp) => (
+                <tr key={emp.id}>
+                  <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>{emp.id}</td>
+                  <td style={{ fontWeight: 600, color: '#1e293b' }}>{emp.name}</td>
+                  <td>{emp.role}</td>
+                  <td>{emp.branch}</td>
+                  <td>{emp.dept}</td>
+                  <td style={{ fontWeight: 500 }}>{emp.salary}</td>
+                  <td style={{ color: emp.ot.includes('34') || emp.ot.includes('28') ? '#ef4444' : '#64748b', fontWeight: 500 }}>
+                    {emp.ot}
+                  </td>
+                  <td>
+                    <span style={{ color: parseInt(emp.att) < 90 ? '#f59e0b' : '#0ca678', fontWeight: 600 }}>
+                      {emp.att}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '3px 8px',
+                        borderRadius: '12px',
+                        background: emp.risk.includes('High') ? '#fef2f2' : emp.risk.includes('Medium') ? '#fffbeb' : '#f0fdf4',
+                        color: emp.risk.includes('High') ? '#ef4444' : emp.risk.includes('Medium') ? '#d97706' : '#16a34a'
+                      }}
+                    >
+                      {emp.risk}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Google Sheets Modal */}
       {showSheetModal && (
         <div className="hr-modal-overlay" onClick={() => setShowSheetModal(false)}>
