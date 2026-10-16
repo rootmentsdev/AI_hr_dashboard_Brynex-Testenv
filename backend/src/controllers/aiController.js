@@ -1,3 +1,11 @@
+import {
+  getUploadedFilesStore,
+  getCachedSyncedEmployees,
+  getCachedLatestAnalysis,
+  getCachedEnterpriseAnalytics
+} from './hrController.js';
+import { extractDatasetTelemetry } from '../services/aiDocumentAnalyzerService.js';
+
 // AI Controller supporting Anthropic Claude (Primary) & OpenRouter (Fallback)
 const DEFAULT_SYSTEM_PROMPT = `You are the Brynex AI Business Brain Intelligence Assistant, an enterprise-grade AI workforce intelligence copilot.
 You specialize in workforce analytics, employee attrition prevention, compensation benchmark analysis, team productivity, scheduling fatigue management, and executive decision support.
@@ -148,6 +156,64 @@ export const chatWithAi = async (req, res) => {
       });
     }
 
+    // Build context-aware system prompt grounded in actual uploaded data
+    let dynamicDataContext = '';
+    try {
+      const uploadedFiles = getUploadedFilesStore();
+      const latestAnalysis = getCachedLatestAnalysis();
+      const syncedEmployees = getCachedSyncedEmployees();
+      const enterpriseAnalytics = getCachedEnterpriseAnalytics();
+
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        const telemetry = extractDatasetTelemetry(uploadedFiles);
+        dynamicDataContext = `
+--- CONNECTED LIVE ENTERPRISE DATASETS (${uploadedFiles.length} file(s) active) ---
+Active Datasets:
+${uploadedFiles.map(f => `• "${f.name}" (${f.rows} rows, scope: ${f.holds || 'General Data'}, columns: [${f.parsedRows?.[0] ? Object.keys(f.parsedRows[0]).join(', ') : 'none'}])`).join('\n')}
+
+DATASET STATISTICAL AGGREGATES & DISTRIBUTIONS:
+${JSON.stringify(telemetry, null, 2)}
+
+${syncedEmployees && syncedEmployees.length > 0 ? `
+SYNCED EMPLOYEE DIGITAL PROFILES (${syncedEmployees.length} total employees):
+Sample profiles:
+${JSON.stringify(syncedEmployees.slice(0, 25), null, 2)}
+` : ''}
+
+${enterpriseAnalytics ? `
+ENTERPRISE CROSS-CORRELATION:
+${JSON.stringify(enterpriseAnalytics, null, 2)}
+` : ''}
+
+${latestAnalysis && latestAnalysis.attentionItems ? `
+LATEST DETECTED ISSUES & EXECUTIVE FINDINGS:
+- HR Health Score: ${latestAnalysis.healthScore}% (${latestAnalysis.healthStatus})
+- Summary: ${latestAnalysis.attentionSummary || 'Nominal'}
+- Detected Issues:
+${latestAnalysis.attentionItems.map((item, idx) => `  ${idx + 1}. [${item.priority || 'High'}] ${item.title}: ${item.description}`).join('\n')}
+` : ''}
+--------------------------------------------------------
+BEHAVIOR & REASONING RULES:
+1. DATA-GROUNDED ANSWERS (LIKE CHATGPT / CLAUDE WITH ATTACHED CSV): When the user asks questions about their data, workforce, shifts, employees, attendance, rest intervals, overtime, salaries, revenue, or specific branches/roles, answer specifically using the actual records, employee IDs (e.g., EMP-109, EMP-115, etc.), names, numbers, and stats from the connected datasets above.
+2. GENERAL CHATBOT CAPABILITY: If the user asks general conversational queries, definitions, HR best practices, management formulas, emails, memos, coding, or unrelated questions, answer helpfully, conversationally, and thoroughly just like a standard high-intelligence AI chatbot.
+3. CONCISENESS & CLARITY: Format responses with clean GitHub Markdown bolding, bullet points, and headers so they are easy to scan.
+`;
+      } else {
+        dynamicDataContext = `
+--- DATA CONTEXT ---
+No CSV or Excel datasets are currently uploaded to this session.
+You are functioning as a full conversational AI assistant. You can answer general HR, business strategy, management, organizational development, leadership, or general questions. You can also remind the user that they can upload their CSV/Excel files in Data Management whenever they want you to analyze their specific company numbers.
+-------------------
+`;
+      }
+    } catch (dataErr) {
+      console.warn('Could not compile dataset context for chat:', dataErr.message);
+    }
+
+    const effectiveSystemPrompt = systemPrompt
+      ? `${systemPrompt}\n\n${dynamicDataContext}`
+      : `${DEFAULT_SYSTEM_PROMPT}\n\n${dynamicDataContext}`;
+
     const isClaudeModelRequested = model && (model.startsWith('claude') || model.includes('anthropic'));
     const preferClaude = !!anthropicKey && (process.env.AI_PROVIDER === 'anthropic' || isClaudeModelRequested || !openrouterKey);
 
@@ -169,7 +235,7 @@ export const chatWithAi = async (req, res) => {
             apiKey: anthropicKey,
             model: targetModel,
             messages: normalizedMessages,
-            systemPrompt,
+            systemPrompt: effectiveSystemPrompt,
             temperature
           });
 
@@ -207,7 +273,7 @@ export const chatWithAi = async (req, res) => {
             apiKey: openrouterKey,
             model: targetModel,
             messages: normalizedMessages,
-            systemPrompt,
+            systemPrompt: effectiveSystemPrompt,
             temperature
           });
 

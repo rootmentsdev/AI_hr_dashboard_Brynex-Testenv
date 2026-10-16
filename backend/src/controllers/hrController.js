@@ -402,4 +402,5 @@ export const getEnterpriseAnalytics = (req, res) => {
 
 export const getCachedEnterpriseAnalytics = () => cachedEnterpriseAnalytics;
 export const getCachedSyncedEmployees = () => cachedSyncedEmployees;
+export const getCachedLatestAnalysis = () => latestAnalysis;
 export const getUploadedFilesStore = () => uploadedFilesStore;

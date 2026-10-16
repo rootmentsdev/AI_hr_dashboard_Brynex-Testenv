@@ -366,9 +366,11 @@
   padding: 20px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
+  justify-content: flex-start;
+  gap: 18px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 .ai-sidebar-section {
@@ -655,4 +657,52 @@
   font-weight: 500;
   color: #475569;
 }
+
+.ai-dataset-header-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-dataset-header-pill:hover {
+  background: #e2e8f0;
+}
+
+.ai-dataset-header-pill.has-data {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.ai-upload-shortcut-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  background: #ffffff;
+  border: 1px dashed #0ca678;
+  color: #0ca678;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-upload-shortcut-btn:hover {
+  background: #f0fdf4;
+}
+
 
