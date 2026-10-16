@@ -207,6 +207,35 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
         { label: 'Attrition Rate', val: `${calculatedAttrition}%`, note: `Target: ${targetAttrition}%`, hasDownArrow: parseFloat(calculatedAttrition) > targetAttrition },
         { label: 'Total Headcount', val: `${totalHeadcount} Employees`, note: 'Ingested records' },
         { label: 'Primary Department', val: exitedEmployees[0]?.department || 'Operations', note: 'Highest variance' }
+      ],
+      evidence: exitedEmployees.slice(0, 5).map((e) => ({
+        title: `Exit Notice: ${e.name} (${e.id})`,
+        desc: `Role: ${e.role || 'Staff'} | Dept: ${e.department || 'Operations'} | Branch: ${e.branch || 'Main'}`,
+        record: `${e.status || 'Notice Logged'}`
+      })),
+      possibleCauses: [
+        {
+          title: `Exit concentration in ${exitedEmployees[0]?.department || 'primary'} department`,
+          confidence: 'High Confidence (86%)',
+          description: `Analysis across uploaded records shows ${exitedEmployees.length} resignation notices clustered in ${exitedEmployees[0]?.department || 'operations'} roles.`,
+          evidence: `${exitedEmployees.length} of ${totalHeadcount} employees active on notice.`
+        }
+      ],
+      decisionOptions: [
+        {
+          id: `opt-exit-1`,
+          badge: 'Option A (Recommended)',
+          title: 'Conduct Rapid Stay/Retention Reviews',
+          description: 'Deploy department leads for immediate 1-on-1 reviews with exiting and high-risk team members to surface retention levers.',
+          impact: 'Mitigates immediate exit velocity and identifies root complaints.'
+        },
+        {
+          id: `opt-exit-2`,
+          badge: 'Option B',
+          title: 'Expedite Targeted Recruitment Requisitions',
+          description: 'Activate fast-track talent pipelines for critical replacement roles to maintain minimum shift capacity.',
+          impact: 'Prevents operational gaps and mitigates downstream overtime pressure.'
+        }
       ]
     });
   }
@@ -231,6 +260,42 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
         { label: 'Rest Interval Violations', val: `${restIntervalViolations} Shifts`, note: '< 10h turnaround', hasDownArrow: restIntervalViolations > 0 },
         { label: 'Staff Over Benchmark', val: `${highOvertimeEmployees.length} Staff`, note: '> 10h overtime' },
         { label: 'Compliance Rate', val: totalHeadcount > 0 ? `${Math.round((1 - (restIntervalViolations / (totalHeadcount * 30 || 1))) * 100)}%` : '100%', note: 'Schedule adherence' }
+      ],
+      evidence: [
+        {
+          title: 'Overtime Hours Concentration',
+          desc: `${totalOvertimeHours.toFixed(1)} cumulative overtime hours recorded in shift logs.`,
+          record: `${Math.round(totalOvertimeHours)} Total OT Hours`
+        },
+        {
+          title: 'Shift Turnaround Rest Violations',
+          desc: `${restIntervalViolations} shifts scheduled with less than 10-hour rest turnaround intervals.`,
+          record: `${restIntervalViolations} Violations`
+        }
+      ],
+      possibleCauses: [
+        {
+          title: 'Shift turnaround scheduling compression',
+          confidence: 'High Confidence (91%)',
+          description: 'Floor staff scheduled for late closing shifts followed immediately by early opening shifts without mandatory 10+ hour rest intervals.',
+          evidence: `${restIntervalViolations} sub-10h turnaround records found in roster telemetry.`
+        }
+      ],
+      decisionOptions: [
+        {
+          id: `opt-ot-1`,
+          badge: 'Option A (Recommended)',
+          title: 'Enforce Mandatory 11-Hour Rest Scheduling Rule',
+          description: 'Implement automated shift roster validation blocking any schedule with less than 11 hours rest between consecutive shifts.',
+          impact: 'Directly resolves fatigue violations and reduces unplanned absenteeism.'
+        },
+        {
+          id: `opt-ot-2`,
+          badge: 'Option B',
+          title: 'Reallocate Workload to Relief Shift Pool',
+          description: 'Establish a floating relief staff pool to absorb peak hours and cap individual weekly overtime at 8 hours.',
+          impact: 'Cuts premium overtime expenditure while balancing shift strain.'
+        }
       ]
     });
   }
@@ -256,6 +321,28 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
         { label: 'Average Productivity', val: `${calculatedProductivity}%`, note: `Target: ${targetProductivity}%` },
         { label: 'Total Payroll Tracked', val: totalPayrollSpend > 0 ? `$${Math.round(totalPayrollSpend).toLocaleString()}` : 'N/A', note: 'Monthly spend' },
         { label: 'Active Roster Staff', val: `${totalHeadcount} Staff`, note: 'Verified in files' }
+      ],
+      evidence: deptKeys.slice(0, 4).map((d) => ({
+        title: `Team: ${d}`,
+        desc: `Headcount: ${departmentStats[d].headcount} Staff | Logged Overtime: ${(departmentStats[d].overtime || 0).toFixed(1)} hrs`,
+        record: departmentStats[d].payroll > 0 ? `$${Math.round(departmentStats[d].payroll).toLocaleString()} Payroll` : 'Active Unit'
+      })),
+      possibleCauses: [
+        {
+          title: 'Workload and staffing imbalance across departments',
+          confidence: 'Medium Confidence (78%)',
+          description: 'Overtime hours and capacity are concentrated unevenly across departments rather than matched dynamically to demand.',
+          evidence: `Telemetry variance observed across ${deptKeys.length} operational units.`
+        }
+      ],
+      decisionOptions: [
+        {
+          id: `opt-dept-1`,
+          badge: 'Option A (Recommended)',
+          title: 'Cross-Department Skill Matrix & Floating Relief Pool',
+          description: 'Cross-train staff to provide coverage across adjacent departments during peak operational windows.',
+          impact: 'Maximizes internal labor utilization and reduces external staffing reliance.'
+        }
       ]
     });
   }

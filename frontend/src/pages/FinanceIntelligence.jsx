@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Wallet, DollarSign, ArrowUpRight, TrendingDown, AlertCircle, PieChart, ShieldCheck } from 'lucide-react';
 
 export default function FinanceIntelligence() {
@@ -42,8 +43,8 @@ export default function FinanceIntelligence() {
           <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '480px', margin: '0 auto 18px auto', lineHeight: 1.5 }}>
             Upload your payroll, employee salary, or business revenue CSV files in Data Management. The engine will calculate your payroll-to-revenue ratio and cost centers dynamically.
           </p>
-          <a
-            href="/data/hr"
+          <Link
+            to="/intelligence/hr/data"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -58,7 +59,7 @@ export default function FinanceIntelligence() {
             }}
           >
             <span>Go to Data Management</span>
-          </a>
+          </Link>
         </div>
       </div>
     );

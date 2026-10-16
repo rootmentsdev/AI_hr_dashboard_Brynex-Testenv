@@ -103,8 +103,8 @@ export default function HrData() {
 
       if (data.status === 'success') {
         await fetchFiles();
-        // Optional quick notification / prompt to see updated dashboard
-        if (window.confirm(`File "${file.name}" uploaded & analyzed by AI!\nWould you like to open the updated HR Intelligence Dashboard now?`)) {
+        await fetchEmployees();
+        if (window.confirm(`File "${file.name}" analyzed by AI!\nWould you like to open the HR Intelligence Dashboard now?`)) {
           navigate('/intelligence/hr');
         }
       } else {
@@ -134,26 +134,31 @@ export default function HrData() {
     }
   };
 
-  const handleAddSheet = (e) => {
+  const handleAddSheet = async (e) => {
     e.preventDefault();
     if (!sheetUrl.trim()) return;
 
-    // Simulate Google Sheet download & ingestion
-    const fakeBlob = new Blob(
-      [
-        'Employee ID,Name,Department,Role,Status,Salary,Attendance\n' +
-        'EMP-2001,Alex Johnson,Sales,Account Exec,Active,64000,92%\n' +
-        'EMP-2002,Maria Garcia,Retail,Supervisor,Active,52000,88%\n' +
-        'EMP-2003,James Smith,Operations,Logistics,Exited,48000,76%\n' +
-        'EMP-2004,Sarah Lee,Sales,Sales Lead,Exited,71000,81%\n' +
-        'EMP-2005,Michael Brown,Engineering,DevOps,Active,95000,94%'
-      ],
-      { type: 'text/csv' }
-    );
-    const fakeFile = new File([fakeBlob], 'Google_Sheet_HR_Sync.csv', { type: 'text/csv' });
-    handleUploadFile(fakeFile);
-    setSheetUrl('');
-    setShowSheetModal(false);
+    try {
+      setIsUploading(true);
+      let exportUrl = sheetUrl.trim();
+      if (exportUrl.includes('/edit')) {
+        exportUrl = exportUrl.replace(/\/edit.*$/, '/export?format=csv');
+      }
+      const response = await fetch(exportUrl);
+      if (!response.ok) {
+        throw new Error('Could not fetch Google Sheet. Please ensure the link is shared as "Anyone with the link can view", or download it as a CSV and drag-and-drop it into the upload box.');
+      }
+      const text = await response.text();
+      const blob = new Blob([text], { type: 'text/csv' });
+      const file = new File([blob], 'Google_Sheet_Export.csv', { type: 'text/csv' });
+      await handleUploadFile(file);
+      setSheetUrl('');
+      setShowSheetModal(false);
+    } catch (err) {
+      alert(err.message || 'Error fetching sheet. Please download it as a CSV and upload it directly.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleOpenFilePreview = async (file) => {
@@ -164,26 +169,11 @@ export default function HrData() {
       if (data.status === 'success') {
         setPreviewFile(data.file);
       } else {
-        // Fallback preview
-        setPreviewFile({
-          id: file.id,
-          name: file.name,
-          rowsCount: file.rows,
-          columns: ['ID', 'Name', 'Department', 'Role', 'Status', 'Attendance', 'Salary'],
-          data: Array.from({ length: Math.min(file.rows || 10, 15) }, (_, i) => ({
-            ID: `EMP-${1000 + i + 1}`,
-            Name: `Employee ${i + 1}`,
-            Department: i % 2 === 0 ? 'Sales' : 'Operations',
-            Role: i % 2 === 0 ? 'Representative' : 'Specialist',
-            Status: i === 0 ? 'Exited' : 'Active',
-            Attendance: '92%',
-            Salary: '$54,000'
-          })),
-          downloadUrl: file.downloadUrl
-        });
+        alert(data.message || 'Could not load preview for this file.');
       }
     } catch (err) {
       console.warn('Failed to load preview:', err);
+      alert('Error fetching file preview.');
     } finally {
       setLoadingPreview(false);
     }

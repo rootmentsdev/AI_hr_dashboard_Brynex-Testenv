@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Send,
   Users,
@@ -54,8 +55,8 @@ export default function MarketingIntelligence() {
           <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '480px', margin: '0 auto 18px auto', lineHeight: 1.5 }}>
             Upload your leads, footfall traffic, or retail POS output CSV file in Data Management to monitor deal conversion rates and customer satisfaction.
           </p>
-          <a
-            href="/data/hr"
+          <Link
+            to="/intelligence/hr/data"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -70,7 +71,7 @@ export default function MarketingIntelligence() {
             }}
           >
             <span>Go to Data Management</span>
-          </a>
+          </Link>
         </div>
       </div>
     );

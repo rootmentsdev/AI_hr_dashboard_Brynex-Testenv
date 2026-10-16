@@ -262,9 +262,11 @@ export default function AiWorkspace() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>{hasData ? '17.8%' : '-- %'}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>
+              {hasData && summary?.conversionPct ? summary.conversionPct : '-- %'}
+            </div>
             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-              {hasData ? 'Lead Conversion Synced' : 'Awaiting Campaign Data'}
+              {hasData && summary?.conversionPct ? 'Lead Conversion Synced' : 'Awaiting Campaign Data'}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#f97316', fontWeight: 600, marginTop: 'auto' }}>

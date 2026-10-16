@@ -109,166 +109,31 @@ export default function HrIntelligence() {
     fetchAnalysis();
   }, []);
 
-  // Baseline templates matching the Figma design faithfully
-  const defaultAttentionItems = [
-    {
-      id: 'att-1',
-      category: 'Critical',
-      priority: 'High Priority',
-      title: 'Employee attrition rate increased to 7.8%',
-      description: 'Attrition rate increased to 7.8% against a 5% target. Higher exits in sales and retail teams may affect workforce stability and increase recruitment costs.',
-      branch: 'All branches',
-      department: 'Sales & Retail',
-      topic: 'Employee Retention & Attrition',
-      dateRange: 'Apr 2026 - May 2026',
-      confidence: '79%',
-      status: 'Needs investigation',
-      whatsHappening: "Employee attrition has increased from 5% to 7.8%, exceeding the company's target by 2.8 percentage points. Sales and retail teams account for a larger share of recent exits.",
-      metrics: [
-        { label: 'Current attrition', val: '7.8%', note: '+2.8 pp vs target', hasDownArrow: false },
-        { label: 'Target', val: '5.0%', note: 'HR benchmark', hasDownArrow: true },
-        { label: 'Employees exited', val: '14', note: 'Illustrative count', hasDownArrow: false },
-        { label: 'Most affected team', val: 'Sales', note: 'Highest department rate', hasDownArrow: false }
-      ],
-      evidence: [
-        { title: 'Notice Submissions in Retail Sales', desc: 'Frontline store staff voluntary terminations accelerated over last 60 days.', record: '14 Recorded Exits' },
-        { title: 'Shift Schedule Overlap Fatigue', desc: 'Closing shifts followed by next-day opening shifts logged across Central & West stores.', record: '34 Close-Open Rotations' },
-        { title: 'Overtime Compensation vs Revenue', desc: 'Labor costs rose 18% while branch revenue contracted 8% over last quarter.', record: '18.2% Payroll Ratio' }
-      ],
-      possibleCauses: [
-        {
-          title: 'Consecutive evening closing and morning opening shift rotations',
-          confidence: 'High Confidence (86%)',
-          description: 'Frontline floor staff scheduled for late closing shifts followed immediately by opening shifts without mandated 10-hour rest intervals, triggering burnout.',
-          evidence: '34 instances of sub-8-hour rest intervals logged in Central Store attendance roster.'
-        },
-        {
-          title: 'Uncompetitive retail variable commission band',
-          confidence: 'Medium Confidence (74%)',
-          description: 'Quarterly sales targets recalibrated +15% without adjusting base commission steps, reducing average monthly variable bonus by 22%.',
-          evidence: 'Sales department compensation divergence identified in payroll audit.'
-        }
-      ],
-      decisionOptions: [
-        {
-          id: 'opt-1',
-          badge: 'Option A (Recommended)',
-          title: 'Mandate 11-Hour Shift Rest Rostering Rule',
-          description: 'Enforce automated shift scheduling validation preventing consecutive close-open shift rotations across all retail locations.',
-          impact: 'Expected +14% retention recovery within 30 days with minimal schedule disruption.'
-        },
-        {
-          id: 'opt-2',
-          badge: 'Option B',
-          title: 'Recalibrate Frontline Sales Incentive Band',
-          description: 'Adjust Tier-1 commission threshold to reward consistent store-level deal velocity and prevent floor staff churn.',
-          impact: 'Re-aligns earnings with peer benchmarks; estimated +$16k monthly payroll adjustment.'
-        },
-        {
-          id: 'opt-3',
-          badge: 'Option C',
-          title: 'Establish Cross-Branch Rotation Relievers',
-          description: 'Deploy floating senior floor staff between Central and West stores during high-traffic weekend shifts.',
-          impact: 'Relieves shift pressure immediately with zero budget expansion.'
-        }
-      ]
-    },
-    {
-      id: 'att-2',
-      category: 'Need investigation',
-      priority: 'High Priority',
-      title: 'Higher than expected attrition in frontline roles',
-      description: 'People costs are rising 18% while revenue has declined 8% over the last 3 months. This may impact profitability and requires investigation across payroll, sales and scheduling.',
-      branch: 'Central Store',
-      department: 'Retail Operations',
-      topic: 'Cost efficiency',
-      dateRange: 'Apr 2026 - May 2026',
-      confidence: '84%',
-      status: 'Needs investigation',
-      whatsHappening: 'Frontline retail labor expenses have outpaced store productivity, with overtime expenditure rising 18% while footfall-to-conversion declined.',
-      metrics: [
-        { label: 'Payroll Expansion', val: '18.2%', note: '+6.2 pp above budget', hasDownArrow: true },
-        { label: 'Store Footfall Conversion', val: '14.1%', note: 'Target 18.0%', hasDownArrow: false },
-        { label: 'Overtime Hours Logged', val: '286 hrs', note: 'Central Store peak', hasDownArrow: false },
-        { label: 'Target Ratio', val: '12.0%', note: 'Enterprise standard', hasDownArrow: false }
-      ],
-      evidence: [
-        { title: 'Store Shift Log Telemetry', desc: 'High frequency of overtime hours logged during weekday evening shifts.', record: '286.4 Total Hours' },
-        { title: 'Footfall vs Staffing Ratio', desc: 'Over-staffing during low-traffic afternoon hours and under-staffing during peak evening surges.', record: 'Shift Misalignment' }
-      ],
-      possibleCauses: [
-        {
-          title: 'Shift schedule misalignment with customer traffic curves',
-          confidence: 'High Confidence (88%)',
-          description: 'Static shift rosters fail to dynamically scale with hourly store visitor traffic, generating unproductive labor hours.',
-          evidence: 'POS footfall data reveals 42% of sales occur in a 3-hour evening window with equal staffing across the 10-hour day.'
-        }
-      ],
-      decisionOptions: [
-        {
-          id: 'opt-2-1',
-          badge: 'Option A (Recommended)',
-          title: 'Dynamic Traffic-Weighted Shift Rostering',
-          description: 'Align shift start times with peak hourly footfall patterns to eliminate unproductive daytime overtime.',
-          impact: 'Saves $14.2k/month in overtime costs while increasing peak-hour coverage.'
-        }
-      ]
-    },
-    {
-      id: 'att-3',
-      category: 'Opportunity',
-      priority: 'Low Priority',
-      title: 'Higher than expected attrition in frontline roles',
-      description: 'Shift schedule efficiency in West Branch shows 98.4% attendance with balanced 4-day rotations.',
-      branch: 'West Branch',
-      department: 'Workforce Scheduling',
-      topic: 'Operational Efficiency',
-      dateRange: 'Apr 2026 - May 2026',
-      confidence: '92%',
-      status: 'Needs investigation',
-      whatsHappening: 'West Branch has achieved industry-leading attendance and lowest turnover through structured 4-day on, 3-day off rotational schedules.',
-      metrics: [
-        { label: 'Turnover Rate', val: '3.2%', note: 'Industry best-practice', hasDownArrow: false },
-        { label: 'Attendance Rate', val: '98.4%', note: 'Consistently high', hasDownArrow: false },
-        { label: 'Store Conversion', val: '18.6%', note: '+4.5 pp vs Central', hasDownArrow: false },
-        { label: 'Staff Satisfaction', val: '92/100', note: 'Quarterly pulse', hasDownArrow: false }
-      ],
-      evidence: [
-        { title: 'Attendance Logs in West Branch', desc: 'Consistently low tardiness and near-zero unscheduled absences over 90 days.', record: '98.4% Attendance' }
-      ],
-      possibleCauses: [
-        {
-          title: 'Structured rotational shift schedules provide predictable rest cycles',
-          confidence: 'High Confidence (94%)',
-          description: 'Predictable scheduling gives staff adequate recovery time, directly suppressing burnout and absenteeism.',
-          evidence: 'Zero sub-10-hour turnarounds logged in West Branch rosters.'
-        }
-      ],
-      decisionOptions: [
-        {
-          id: 'opt-3-1',
-          badge: 'Option A (Recommended)',
-          title: 'Replicate West Branch Scheduling Template',
-          description: 'Standardize Central Store shift schedules using the proven West Branch 4-day rotational template.',
-          impact: 'Expected +12% attendance improvement and -$18k overtime cost reduction.'
-        }
-      ]
-    }
-  ];
+  // Icon mapping for dynamic KPI tiles
+  const kpiIconMap = {
+    issues: <Network size={14} />,
+    decisions: <FileText size={14} />,
+    monitored: <AppWindow size={14} />,
+    opportunities: <UserCheck size={14} />,
+    productivity: <Activity size={14} />
+  };
 
-  // Resolve attention items: Use live dataset items if available; otherwise use Figma baseline template
-  const resolvedAttentionItems = (liveAnalysis?.attentionItems && liveAnalysis.attentionItems.length > 0)
+  // Resolve attention items strictly from live ingested datasets
+  const resolvedAttentionItems = (liveAnalysis?.attentionItems && Array.isArray(liveAnalysis.attentionItems))
     ? liveAnalysis.attentionItems
-    : defaultAttentionItems;
+    : [];
 
-  const resolvedKpiMetrics = (liveAnalysis?.kpiMetrics && liveAnalysis.kpiMetrics.length > 0)
-    ? liveAnalysis.kpiMetrics
+  const resolvedKpiMetrics = (liveAnalysis?.kpiMetrics && Array.isArray(liveAnalysis.kpiMetrics) && liveAnalysis.kpiMetrics.length > 0)
+    ? liveAnalysis.kpiMetrics.map((kpi) => ({
+        ...kpi,
+        icon: kpiIconMap[kpi.id] || <Activity size={14} />
+      }))
     : [
-        { id: 'issues', title: 'Issues Detected', value: '3', trend: '3% vs previous 30 Days', trendPositive: true, colorClass: 'hr-kpi-icon-purple', icon: <Network size={14} /> },
-        { id: 'decisions', title: 'Awaited Decisions', value: '2', trend: '3% vs previous 30 Days', trendPositive: true, colorClass: 'hr-kpi-icon-red', icon: <FileText size={14} /> },
-        { id: 'monitored', title: 'Being Monitored', value: '1', trend: '2% vs previous 30 Days', trendPositive: true, colorClass: 'hr-kpi-icon-green', icon: <AppWindow size={14} /> },
-        { id: 'opportunities', title: 'Opportunities', value: '2', trend: '3% vs previous 30 Days', trendPositive: true, colorClass: 'hr-kpi-icon-orange', icon: <UserCheck size={14} /> },
-        { id: 'productivity', title: 'Avg. Productivity', value: '87%', trend: '3% vs last month', trendPositive: true, colorClass: 'hr-kpi-icon-blue', icon: <Activity size={14} /> }
+        { id: 'issues', title: 'Issues Detected', value: '0', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-purple', icon: <Network size={14} /> },
+        { id: 'decisions', title: 'Awaited Decisions', value: '0', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-red', icon: <FileText size={14} /> },
+        { id: 'monitored', title: 'Being Monitored', value: '0', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-green', icon: <AppWindow size={14} /> },
+        { id: 'opportunities', title: 'Opportunities', value: '0', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-orange', icon: <UserCheck size={14} /> },
+        { id: 'productivity', title: 'Avg. Productivity', value: '--', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-blue', icon: <Activity size={14} /> }
       ];
 
   // Filter list
@@ -280,7 +145,7 @@ export default function HrIntelligence() {
     return true;
   });
 
-  const selectedItem = resolvedAttentionItems.find((item) => item.id === selectedIssueId) || resolvedAttentionItems[0] || null;
+  const selectedItem = resolvedAttentionItems.find((item) => String(item.id) === String(selectedIssueId)) || resolvedAttentionItems[0] || null;
 
   // Synchronize causes and options when selected issue changes
   useEffect(() => {
@@ -320,10 +185,14 @@ export default function HrIntelligence() {
     setIsTyping(true);
 
     try {
+      const contextualPrompt = liveAnalysis
+        ? `[Live Dataset Telemetry Context: Summary: ${liveAnalysis.attentionSummary || 'Active'} | Health Score: ${liveAnalysis.healthScore}% | Issues Detected: ${(liveAnalysis.attentionItems || []).map((i) => i.title).join('; ')}]\n\nUser Question: ${userText}`
+        : userText;
+
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userText })
+        body: JSON.stringify({ prompt: contextualPrompt })
       });
       const data = await res.json();
       const reply = data.success && data.message ? data.message : 'Telemetry synthesized. You can connect additional files in Data Management for deeper multi-source correlation.';
@@ -431,7 +300,7 @@ export default function HrIntelligence() {
                   <span className="hr-brain-pill-right" title="Company Digital Profile">
                     <Building2 size={13} />
                     <span>
-                      Right Brain: {liveAnalysis ? `${liveAnalysis.totalRecords || 35} Records Synced` : 'Enterprise Synced'}
+                      Right Brain: {liveAnalysis ? `${liveAnalysis.totalRecords || (liveAnalysis.kpiMetrics?.find((k) => k.id === 'monitored')?.value) || 0} Records Synced` : 'Awaiting Ingestion'}
                     </span>
                   </span>
                 </div>
@@ -547,27 +416,27 @@ export default function HrIntelligence() {
                   type="button"
                   className="hr-chat-chip"
                   onClick={() => {
-                    const text = 'Why is retail sales attrition at 7.8%?';
+                    const text = 'What are our primary workforce risks and anomalies right now?';
                     setAiQuery(text);
                   }}
                 >
-                  Why is sales attrition at 7.8%?
+                  Workforce risks & anomalies
                 </button>
                 <button
                   type="button"
                   className="hr-chat-chip"
                   onClick={() => {
-                    const text = 'Explain payroll ratio divergence vs target';
+                    const text = 'Analyze labor expenditure and overtime allocation across departments';
                     setAiQuery(text);
                   }}
                 >
-                  Analyze payroll divergence
+                  Analyze labor expenditure
                 </button>
                 <button
                   type="button"
                   className="hr-chat-chip"
                   onClick={() => {
-                    const text = 'Suggest optimal shift rest intervals';
+                    const text = 'Evaluate shift turnaround rest intervals and compliance';
                     setAiQuery(text);
                   }}
                 >
@@ -603,16 +472,22 @@ export default function HrIntelligence() {
             <div className="hr-health-header">
               <span className="hr-health-title">HR Health Score</span>
               <span className="hr-health-badge">
-                {liveAnalysis?.healthStatus || 'Healthy'}
+                {liveAnalysis?.healthStatus || (liveAnalysis ? 'Healthy' : 'Standby')}
               </span>
             </div>
             <div className="hr-health-value">
-              {liveAnalysis?.healthScore ? `${liveAnalysis.healthScore}%` : '82%'}
+              {liveAnalysis?.healthScore
+                ? (String(liveAnalysis.healthScore).includes('%') ? liveAnalysis.healthScore : `${liveAnalysis.healthScore}%`)
+                : '--%'}
             </div>
             <div className="hr-health-footer">
               <TrendingUp size={14} />
               <span>
-                {resolvedAttentionItems.length > 0 ? `${resolvedAttentionItems.length} areas need attention` : 'Live telemetry nominal'}
+                {liveAnalysis
+                  ? (resolvedAttentionItems.length > 0
+                      ? `${resolvedAttentionItems.length} area${resolvedAttentionItems.length === 1 ? '' : 's'} need attention`
+                      : 'Live telemetry nominal')
+                  : 'Ingest data to compute score'}
               </span>
             </div>
           </div>
@@ -633,7 +508,11 @@ export default function HrIntelligence() {
               </button>
             </div>
             <p className="hr-attention-desc">
-              {liveAnalysis?.attentionSummary || 'Payroll ratio has increased from 12% to 18% (+6 pp) while revenue has declined by 8% over the last 3 months.'}
+              {liveAnalysis?.attentionSummary || (
+                isLoadingAnalysis
+                  ? 'Checking for live workforce telemetry...'
+                  : 'No workforce datasets currently synced. Upload employee and attendance records in Data Management to detect live management issues.'
+              )}
             </p>
 
             {/* Filter Pills Row */}
@@ -675,446 +554,518 @@ export default function HrIntelligence() {
 
           {/* List of Issue Cards */}
           <div className="hr-issue-cards-list">
-            {filteredItems.map((item) => (
+            {filteredItems.length === 0 ? (
               <div
-                key={item.id}
-                className={`hr-issue-card ${selectedIssueId === item.id ? 'selected' : ''}`}
-                onClick={() => setSelectedIssueId(item.id)}
+                className="hr-empty-state-card"
+                style={{
+                  padding: '36px 20px',
+                  textAlign: 'center',
+                  background: '#ffffff',
+                  borderRadius: '12px',
+                  border: '1px dashed #cbd5e1',
+                  marginTop: '12px'
+                }}
               >
-                <div className="hr-issue-card-tags">
-                  <span
-                    className={`hr-priority-tag ${
-                      item.priority?.includes('Low') ? 'hr-priority-low' : 'hr-priority-high'
-                    }`}
+                <AlertCircle size={32} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
+                <h4 style={{ margin: '0 0 6px', fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>
+                  {liveAnalysis ? 'No Issues in Selected Filter' : 'No Data Ingested'}
+                </h4>
+                <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
+                  {liveAnalysis
+                    ? 'All workforce metrics and attendance rosters are currently within nominal thresholds.'
+                    : 'Upload your workforce files (Employees, Attendance, Roster, Sales) to detect live management issues.'}
+                </p>
+                {!liveAnalysis && (
+                  <button
+                    onClick={() => navigate('/intelligence/hr/data')}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      background: '#0ca678',
+                      color: '#fff',
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '13px'
+                    }}
                   >
-                    ● {item.priority || 'High Priority'}
-                  </span>
-                  <span className="hr-status-badge-outline">{item.status || 'Needs investigation'}</span>
-                </div>
-
-                <h4 className="hr-issue-card-title">{item.title}</h4>
-                <p className="hr-issue-card-desc">{item.description}</p>
-
-                <div className="hr-issue-card-meta">
-                  <div className="hr-meta-item">
-                    <Building2 size={13} />
-                    <span>{item.branch}</span>
-                  </div>
-                  <div className="hr-meta-item">
-                    <ShieldAlert size={13} />
-                    <span>{item.topic}</span>
-                  </div>
-                  <div className="hr-meta-item">
-                    <Calendar size={13} />
-                    <span>{item.dateRange}</span>
-                  </div>
-                </div>
+                    <UploadCloud size={16} />
+                    Go to Data Management
+                  </button>
+                )}
               </div>
-            ))}
+            ) : (
+              filteredItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`hr-issue-card ${String(selectedIssueId) === String(item.id) ? 'selected' : ''}`}
+                  onClick={() => setSelectedIssueId(item.id)}
+                >
+                  <div className="hr-issue-card-tags">
+                    <span
+                      className={`hr-priority-tag ${
+                        item.priority?.includes('Low') ? 'hr-priority-low' : 'hr-priority-high'
+                      }`}
+                    >
+                      ● {item.priority || 'High Priority'}
+                    </span>
+                    <span className="hr-status-badge-outline">{item.status || 'Needs investigation'}</span>
+                  </div>
+
+                  <h4 className="hr-issue-card-title">{item.title}</h4>
+                  <p className="hr-issue-card-desc">{item.description}</p>
+
+                  <div className="hr-issue-card-meta">
+                    <div className="hr-meta-item">
+                      <Building2 size={13} />
+                      <span>{item.branch || 'All Branches'}</span>
+                    </div>
+                    <div className="hr-meta-item">
+                      <ShieldAlert size={13} />
+                      <span>{item.topic || 'Workforce Risk'}</span>
+                    </div>
+                    <div className="hr-meta-item">
+                      <Calendar size={13} />
+                      <span>{item.dateRange || dateRange}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
         {/* Right Column: Detailed Investigation View */}
-        <div className="hr-detail-card">
-          {/* Top Bar inside Detail */}
-          <div className="hr-detail-top-nav">
-            <button className="hr-back-btn" onClick={() => setActiveFilter('All')}>
-              <ArrowLeft size={14} />
-              <span>Back to list</span>
-            </button>
-            <span className="hr-status-badge-outline" style={{ padding: '3px 12px' }}>
-              {selectedItem?.status || 'Needs investigation'}
-            </span>
-          </div>
-
-          {/* Title & Metadata */}
-          <div>
-            <h2 className="hr-detail-title">{selectedItem?.title || 'Employee attrition rate increased to 7.8%'}</h2>
-            <div className="hr-detail-meta-row" style={{ marginTop: '8px' }}>
-              <div className="hr-meta-item">
-                <Building2 size={14} />
-                <span>{selectedItem?.branch || 'All branches'}</span>
-              </div>
-              <div className="hr-meta-item">
-                <ShieldAlert size={14} />
-                <span>{selectedItem?.topic || 'Employee Retention & Attrition'}</span>
-              </div>
-              <div className="hr-meta-item">
-                <Calendar size={14} />
-                <span>{selectedItem?.dateRange || 'Apr 2026 - May 2026'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Priority & Confidence row */}
-          <div className="hr-detail-badges-row">
-            <span className="hr-priority-tag hr-priority-high">● {selectedItem?.priority || 'High Priority'}</span>
-            <span className="hr-confidence-badge">Confidence: {selectedItem?.confidence || '79%'}</span>
-          </div>
-
-          {/* All 6 Navigation Tabs */}
-          <div className="hr-tabs-container">
-            {['Overview', 'Evidence', 'Possible Causes', 'Options', 'Decision & Actions', 'Outcome'].map((tab) => (
+        {!selectedItem ? (
+          <div
+            className="hr-detail-card"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              padding: '60px 24px',
+              minHeight: '450px'
+            }}
+          >
+            <BrainCircuit size={48} color="#94a3b8" style={{ marginBottom: '16px' }} />
+            <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px 0' }}>
+              {liveAnalysis ? 'Select an Issue to Investigate' : 'Diagnostic Framework Standby'}
+            </h3>
+            <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '440px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              {liveAnalysis
+                ? 'Click on any detected attention item in the left column to inspect telemetry evidence, Claude AI root causes, and decision options.'
+                : 'Upload employee, shift, or payroll records in Data Management to activate the automated management diagnostic pipeline.'}
+            </p>
+            {!liveAnalysis && (
               <button
-                key={tab}
-                className={`hr-tab-btn ${activeTab === tab ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => navigate('/intelligence/hr/data')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 18px',
+                  background: '#0ca678',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '13px'
+                }}
               >
-                {tab}
+                <UploadCloud size={16} />
+                Go to Data Management
               </button>
-            ))}
+            )}
           </div>
+        ) : (
+          <div className="hr-detail-card">
+            {/* Top Bar inside Detail */}
+            <div className="hr-detail-top-nav">
+              <button className="hr-back-btn" onClick={() => setActiveFilter('All')}>
+                <ArrowLeft size={14} />
+                <span>Back to list</span>
+              </button>
+              <span className="hr-status-badge-outline" style={{ padding: '3px 12px' }}>
+                {selectedItem.status || 'Needs investigation'}
+              </span>
+            </div>
 
-          {/* Tab 1: Overview */}
-          {activeTab === 'Overview' && (
-            <div className="hr-tab-content">
-              {/* "What's happening?" container */}
-              <div className="hr-section-box">
-                <h4 className="hr-section-header-title">What's happening?</h4>
-                <p className="hr-section-paragraph">{selectedItem?.whatsHappening || selectedItem?.description}</p>
-
-                {/* 4 Metric Highlight Boxes */}
-                <div className="hr-four-metrics-grid">
-                  {(selectedItem?.metrics || [
-                    { label: 'Current attrition', val: '7.8%', note: '+2.8 pp vs target', hasDownArrow: false },
-                    { label: 'Target', val: '5.0%', note: 'HR benchmark', hasDownArrow: true },
-                    { label: 'Employees exited', val: '14', note: 'Illustrative count', hasDownArrow: false },
-                    { label: 'Most affected team', val: 'Sales', note: 'Highest department rate', hasDownArrow: false }
-                  ]).map((m, idx) => (
-                    <div key={idx} className="hr-mini-metric-tile">
-                      <span className="hr-mini-metric-title">{m.label}</span>
-                      <div className="hr-mini-metric-val">
-                        <span>{m.val}</span>
-                        {m.hasDownArrow && <ArrowDown size={14} color="#ef4444" />}
-                      </div>
-                      <span className="hr-mini-metric-note">{m.note}</span>
-                    </div>
-                  ))}
+            {/* Title & Metadata */}
+            <div>
+              <h2 className="hr-detail-title">{selectedItem.title}</h2>
+              <div className="hr-detail-meta-row" style={{ marginTop: '8px' }}>
+                <div className="hr-meta-item">
+                  <Building2 size={14} />
+                  <span>{selectedItem.branch || 'All Branches'}</span>
                 </div>
-              </div>
-
-              {/* "Why does it matter?" container with 2 side-by-side impact cards */}
-              <div className="hr-section-box">
-                <h4 className="hr-section-header-title">Why does it matter?</h4>
-                <div className="hr-impact-cards-grid">
-                  <div className="hr-impact-card">
-                    <div className="hr-impact-card-header">
-                      <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#ffedd5', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Users size={14} />
-                      </div>
-                      <span>Workforce continuity</span>
-                    </div>
-                    <p className="hr-impact-card-p">
-                      Vacancies and replacement periods may affect team capacity, training consistency, and retail service delivery.
-                    </p>
-                  </div>
-
-                  <div className="hr-impact-card">
-                    <div className="hr-impact-card-header">
-                      <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <AlertTriangle size={14} />
-                      </div>
-                      <span>Business performance</span>
-                    </div>
-                    <p className="hr-impact-card-p">
-                      Investigate whether turnover is affecting sales productivity, customer experience, or branch revenue targets.
-                    </p>
-                  </div>
+                <div className="hr-meta-item">
+                  <ShieldAlert size={14} />
+                  <span>{selectedItem.topic || 'Workforce Risk'}</span>
+                </div>
+                <div className="hr-meta-item">
+                  <Calendar size={14} />
+                  <span>{selectedItem.dateRange || dateRange}</span>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Tab 2: Evidence */}
-          {activeTab === 'Evidence' && (
-            <div className="hr-tab-content">
-              <div className="hr-section-box">
-                <h4 className="hr-section-header-title">Workforce Telemetry Evidence</h4>
-                <p className="hr-section-paragraph">
-                  Cross-correlated records linking employee turnover to shift overtime schedules and compensation benchmarks.
-                </p>
-                <div className="hr-evidence-list">
-                  {(selectedItem?.evidence || [
-                    { title: 'Notice Period Submissions in Sales', desc: 'Frontline store staff voluntary terminations accelerated over last 60 days.', record: '14 Recorded Exits' },
-                    { title: 'Shift Schedule Overlap Fatigue', desc: 'Closing shifts followed by next-day opening shifts logged across Central & West stores.', record: '34 Close-Open Rotations' },
-                    { title: 'Overtime Compensation vs Revenue', desc: 'Labor costs rose 18% while branch revenue contracted 8% over last quarter.', record: '18.2% Payroll Ratio' }
-                  ]).map((ev, idx) => (
-                    <div key={idx} className="hr-evidence-item">
-                      <div>
-                        <div className="hr-evidence-title">{ev.title}</div>
-                        <div className="hr-evidence-desc">{ev.desc}</div>
-                      </div>
-                      <span className="hr-evidence-record-pill">{ev.record}</span>
+            {/* Priority & Confidence row */}
+            <div className="hr-detail-badges-row">
+              <span className={`hr-priority-tag ${selectedItem.priority?.includes('Low') ? 'hr-priority-low' : 'hr-priority-high'}`}>
+                ● {selectedItem.priority || 'High Priority'}
+              </span>
+              <span className="hr-confidence-badge">Confidence: {selectedItem.confidence || '90%'}</span>
+            </div>
+
+            {/* All 6 Navigation Tabs */}
+            <div className="hr-tabs-container">
+              {['Overview', 'Evidence', 'Possible Causes', 'Options', 'Decision & Actions', 'Outcome'].map((tab) => (
+                <button
+                  key={tab}
+                  className={`hr-tab-btn ${activeTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab 1: Overview */}
+            {activeTab === 'Overview' && (
+              <div className="hr-tab-content">
+                {/* "What's happening?" container */}
+                <div className="hr-section-box">
+                  <h4 className="hr-section-header-title">What's happening?</h4>
+                  <p className="hr-section-paragraph">{selectedItem.whatsHappening || selectedItem.description}</p>
+
+                  {/* Dynamic Metric Highlight Boxes */}
+                  {selectedItem.metrics && selectedItem.metrics.length > 0 && (
+                    <div className="hr-four-metrics-grid">
+                      {selectedItem.metrics.map((m, idx) => (
+                        <div key={idx} className="hr-mini-metric-tile">
+                          <span className="hr-mini-metric-title">{m.label}</span>
+                          <div className="hr-mini-metric-val">
+                            <span>{m.val}</span>
+                            {m.hasDownArrow && <ArrowDown size={14} color="#ef4444" />}
+                          </div>
+                          <span className="hr-mini-metric-note">{m.note}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+                </div>
+
+                {/* "Why does it matter?" container with 2 side-by-side impact cards */}
+                <div className="hr-section-box">
+                  <h4 className="hr-section-header-title">Why does it matter?</h4>
+                  <div className="hr-impact-cards-grid">
+                    <div className="hr-impact-card">
+                      <div className="hr-impact-card-header">
+                        <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#ffedd5', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Users size={14} />
+                        </div>
+                        <span>Workforce continuity</span>
+                      </div>
+                      <p className="hr-impact-card-p">
+                        Vacancies, sudden exits, and scheduling fatigue increase replacement costs, lower service capacity, and risk operational bottlenecks.
+                      </p>
+                    </div>
+
+                    <div className="hr-impact-card">
+                      <div className="hr-impact-card-header">
+                        <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <AlertTriangle size={14} />
+                        </div>
+                        <span>Business performance</span>
+                      </div>
+                      <p className="hr-impact-card-p">
+                        Workforce imbalances directly affect store conversion, labor cost ratios, customer experience, and branch profitability.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Tab 3: Possible Causes (Claude AI Diagnosis) */}
-          {activeTab === 'Possible Causes' && (
-            <div className="hr-tab-content">
-              <div className="hr-section-box">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <div>
-                    <h4 className="hr-section-header-title" style={{ margin: 0 }}>
-                      Claude AI Root Cause Diagnosis
-                    </h4>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>
-                      Diagnostic evaluation using Left-Brain workforce framework
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleRunAiDiagnosis}
-                    disabled={isDiagnosing}
-                    style={{
-                      background: '#0f172a',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '6px 14px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      cursor: isDiagnosing ? 'wait' : 'pointer'
-                    }}
-                  >
-                    <Sparkles size={13} color="#0ca678" />
-                    <span>{isDiagnosing ? 'Diagnosing with Claude...' : 'Run Live AI Diagnosis'}</span>
-                  </button>
-                </div>
-
-                <div className="hr-causes-list">
-                  {rootCauses.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px' }}>
-                      Click "Run Live AI Diagnosis" to analyze this issue with Claude.
+            {/* Tab 2: Evidence */}
+            {activeTab === 'Evidence' && (
+              <div className="hr-tab-content">
+                <div className="hr-section-box">
+                  <h4 className="hr-section-header-title">Workforce Telemetry Evidence</h4>
+                  <p className="hr-section-paragraph">
+                    Signals linking workforce attendance, shifts, compensation benchmarks, and exit patterns.
+                  </p>
+                  {selectedItem.evidence && selectedItem.evidence.length > 0 ? (
+                    <div className="hr-evidence-list">
+                      {selectedItem.evidence.map((ev, idx) => (
+                        <div key={idx} className="hr-evidence-item">
+                          <div>
+                            <div className="hr-evidence-title">{ev.title}</div>
+                            <div className="hr-evidence-desc">{ev.desc}</div>
+                          </div>
+                          <span className="hr-evidence-record-pill">{ev.record}</span>
+                        </div>
+                      ))}
                     </div>
                   ) : (
-                    rootCauses.map((cause, idx) => (
-                      <div key={idx} className="hr-cause-item">
-                        <div className="hr-cause-icon-wrapper">
-                          <AlertCircle size={18} />
-                        </div>
-                        <div className="hr-cause-text">
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                            <span className="hr-cause-title">{cause.title}</span>
-                            <span
-                              className={`hr-cause-confidence ${
-                                cause.confidence?.includes('High') ? 'high-confidence' : 'medium-confidence'
-                              }`}
-                            >
-                              {cause.confidence}
-                            </span>
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                      No specific evidence records attached for this item. Click "Run Live AI Diagnosis" to analyze.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 3: Possible Causes (Claude AI Diagnosis) */}
+            {activeTab === 'Possible Causes' && (
+              <div className="hr-tab-content">
+                <div className="hr-section-box">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <div>
+                      <h4 className="hr-section-header-title" style={{ margin: 0 }}>
+                        Claude AI Root Cause Diagnosis
+                      </h4>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        Diagnostic evaluation using Left-Brain workforce framework
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleRunAiDiagnosis}
+                      disabled={isDiagnosing}
+                      style={{
+                        background: '#0f172a',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: isDiagnosing ? 'wait' : 'pointer'
+                      }}
+                    >
+                      <Sparkles size={13} color="#0ca678" />
+                      <span>{isDiagnosing ? 'Diagnosing with Claude...' : 'Run Live AI Diagnosis'}</span>
+                    </button>
+                  </div>
+
+                  <div className="hr-causes-list">
+                    {rootCauses.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px' }}>
+                        Click "Run Live AI Diagnosis" to analyze this issue with Claude.
+                      </div>
+                    ) : (
+                      rootCauses.map((cause, idx) => (
+                        <div key={idx} className="hr-cause-item">
+                          <div className="hr-cause-icon-wrapper">
+                            <AlertCircle size={18} />
                           </div>
-                          <p className="hr-cause-desc">{cause.description}</p>
-                          {cause.evidence && (
-                            <div style={{ fontSize: '12px', color: '#0ca678', marginTop: '6px', fontWeight: 500 }}>
-                              <strong>Evidence:</strong> {cause.evidence}
+                          <div className="hr-cause-text">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span className="hr-cause-title">{cause.title}</span>
+                              <span
+                                className={`hr-cause-confidence ${
+                                  cause.confidence?.includes('High') ? 'high-confidence' : 'medium-confidence'
+                                }`}
+                              >
+                                {cause.confidence}
+                              </span>
+                            </div>
+                            <p className="hr-cause-desc">{cause.description}</p>
+                            {cause.evidence && (
+                              <div style={{ fontSize: '12px', color: '#0ca678', marginTop: '6px', fontWeight: 500 }}>
+                                <strong>Evidence:</strong> {cause.evidence}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 4: Options (Claude AI Decision Engine) */}
+            {activeTab === 'Options' && (
+              <div className="hr-tab-content">
+                <div className="hr-section-box">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <div>
+                      <h4 className="hr-section-header-title" style={{ margin: 0 }}>
+                        Layer 6 Decision Engine (Option A / B / C)
+                      </h4>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        Strategic decision options synthesized by Claude AI
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleRegenerateOptions}
+                      disabled={isGeneratingOptions}
+                      style={{
+                        background: '#0f172a',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: isGeneratingOptions ? 'wait' : 'pointer'
+                      }}
+                    >
+                      <Sparkles size={13} color="#0ca678" />
+                      <span>{isGeneratingOptions ? 'Synthesizing with Claude...' : 'Generate AI Options'}</span>
+                    </button>
+                  </div>
+
+                  <div className="hr-options-grid">
+                    {decisionOptions.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', width: '100%' }}>
+                        Click "Generate AI Options" to compute 3 architectural decision paths with Claude.
+                      </div>
+                    ) : (
+                      decisionOptions.map((opt) => (
+                        <div
+                          key={opt.id}
+                          className={`hr-option-card ${selectedOptionId === opt.id ? 'active' : ''}`}
+                          onClick={() => setSelectedOptionId(opt.id)}
+                          style={{
+                            cursor: 'pointer',
+                            borderColor: selectedOptionId === opt.id ? '#0ca678' : '#e2e8f0',
+                            boxShadow: selectedOptionId === opt.id ? '0 0 0 1.5px #0ca678' : 'none'
+                          }}
+                        >
+                          <span className="hr-option-badge">{opt.badge}</span>
+                          <h5 className="hr-option-title">{opt.title}</h5>
+                          <p className="hr-option-desc">{opt.description}</p>
+                          {opt.impact && (
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', marginTop: '8px' }}>
+                              Impact: {opt.impact}
                             </div>
                           )}
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 4: Options (Claude AI Decision Engine) */}
-          {activeTab === 'Options' && (
-            <div className="hr-tab-content">
-              <div className="hr-section-box">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <div>
-                    <h4 className="hr-section-header-title" style={{ margin: 0 }}>
-                      Layer 6 Decision Engine (Option A / B / C)
-                    </h4>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>
-                      Strategic decision options synthesized by Claude AI
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleRegenerateOptions}
-                    disabled={isGeneratingOptions}
-                    style={{
-                      background: '#0f172a',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '6px 14px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      cursor: isGeneratingOptions ? 'wait' : 'pointer'
-                    }}
-                  >
-                    <Sparkles size={13} color="#0ca678" />
-                    <span>{isGeneratingOptions ? 'Synthesizing with Claude...' : 'Generate AI Options'}</span>
-                  </button>
-                </div>
-
-                <div className="hr-options-grid">
-                  {decisionOptions.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', width: '100%' }}>
-                      Click "Generate AI Options" to compute 3 architectural decision paths with Claude.
-                    </div>
-                  ) : (
-                    decisionOptions.map((opt) => (
-                      <div
-                        key={opt.id}
-                        className={`hr-option-card ${selectedOptionId === opt.id ? 'active' : ''}`}
-                        onClick={() => setSelectedOptionId(opt.id)}
-                        style={{
-                          cursor: 'pointer',
-                          borderColor: selectedOptionId === opt.id ? '#0ca678' : '#e2e8f0',
-                          boxShadow: selectedOptionId === opt.id ? '0 0 0 1.5px #0ca678' : 'none'
-                        }}
-                      >
-                        <span className="hr-option-badge">{opt.badge}</span>
-                        <h5 className="hr-option-title">{opt.title}</h5>
-                        <p className="hr-option-desc">{opt.description}</p>
-                        {opt.impact && (
-                          <div style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', marginTop: '8px' }}>
-                            Impact: {opt.impact}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 5: Decision & Actions */}
-          {activeTab === 'Decision & Actions' && (
-            <div className="hr-tab-content">
-              <div className="hr-section-box">
-                <h4 className="hr-section-header-title">Layer 7 Action Execution</h4>
-                <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-                  Deploy selected management decision to operational action items.
-                </p>
-
-                {selectedOption ? (
-                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', marginTop: '12px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
-                      Selected Decision: {selectedOption.badge}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#334155', marginBottom: '14px' }}>
-                      {selectedOption.title}
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                      <div>
-                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
-                          Action Owner
-                        </label>
-                        <input
-                          type="text"
-                          value={actionOwner}
-                          onChange={(e) => setActionOwner(e.target.value)}
-                          style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
-                          Target Deadline
-                        </label>
-                        <input
-                          type="text"
-                          value={actionDeadline}
-                          onChange={(e) => setActionDeadline(e.target.value)}
-                          style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleDeployAction}
-                      style={{
-                        background: '#0ca678',
-                        color: '#ffffff',
-                        border: 'none',
-                        padding: '10px 18px',
-                        borderRadius: '8px',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <CheckCircle2 size={15} />
-                      <span>Deploy to AI Tasks</span>
-                    </button>
-
-                    {deploymentSuccess && (
-                      <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#0ca678', fontWeight: 600 }}>
-                        ✓ Action plan deployed successfully to AI Tasks!
-                      </div>
+                      ))
                     )}
                   </div>
-                ) : (
-                  <div style={{ padding: '20px', color: '#94a3b8', fontSize: '13px' }}>
-                    Select an option in the "Options" tab first.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Tab 6: Outcome */}
-          {activeTab === 'Outcome' && (
-            <div className="hr-tab-content">
-              <div className="hr-section-box">
-                <h4 className="hr-section-header-title">Projected Stabilization & ROI Forecast</h4>
-                <p className="hr-section-paragraph">
-                  Estimated impact of implementing selected shift interval guidelines and commission alignments across sales and store operations.
-                </p>
-
-                <div className="hr-four-metrics-grid" style={{ marginTop: '12px' }}>
-                  <div className="hr-mini-metric-tile">
-                    <span className="hr-mini-metric-title">Target Attrition Rate</span>
-                    <div className="hr-mini-metric-val">
-                      <span style={{ color: '#10b981' }}>4.9%</span>
-                      <ArrowDown size={14} color="#10b981" />
-                    </div>
-                    <span className="hr-mini-metric-note">-2.9 pp within 45 days</span>
-                  </div>
-
-                  <div className="hr-mini-metric-tile">
-                    <span className="hr-mini-metric-title">Overtime Cost Reduction</span>
-                    <div className="hr-mini-metric-val">
-                      <span style={{ color: '#10b981' }}>-$18.5k</span>
-                    </div>
-                    <span className="hr-mini-metric-note">Monthly recurring savings</span>
-                  </div>
-
-                  <div className="hr-mini-metric-tile">
-                    <span className="hr-mini-metric-title">Shift Attendance Index</span>
-                    <div className="hr-mini-metric-val">
-                      <span>97.8%</span>
-                    </div>
-                    <span className="hr-mini-metric-note">+10.8 pp improvement</span>
-                  </div>
-
-                  <div className="hr-mini-metric-tile">
-                    <span className="hr-mini-metric-title">Staff Satisfaction Pulse</span>
-                    <div className="hr-mini-metric-val">
-                      <span>89/100</span>
-                    </div>
-                    <span className="hr-mini-metric-note">Projected pulse score</span>
-                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            {/* Tab 5: Decision & Actions */}
+            {activeTab === 'Decision & Actions' && (
+              <div className="hr-tab-content">
+                <div className="hr-section-box">
+                  <h4 className="hr-section-header-title">Layer 7 Action Execution</h4>
+                  <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+                    Deploy selected management decision to operational action items.
+                  </p>
+
+                  {selectedOption ? (
+                    <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', marginTop: '12px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
+                        Selected Decision: {selectedOption.badge}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#334155', marginBottom: '14px' }}>
+                        {selectedOption.title}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                            Action Owner
+                          </label>
+                          <input
+                            type="text"
+                            value={actionOwner}
+                            onChange={(e) => setActionOwner(e.target.value)}
+                            style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                            Target Deadline
+                          </label>
+                          <input
+                            type="text"
+                            value={actionDeadline}
+                            onChange={(e) => setActionDeadline(e.target.value)}
+                            style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleDeployAction}
+                        style={{
+                          background: '#0ca678',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '10px 18px',
+                          borderRadius: '8px',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <CheckCircle2 size={15} />
+                        <span>Deploy to AI Tasks</span>
+                      </button>
+
+                      {deploymentSuccess && (
+                        <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#0ca678', fontWeight: 600 }}>
+                          ✓ Action plan deployed successfully to AI Tasks!
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '20px', color: '#94a3b8', fontSize: '13px' }}>
+                      Select an option in the "Options" tab first.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 6: Outcome */}
+            {activeTab === 'Outcome' && (
+              <div className="hr-tab-content">
+                <div className="hr-section-box">
+                  <h4 className="hr-section-header-title">Projected Stabilization & ROI Forecast</h4>
+                  <p className="hr-section-paragraph">
+                    Estimated organizational impact of implementing selected management decision options.
+                  </p>
+
+                  {selectedOption ? (
+                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '16px', marginTop: '12px' }}>
+                      <div style={{ fontWeight: 600, color: '#166534', marginBottom: '6px' }}>
+                        Selected Option: {selectedOption.badge} - {selectedOption.title}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#15803d', lineHeight: 1.5 }}>
+                        {selectedOption.impact || selectedOption.description}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                      Select an option in the "Options" tab to view specific stabilization forecasts and expected operational ROI.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

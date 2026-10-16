@@ -24,6 +24,7 @@ export const getDashboardSummary = (req, res) => {
   const payrollRatio = analytics?.finance?.payrollRatio || '0%';
   const headcount = employees.length;
   const healthScore = analytics?.healthScore || 85;
+  const conversionPct = analytics?.marketing?.customerConversionPct || null;
 
   res.json({
     status: 'success',
@@ -39,6 +40,7 @@ export const getDashboardSummary = (req, res) => {
       headcount,
       grossRevenue: salesRev,
       payrollRatio,
+      conversionPct,
       pendingTasks: 0,
       lastUpdated: new Date().toISOString()
     }

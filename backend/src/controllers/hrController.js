@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import { parseUploadedFile } from '../services/fileParserService.js';
 import { analyzeMultiFileHrData, identifyFileScope } from '../services/multiFileCorrelatorService.js';
+import { runClaudeDocumentAnalysis } from '../services/aiDocumentAnalyzerService.js';
 
 // Clean in-memory stores (strictly populated by actual file uploads)
 let uploadedFilesStore = [];
@@ -197,20 +198,30 @@ export const uploadHrFile = async (req, res) => {
     // 4. Recompute cross-correlated analytics
     await recomputeAnalytics();
 
-    // 5. Perform Multi-File Correlated AI Analysis across all connected datasets
-    const combinedAnalysis = await analyzeMultiFileHrData({
-      files: uploadedFilesStore,
-      customRules,
-      adminPrompt
-    });
+    // 5. Perform Multi-File Correlated AI Analysis using Claude
+    let dynamicAnalysis = null;
+    try {
+      dynamicAnalysis = await runClaudeDocumentAnalysis({
+        files: uploadedFilesStore,
+        customRules,
+        adminPrompt
+      });
+    } catch (aiErr) {
+      console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
+      dynamicAnalysis = await analyzeMultiFileHrData({
+        files: uploadedFilesStore,
+        customRules,
+        adminPrompt
+      });
+    }
 
-    latestAnalysis = combinedAnalysis;
+    latestAnalysis = dynamicAnalysis;
 
     return res.json({
       status: 'success',
-      message: `File "${originalname}" analyzed and cross-correlated across ${uploadedFilesStore.length} datasets.`,
+      message: `File "${originalname}" analyzed dynamically by Claude AI across ${uploadedFilesStore.length} connected datasets.`,
       file: newFileRecord,
-      analysis: combinedAnalysis
+      analysis: dynamicAnalysis
     });
   } catch (error) {
     console.error('File upload & analysis error:', error);
@@ -347,17 +358,27 @@ export const runCustomAiAnalysis = async (req, res) => {
       });
     }
 
-    const analysis = await analyzeMultiFileHrData({
-      files: uploadedFilesStore,
-      customRules,
-      adminPrompt
-    });
+    let dynamicAnalysis = null;
+    try {
+      dynamicAnalysis = await runClaudeDocumentAnalysis({
+        files: uploadedFilesStore,
+        customRules,
+        adminPrompt
+      });
+    } catch (aiErr) {
+      console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
+      dynamicAnalysis = await analyzeMultiFileHrData({
+        files: uploadedFilesStore,
+        customRules,
+        adminPrompt
+      });
+    }
 
-    latestAnalysis = analysis;
+    latestAnalysis = dynamicAnalysis;
 
     res.json({
       status: 'success',
-      data: analysis
+      data: dynamicAnalysis
     });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });

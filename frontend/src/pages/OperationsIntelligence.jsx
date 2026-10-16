@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Clock,
   Users,
@@ -54,8 +55,8 @@ export default function OperationsIntelligence() {
           <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '480px', margin: '0 auto 18px auto', lineHeight: 1.5 }}>
             Upload your shift roster or attendance timesheet CSV file in Data Management to monitor overtime, rest intervals, and shift adherence.
           </p>
-          <a
-            href="/data/hr"
+          <Link
+            to="/intelligence/hr/data"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -70,7 +71,7 @@ export default function OperationsIntelligence() {
             }}
           >
             <span>Go to Data Management</span>
-          </a>
+          </Link>
         </div>
       </div>
     );

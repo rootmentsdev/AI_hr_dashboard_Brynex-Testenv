@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Activity,
   ShieldCheck,
@@ -60,8 +61,8 @@ export default function BusinessHealth() {
           <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '480px', margin: '0 auto 18px auto', lineHeight: 1.5 }}>
             Upload your workforce, shift, or revenue CSV files in Data Management. Brynex One AI will dynamically compute your composite business health score.
           </p>
-          <a
-            href="/data/hr"
+          <Link
+            to="/intelligence/hr/data"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -76,7 +77,7 @@ export default function BusinessHealth() {
             }}
           >
             <span>Go to Data Management</span>
-          </a>
+          </Link>
         </div>
       </div>
     );
