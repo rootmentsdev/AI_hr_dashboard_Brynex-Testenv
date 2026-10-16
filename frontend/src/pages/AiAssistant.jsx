@@ -118,24 +118,13 @@ export default function AiAssistant() {
   const [messages, setMessages] = useState([
     {
       id: 1,
-      sender: 'user',
-      text: 'Why is attrition increasing?'
-    },
-    {
-      id: 2,
       sender: 'assistant',
-      title: 'Workforce Attrition Analysis (OpenRouter AI)',
-      text: 'Based on connected HRMS and Finance telemetry, attrition increased from 5.0% to 7.8% over Q2 2026. Key insights:',
-      bullets: [
-        'Sales & Retail Frontline roles account for 68% of total exits (14 employees).',
-        'Exit interviews highlight compensation disparity (-8.4% vs regional benchmark) and scheduling fatigue during peak shifts.',
-        'Immediate cost impact: $42.6k increase in recruitment and overtime replacement costs.'
-      ],
-      model: 'OpenRouter AI'
+      text: 'Hello! I am your Brynex AI Workforce Intelligence Copilot powered by Claude. How can I assist you with your workforce analytics, shift telemetry, or labor optimization today?',
+      model: 'Claude 4.5 Haiku'
     }
   ]);
 
-  // Check OpenRouter connection on mount
+  // Check AI connection on mount
   useEffect(() => {
     checkAiStatus().then((res) => {
       if (res && res.connected) {
@@ -191,9 +180,9 @@ export default function AiAssistant() {
   // Connected Sources
   const connectedSources = [
     {
-      id: 'openrouter',
-      name: 'OpenRouter AI',
-      desc: 'Liquid LFM 2.5 / Gemma 4 Engine',
+      id: 'claude',
+      name: 'Anthropic Claude AI',
+      desc: 'Claude 4.5 Haiku & Sonnet Core',
       iconClass: 'ai-source-icon-blue',
       icon: <BrainCircuit size={15} />
     },
@@ -292,7 +281,7 @@ export default function AiAssistant() {
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {/* Model Selector */}
-            <div className="ai-model-selector-wrap" title="Active OpenRouter AI Model">
+            <div className="ai-model-selector-wrap" title="Active AI Intelligence Engine">
               <Cpu size={14} color="#0ca678" />
               <select
                 className="ai-model-select"
@@ -308,9 +297,12 @@ export default function AiAssistant() {
             </div>
 
             {/* Connection Status Badge */}
-            <div className="ai-status-pill-active" title="OpenRouter AI Live">
+            <div
+              className={connectionStatus === 'offline' ? 'ai-status-pill-offline' : 'ai-status-pill-active'}
+              title="Intelligence Gateway Live"
+            >
               <span className="ai-status-pill-dot"></span>
-              <span>OpenRouter AI Active</span>
+              <span>{selectedModel.startsWith('claude') ? 'Claude AI Live' : 'OpenRouter Live'}</span>
             </div>
 
             {/* Reset Chat */}

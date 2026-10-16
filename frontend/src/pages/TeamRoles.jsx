@@ -56,6 +56,17 @@ export default function TeamRoles() {
     return { label: 'Standard Staff', bg: '#f1f5f9', color: '#475569' };
   };
 
+  const uniqueBranches = [...new Set(employees.map((e) => e.branch).filter(Boolean))];
+  const totalPayrollNum = employees.reduce((sum, e) => {
+    const val = parseFloat(String(e.salary || '').replace(/[^0-9.]/g, '')) || 0;
+    return sum + val;
+  }, 0);
+  const formattedPayroll = totalPayrollNum >= 1000000 
+    ? `$${(totalPayrollNum / 1000000).toFixed(2)}M` 
+    : totalPayrollNum > 0 
+      ? `$${(totalPayrollNum / 1000).toFixed(1)}k` 
+      : '$0';
+
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
@@ -78,11 +89,11 @@ export default function TeamRoles() {
             </div>
           </div>
           <div style={{ fontSize: '26px', fontWeight: 700, color: '#0f172a', margin: '10px 0 4px 0' }}>
-            {employees.length > 0 ? employees.length : 35} Members
+            {employees.length} Members
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: employees.length > 0 ? '#10b981' : '#64748b', fontWeight: 600 }}>
             <UserCheck size={14} />
-            <span>100% Active in Directory</span>
+            <span>{employees.length > 0 ? '100% Active in Directory' : 'Awaiting Roster Ingestion'}</span>
           </div>
         </div>
 
@@ -94,10 +105,10 @@ export default function TeamRoles() {
             </div>
           </div>
           <div style={{ fontSize: '26px', fontWeight: 700, color: '#0f172a', margin: '10px 0 4px 0' }}>
-            3 Branches
+            {uniqueBranches.length} {uniqueBranches.length === 1 ? 'Branch' : 'Branches'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#64748b' }}>
-            <span>Central, West & HQ</span>
+            <span>{uniqueBranches.length > 0 ? uniqueBranches.join(', ') : 'No branch telemetry'}</span>
           </div>
         </div>
 
@@ -125,10 +136,10 @@ export default function TeamRoles() {
             </div>
           </div>
           <div style={{ fontSize: '26px', fontWeight: 700, color: '#0f172a', margin: '10px 0 4px 0' }}>
-            $1.40M
+            {formattedPayroll}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#64748b' }}>
-            <span>Including Overtime</span>
+            <span>{employees.length > 0 ? 'Base + Overtime Estimated' : 'Awaiting Payroll Ingestion'}</span>
           </div>
         </div>
       </div>
@@ -207,7 +218,14 @@ export default function TeamRoles() {
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map((emp) => {
+              {filteredEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontSize: '13.5px' }}>
+                    No employee records found. Upload an employee master dataset in Data Management to view staff and assign access tiers.
+                  </td>
+                </tr>
+              ) : (
+                filteredEmployees.map((emp) => {
                 const access = getRoleAccessLevel(emp.role, emp.dept);
                 return (
                   <tr key={emp.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -269,7 +287,7 @@ export default function TeamRoles() {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

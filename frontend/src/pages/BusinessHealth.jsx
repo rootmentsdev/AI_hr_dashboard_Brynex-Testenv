@@ -35,34 +35,79 @@ export default function BusinessHealth() {
     fetchHealth();
   }, []);
 
-  const overallScore = healthData?.overallScore || 92;
-  const status = healthData?.status || 'Optimal (Synchronized Enterprise)';
-  const engines = healthData?.engineBreakdown || [
-    { id: 'hr', name: 'HR Intelligence', score: 88, status: 'Needs Attention', detail: 'Overtime divergence in frontline retail (+28% OT hours, 14.5% payroll ratio)' },
-    { id: 'sales', name: 'Sales Intelligence', score: 95, status: 'Outperforming', detail: '$9.63M revenue across 1,105 transactions, West Branch growing +18%' },
-    { id: 'finance', name: 'Finance Intelligence', score: 91, status: 'Healthy', detail: '24-month cash runway, 76.8% gross margin, payroll within target range' },
-    { id: 'operations', name: 'Operations Intelligence', score: 93, status: 'Stable', detail: '96.2% shift attendance, 94.2% schedule compliance across 1,050 shifts' },
-    { id: 'marketing', name: 'Marketing Intelligence', score: 94, status: 'High Efficiency', detail: '17.8% lead conversion rate, 4.2x blended ROAS, 1.8% complaint rate' }
-  ];
+  const overallScore = healthData?.overallScore || null;
+  const status = healthData?.status || 'Awaiting Ingestion';
+  const engines = healthData?.engineBreakdown || [];
+  const insights = healthData?.keyInsights || [];
 
-  const insights = healthData?.keyInsights || [
-    { title: 'West Branch Overtime Concentration', desc: '138.6 OT hours logged; 4 shifts recorded <10hr rest intervals. Fatigue risk flagged.', impact: 'High' },
-    { title: 'Sales Win-Rate Outperformance', desc: '32.4% deal win rate driving $9.63M pipeline value across regional centers.', impact: 'Positive' },
-    { title: 'Payroll Ratio Drift', desc: '14.5% current payroll ratio vs 12.0% target. Recommend restructuring closing shift overlaps.', impact: 'Medium' }
+  if (!loading && (!healthData || engines.length === 0)) {
+    return (
+      <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="page-header" style={{ marginBottom: '4px' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0' }}>
+            Business Health & System Diagnostics
+          </h1>
+          <p style={{ fontSize: '13.5px', color: '#64748b', margin: 0 }}>
+            Holistic enterprise health index computed in real-time across workforce, sales, and financial datasets.
+          </p>
+        </div>
+
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '60px 40px', textAlign: 'center' }}>
+          <Activity size={36} color="#94a3b8" style={{ marginBottom: '12px' }} />
+          <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px 0' }}>
+            No System Telemetry Ingested
+          </h3>
+          <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '480px', margin: '0 auto 18px auto', lineHeight: 1.5 }}>
+            Upload your workforce, shift, or revenue CSV files in Data Management. Brynex One AI will dynamically compute your composite business health score.
+          </p>
+          <a
+            href="/data/hr"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#0ca678',
+              color: '#ffffff',
+              padding: '10px 20px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '13px'
+            }}
+          >
+            <span>Go to Data Management</span>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const priorities = healthData?.strategicPriorities || [
+    {
+      title: 'Workforce Roster & Shift Stabilization',
+      desc: 'Correlate shift logs and active headcount to optimize scheduling and prevent attrition.',
+      bg: '#eff6ff',
+      border: '#bfdbfe',
+      color: '#1e40af'
+    },
+    {
+      title: 'Branch Revenue & Productivity Alignment',
+      desc: 'Align compensation benchmarks with branch deal velocity to drive margin expansion.',
+      bg: '#f0fdf4',
+      border: '#bbf7d0',
+      color: '#166534'
+    },
+    {
+      title: 'Compliance & Rest Interval Monitoring',
+      desc: 'Maintain continuous automated monitoring of shift rest intervals to safeguard staff retention.',
+      bg: '#faf5ff',
+      border: '#e9d5ff',
+      color: '#6b21a8'
+    }
   ];
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
-      <div className="page-header" style={{ marginBottom: '4px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0' }}>
-          Business Health & System Diagnostics
-        </h1>
-        <p style={{ fontSize: '13.5px', color: '#64748b', margin: 0 }}>
-          Holistic enterprise health index computed in real-time across HR, Sales, Finance, Operations, and Marketing.
-        </p>
-      </div>
-
       {/* Top Banner: Composite Health Index */}
       <div
         style={{
@@ -90,7 +135,7 @@ export default function BusinessHealth() {
               boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)'
             }}
           >
-            <span style={{ fontSize: '28px', fontWeight: 800, lineHeight: 1 }}>{overallScore}</span>
+            <span style={{ fontSize: '28px', fontWeight: 800, lineHeight: 1 }}>{overallScore || '--'}</span>
             <span style={{ fontSize: '11px', opacity: 0.9 }}>/ 100</span>
           </div>
 
@@ -102,20 +147,20 @@ export default function BusinessHealth() {
               </span>
             </div>
             <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, maxWidth: '600px', lineHeight: '1.4' }}>
-              Multi-file automated correlation indicates strong top-line revenue ($9.63M) with solid operational execution (96.2% attendance), moderated by overtime cost expansion in frontline retail.
+              {healthData?.summaryDescription || 'Multi-file automated correlation dynamically evaluating operational execution and revenue velocity.'}
             </p>
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'right' }}>
           <span style={{ fontSize: '12px', color: '#94a3b8' }}>Telemetry Engines</span>
-          <span style={{ fontSize: '16px', fontWeight: 700, color: '#38bdf8' }}>5 / 5 Synced</span>
-          <span style={{ fontSize: '11px', color: '#64748b' }}>Updated seconds ago</span>
+          <span style={{ fontSize: '16px', fontWeight: 700, color: '#38bdf8' }}>{engines.length} Synced</span>
+          <span style={{ fontSize: '11px', color: '#64748b' }}>Live Synchronized</span>
         </div>
       </div>
 
       {/* Engine Score Breakdown Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(engines.length, 1)}, 1fr)`, gap: '14px' }}>
         {engines.map((eng) => (
           <div
             key={eng.id}
@@ -221,17 +266,11 @@ export default function BusinessHealth() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ padding: '12px', borderRadius: '10px', background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: '12.5px', color: '#1e40af', lineHeight: '1.4' }}>
-              <strong>1. Overtime Cap & Pre-Approval:</strong> Mandate supervisor sign-off on shifts exceeding 8.5 hours to recover $14.2k/month in payroll divergence.
-            </div>
-
-            <div style={{ padding: '12px', borderRadius: '10px', background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '12.5px', color: '#166534', lineHeight: '1.4' }}>
-              <strong>2. Replicate West Branch Commission Model:</strong> West Branch achieves 18.6% conversion. Aligning Central Store compensation can unlock +$24k monthly revenue.
-            </div>
-
-            <div style={{ padding: '12px', borderRadius: '10px', background: '#faf5ff', border: '1px solid #e9d5ff', fontSize: '12.5px', color: '#6b21a8', lineHeight: '1.4' }}>
-              <strong>3. Enforce 10-Hour Rest Intervals:</strong> Restructure closing and opening shift rotations to prevent fatigue-driven attrition.
-            </div>
+            {priorities.map((p, idx) => (
+              <div key={idx} style={{ padding: '12px', borderRadius: '10px', background: p.bg, border: `1px solid ${p.border}`, fontSize: '12.5px', color: p.color, lineHeight: '1.4' }}>
+                <strong>{idx + 1}. {p.title}:</strong> {p.desc}
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -44,21 +44,24 @@ export default function Settings() {
   }, []);
 
   const runStatusCheck = async () => {
-    setStatus({ state: 'checking', message: 'Verifying OpenRouter credentials...' });
+    setStatus({ state: 'checking', message: 'Verifying AI credentials...' });
     const res = await checkAiStatus();
     if (res && res.connected) {
+      const isClaude = res.provider?.includes('Claude') || res.provider?.includes('Anthropic') || selectedModel.startsWith('claude');
       setStatus({
         state: 'connected',
-        provider: res.provider || 'OpenRouter AI',
-        quota: res.data?.free_model_daily_requests
-          ? `${res.data.free_model_daily_requests.remaining} / ${res.data.free_model_daily_requests.limit} daily free requests remaining`
-          : 'Active Unlimited / Free Tier',
-        userId: res.data?.creator_user_id || 'Connected'
+        provider: res.provider || (isClaude ? 'Anthropic Claude' : 'OpenRouter AI'),
+        quota: isClaude
+          ? 'Anthropic Claude API Key Verified (Direct Gateway)'
+          : res.data?.free_model_daily_requests
+            ? `${res.data.free_model_daily_requests.remaining} / ${res.data.free_model_daily_requests.limit} daily free requests remaining`
+            : 'Active Unlimited / Free Tier',
+        userId: res.data?.creator_user_id || 'Verified Connection'
       });
     } else {
       setStatus({
         state: 'error',
-        message: res?.error || 'Unable to connect to OpenRouter with current credentials.'
+        message: res?.error || 'Unable to connect to AI gateway with current credentials.'
       });
     }
   };
@@ -85,6 +88,7 @@ export default function Settings() {
         success: true,
         latency,
         model: res.model,
+        provider: res.provider || (selectedModel.startsWith('claude') ? 'Anthropic Claude' : 'OpenRouter AI'),
         sample: res.content.slice(0, 100) + '...'
       });
     } catch (err) {
@@ -175,10 +179,10 @@ export default function Settings() {
             </div>
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#0f172a', margin: 0 }}>
-                OpenRouter AI Token
+                AI Intelligence API Token
               </h3>
               <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-                Enterprise LLM gateway connecting Liquid, Gemma, Nemotron, and Llama models
+                Anthropic Claude (sk-ant-...) or OpenRouter (sk-or-...) API Key
               </p>
             </div>
           </div>
@@ -186,7 +190,7 @@ export default function Settings() {
           {/* API Key Input */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-              API Token (Bearer Authorization)
+              API Token (Anthropic Claude / OpenRouter)
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ position: 'relative', flex: 1 }}>
@@ -194,7 +198,7 @@ export default function Settings() {
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-or-v1-..."
+                  placeholder="sk-ant-usr-... or sk-or-v1-..."
                   style={{
                     width: '100%',
                     padding: '10px 40px 10px 14px',
@@ -342,7 +346,7 @@ export default function Settings() {
               {testResult.success ? (
                 <div>
                   <div style={{ fontWeight: 600, marginBottom: '2px' }}>
-                    ✓ OpenRouter Connection Verified ({testResult.latency}ms)
+                    ✓ {testResult.provider || 'AI Gateway'} Verified ({testResult.latency}ms)
                   </div>
                   <div style={{ color: '#4b5563' }}>Model responded: {testResult.model}</div>
                 </div>

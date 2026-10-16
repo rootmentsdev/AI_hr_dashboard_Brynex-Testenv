@@ -1,11 +1,16 @@
-// Service to handle OpenRouter AI communication
+// Service to handle AI communication (Anthropic Claude & OpenRouter)
 const BACKEND_API_BASE = '/api/ai';
+const ANTHROPIC_DIRECT_URL = 'https://api.anthropic.com/v1/messages';
 const OPENROUTER_DIRECT_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_AUTH_URL = 'https://openrouter.ai/api/v1/auth/key';
 
-export const DEFAULT_MODEL = 'liquid/lfm-2.5-2.6b:free';
+export const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
 export const AVAILABLE_MODELS = [
+  { id: 'claude-haiku-4-5-20251001', name: 'Claude 4.5 Haiku (Fast & Precise • Anthropic)', provider: 'Anthropic Claude' },
+  { id: 'claude-sonnet-4-6', name: 'Claude 4.6 Sonnet (Deep Strategic Reasoning • Anthropic)', provider: 'Anthropic Claude' },
+  { id: 'claude-haiku-5-5', name: 'Claude 5.5 Haiku (Next-Gen Intelligent • Anthropic)', provider: 'Anthropic Claude' },
+  { id: 'claude-opus-4-6', name: 'Claude 4.6 Opus (Flagship Intelligence • Anthropic)', provider: 'Anthropic Claude' },
   { id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5 (Free • Fast)', provider: 'Liquid AI' },
   { id: 'google/gemma-4-26b-a4b-it:free', name: 'Google Gemma 4 26B (Free)', provider: 'Google' },
   { id: 'thinkingmachines/inkling:free', name: 'Inkling Thought (Free)', provider: 'Thinking Machines' },
@@ -13,27 +18,39 @@ export const AVAILABLE_MODELS = [
 ];
 
 export const getStoredModel = () => {
-  return localStorage.getItem('openrouter_selected_model') || DEFAULT_MODEL;
+  return localStorage.getItem('ai_selected_model') || localStorage.getItem('openrouter_selected_model') || DEFAULT_MODEL;
 };
 
 export const setStoredModel = (modelId) => {
+  localStorage.setItem('ai_selected_model', modelId);
   localStorage.setItem('openrouter_selected_model', modelId);
 };
 
 export const getStoredApiKey = () => {
-  return localStorage.getItem('openrouter_api_key') || import.meta.env.VITE_OPENROUTER_API_KEY || '';
+  return (
+    localStorage.getItem('anthropic_api_key') ||
+    import.meta.env.VITE_ANTHROPIC_API_KEY ||
+    localStorage.getItem('openrouter_api_key') ||
+    import.meta.env.VITE_OPENROUTER_API_KEY ||
+    ''
+  );
 };
 
 export const setStoredApiKey = (key) => {
   if (key) {
-    localStorage.setItem('openrouter_api_key', key);
+    if (key.startsWith('sk-ant-')) {
+      localStorage.setItem('anthropic_api_key', key);
+    } else {
+      localStorage.setItem('openrouter_api_key', key);
+    }
   } else {
+    localStorage.removeItem('anthropic_api_key');
     localStorage.removeItem('openrouter_api_key');
   }
 };
 
 /**
- * Check AI status via backend or direct OpenRouter API
+ * Check AI status via backend or direct check
  */
 export const checkAiStatus = async () => {
   // Try backend first
@@ -44,15 +61,25 @@ export const checkAiStatus = async () => {
       if (data.connected) return data;
     }
   } catch (err) {
-    console.warn('Backend /api/ai/status unavailable, checking direct OpenRouter...', err.message);
+    console.warn('Backend /api/ai/status unavailable, checking direct API...', err.message);
   }
 
-  // Direct OpenRouter check
   const apiKey = getStoredApiKey();
   if (!apiKey) {
     return { connected: false, message: 'No API key configured.' };
   }
 
+  // If Anthropic key
+  if (apiKey.startsWith('sk-ant-')) {
+    return {
+      connected: true,
+      provider: 'Anthropic Claude',
+      defaultModel: DEFAULT_MODEL,
+      status: 'active'
+    };
+  }
+
+  // Direct OpenRouter check
   try {
     const res = await fetch(OPENROUTER_AUTH_URL, {
       headers: {
@@ -77,7 +104,7 @@ export const sendChatMessage = async (messages, options = {}) => {
   const selectedModel = options.model || getStoredModel();
   const apiKey = getStoredApiKey();
 
-  // Try backend first
+  // Try backend first (recommended as it safely proxies Anthropic and OpenRouter without client CORS issues)
   try {
     const res = await fetch(`${BACKEND_API_BASE}/chat`, {
       method: 'POST',
@@ -96,19 +123,65 @@ export const sendChatMessage = async (messages, options = {}) => {
         return {
           content: data.message,
           model: data.model || selectedModel,
+          provider: data.provider || 'Anthropic Claude',
           source: 'backend'
         };
       }
     }
   } catch (err) {
-    console.warn('Backend AI chat error, falling back to direct OpenRouter call...', err.message);
+    console.warn('Backend AI chat error, falling back to direct API call...', err.message);
   }
 
-  // Fallback: direct OpenRouter call
+  // Fallback: direct browser calls
   if (!apiKey) {
-    throw new Error('OpenRouter API key is not configured.');
+    throw new Error('AI API key is not configured.');
   }
 
+  // Anthropic direct call
+  if (apiKey.startsWith('sk-ant-') || selectedModel.startsWith('claude')) {
+    const system = options.systemPrompt || 'You are the Brynex AI Business Brain Assistant, an advanced workforce and enterprise analytics AI copilot. Provide actionable, concise, well-structured business advice with bullet points.';
+    const anthropicMsgs = messages
+      .filter((m) => (m.text || m.content || '').trim())
+      .map((m) => ({
+        role: m.sender === 'assistant' || m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.text || m.content || ''
+      }));
+
+    if (anthropicMsgs.length === 0 || anthropicMsgs[0].role !== 'user') {
+      anthropicMsgs.unshift({ role: 'user', content: 'Hello' });
+    }
+
+    const res = await fetch(ANTHROPIC_DIRECT_URL, {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: selectedModel.startsWith('claude') ? selectedModel : 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        system,
+        messages: anthropicMsgs,
+        temperature: options.temperature || 0.7
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error?.message || 'Failed to generate response from Anthropic Claude.');
+    }
+
+    return {
+      content: data.content?.[0]?.text || '',
+      model: data.model || selectedModel,
+      provider: 'Anthropic Claude',
+      source: 'direct'
+    };
+  }
+
+  // OpenRouter direct call
   const conversation = [
     {
       role: 'system',
@@ -137,17 +210,17 @@ export const sendChatMessage = async (messages, options = {}) => {
 
   const data = await res.json();
   if (!res.ok || !data.choices || data.choices.length === 0) {
-    throw new Error(data.error?.message || 'Failed to generate response from OpenRouter.');
+    throw new Error(data.error?.message || 'Failed to generate response from AI provider.');
   }
 
   return {
     content: data.choices[0].message.content,
     model: data.model || selectedModel,
+    provider: 'OpenRouter AI',
     source: 'direct'
   };
 };
 
-/**
 /**
  * Quick analysis for an issue
  */
@@ -288,4 +361,3 @@ export const deployActionPlan = (taskData) => {
 export const getDeployedTasks = () => {
   return JSON.parse(localStorage.getItem('brynex_deployed_tasks') || '[]');
 };
-

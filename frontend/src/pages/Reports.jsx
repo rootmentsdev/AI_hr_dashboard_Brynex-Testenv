@@ -38,7 +38,6 @@ export default function Reports() {
     setDownloadingId(rep.id);
     setTimeout(() => {
       setDownloadingId(null);
-      // Trigger download
       if (rep.downloadUrl) {
         window.open(rep.downloadUrl, '_blank');
       } else {
@@ -47,219 +46,126 @@ export default function Reports() {
     }, 600);
   };
 
-  const defaultReports = [
-    {
-      id: 'rep-1',
-      name: 'Executive Workforce & Payroll Synthesis (Cross-Correlated)',
-      description: 'AI-synthesized strategic audit covering overtime inflation, retail compensation, and roster turnover.',
-      format: 'Executive PDF',
-      period: 'Sep 2026',
-      size: '1.2 MB',
-      downloadUrl: '/api/hr/analysis',
-      badge: 'AI Synthesis'
-    },
-    {
-      id: 'rep-2',
-      name: 'Master Employee Registry (35 Staff Records)',
-      description: 'Verified employee master dataset containing roles, branches, departments, and base monthly compensation.',
-      format: 'CSV Export',
-      period: 'Sep 2026',
-      size: '4.2 KB',
-      downloadUrl: '/api/hr/files/employees_master.csv/download',
-      badge: 'Master Dataset'
-    },
-    {
-      id: 'rep-3',
-      name: 'Shift Attendance & Overtime Telemetry (1,050 logs)',
-      description: '30-day shift log tracking clock-in/out, actual productive hours, overtime hours, and rest intervals.',
-      format: 'CSV Export',
-      period: '01-30 Sep 2026',
-      size: '88 KB',
-      downloadUrl: '/api/hr/files/attendance_and_roster.csv/download',
-      badge: 'Shift Logs'
-    },
-    {
-      id: 'rep-4',
-      name: 'Business Output, Revenue & Transaction Ledger (270 logs)',
-      description: 'Daily branch transactions, revenue generated, footfall, and customer complaints across 3 operating branches.',
-      format: 'CSV Export',
-      period: '01-30 Sep 2026',
-      size: '26 KB',
-      downloadUrl: '/api/hr/files/business_output_and_sales.csv/download',
-      badge: 'POS Output'
-    }
-  ];
-
-  const reportList = reports.length > 0 ? reports.map((r, idx) => ({ ...defaultReports[idx], ...r })) : defaultReports;
-
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
-      <div className="page-header" style={{ marginBottom: '4px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0' }}>
-          Reports & Data Export Center
-        </h1>
-        <p style={{ fontSize: '13.5px', color: '#64748b', margin: 0 }}>
-          Download verified enterprise datasets, shift telemetry audits, and AI executive briefs generated on demand.
-        </p>
-      </div>
-
-      {/* KPI Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-        <div className="metric-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#64748b' }}>Available Datasets</span>
-            <div style={{ background: '#eff6ff', color: '#3b82f6', padding: '6px', borderRadius: '8px' }}>
-              <Database size={16} />
-            </div>
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 700, color: '#0f172a', margin: '10px 0 4px 0' }}>
-            4 Datasets
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
-            <CheckCircle2 size={14} />
-            <span>Ready for Instant Export</span>
-          </div>
-        </div>
-
-        <div className="metric-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#64748b' }}>Total Synchronized Rows</span>
-            <div style={{ background: '#ecfdf5', color: '#10b981', padding: '6px', borderRadius: '8px' }}>
-              <FileSpreadsheet size={16} />
-            </div>
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 700, color: '#0f172a', margin: '10px 0 4px 0' }}>
-            1,355 Rows
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#64748b' }}>
-            <span>Across HR, POS & Shift logs</span>
-          </div>
-        </div>
-
-        <div className="metric-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#64748b' }}>Reporting Period</span>
-            <div style={{ background: '#faf5ff', color: '#a855f7', padding: '6px', borderRadius: '8px' }}>
-              <Calendar size={16} />
-            </div>
-          </div>
-          <div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: '14px 0 4px 0' }}>
-            01-30 Sep 2026
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#a855f7', fontWeight: 600 }}>
-            <span>Complete Monthly Cycle</span>
-          </div>
-        </div>
-
-        <div className="metric-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#64748b' }}>Export Engine</span>
-            <div style={{ background: '#fff7ed', color: '#f97316', padding: '6px', borderRadius: '8px' }}>
-              <Sparkles size={16} />
-            </div>
-          </div>
-          <div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: '14px 0 4px 0' }}>
-            Direct CSV / PDF
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
-            <span>Zero Processing Delay</span>
-          </div>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', color: '#1e293b' }}>
+      {/* Page Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div>
+          <h1 style={{ color: '#0f172a', fontSize: '24px', fontWeight: 600, marginBottom: '4px' }}>
+            Executive Reports & Exports
+          </h1>
+          <p style={{ color: '#64748b', fontSize: '14px' }}>
+            Download verified datasets, audit summaries, and executive intelligence documents.
+          </p>
         </div>
       </div>
 
-      {/* Reports List */}
-      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', margin: '0 0 4px 0' }}>
-              Enterprise Datasets & Reports Catalog
-            </h3>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-              Click to download the sanitized enterprise datasets or generate custom AI synthesis reports.
-            </p>
-          </div>
-          <span style={{ fontSize: '11px', background: '#ecfdf5', color: '#047857', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
-            Verified Authenticity
+      {/* Reports Table or Empty State */}
+      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', margin: 0 }}>
+            Available Documents & Ingested Exports
+          </h3>
+          <span style={{ fontSize: '12px', color: '#64748b' }}>
+            {reports.length} Reports Available
           </span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {reportList.map((rep) => (
-            <div
-              key={rep.id}
+        {reports.length === 0 ? (
+          <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
+            <FileSpreadsheet size={36} color="#cbd5e1" style={{ marginBottom: '10px' }} />
+            <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#334155', margin: '0 0 6px 0' }}>
+              No Generated Reports Available
+            </h4>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 auto 16px auto', maxWidth: '440px' }}>
+              Upload your workforce, shift, or revenue datasets in Data Management to generate executive audit reports and data downloads.
+            </p>
+            <a
+              href="/data/hr"
               style={{
-                padding: '16px 20px',
-                borderRadius: '12px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                justifyContent: 'space-between',
+                display: 'inline-flex',
                 alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '14px'
+                gap: '8px',
+                background: '#0ca678',
+                color: '#ffffff',
+                padding: '9px 18px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: '13px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '280px' }}>
+              <span>Upload Datasets</span>
+            </a>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {reports.map((rep) => {
+              const isDl = downloadingId === rep.id;
+              return (
                 <div
+                  key={rep.id}
                   style={{
-                    width: '42px',
-                    height: '42px',
-                    borderRadius: '10px',
-                    background: rep.format?.includes('PDF') ? '#fee2e2' : '#ecfdf5',
-                    color: rep.format?.includes('PDF') ? '#dc2626' : '#059669',
+                    padding: '18px 20px',
+                    borderBottom: '1px solid #f1f5f9',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'space-between'
                   }}
                 >
-                  <FileText size={20} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{rep.name}</span>
-                    <span
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div
                       style={{
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
+                        width: '38px',
+                        height: '38px',
                         borderRadius: '10px',
-                        background: '#e2e8f0',
-                        color: '#334155'
+                        background: '#e6fcf5',
+                        color: '#0ca678',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}
                     >
-                      {rep.badge || 'Dataset'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                    {rep.description} &bull; Period: <strong>{rep.period}</strong> &bull; Size: {rep.size}
-                  </div>
-                </div>
-              </div>
+                      <FileSpreadsheet size={18} />
+                    </div>
 
-              <button
-                onClick={() => handleDownload(rep)}
-                disabled={downloadingId === rep.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '9px 18px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                <Download size={15} />
-                <span>{downloadingId === rep.id ? 'Exporting...' : `Download ${rep.format?.split(' ')[0] || 'CSV'}`}</span>
-              </button>
-            </div>
-          ))}
-        </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', margin: 0 }}>
+                          {rep.name}
+                        </h4>
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>
+                        Format: {rep.format} • Period: {rep.period} • Size: {rep.size}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleDownload(rep)}
+                    disabled={isDl}
+                    style={{
+                      background: '#f8fafc',
+                      color: '#0f172a',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      padding: '8px 14px',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      cursor: isDl ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Download size={14} />
+                    <span>{isDl ? 'Preparing...' : 'Download'}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

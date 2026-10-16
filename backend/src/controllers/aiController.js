@@ -1,9 +1,16 @@
-// AI Controller for OpenRouter API integration
+// AI Controller supporting Anthropic Claude (Primary) & OpenRouter (Fallback)
 const DEFAULT_SYSTEM_PROMPT = `You are the Brynex AI Business Brain Intelligence Assistant, an enterprise-grade AI workforce intelligence copilot.
 You specialize in workforce analytics, employee attrition prevention, compensation benchmark analysis, team productivity, scheduling fatigue management, and executive decision support.
 Respond with sharp, structured, data-driven, and actionable advice. Use clear bullet points and bold headers when structuring recommendations. Keep answers focused and impactful.`;
 
-const FALLBACK_MODELS = [
+const CLAUDE_MODELS = [
+  'claude-haiku-4-5-20251001',
+  'claude-sonnet-4-6',
+  'claude-haiku-5-5',
+  'claude-opus-4-6'
+];
+
+const OPENROUTER_FALLBACK_MODELS = [
   'liquid/lfm-2.5-2.6b:free',
   'google/gemma-4-26b-a4b-it:free',
   'thinkingmachines/inkling:free',
@@ -11,104 +18,221 @@ const FALLBACK_MODELS = [
 ];
 
 /**
- * Perform chat completion with OpenRouter, with automatic fallback across free models
+ * Helper to call Anthropic Claude API
+ */
+async function callClaude({ apiKey, model, messages, systemPrompt, temperature = 0.7 }) {
+  // Anthropic requires system prompt at the top-level 'system' property
+  const system = systemPrompt || DEFAULT_SYSTEM_PROMPT;
+
+  // Filter messages to strictly alternate or keep 'user' and 'assistant' roles
+  const anthropicMessages = [];
+  messages.forEach((msg) => {
+    const role = msg.role === 'assistant' || msg.sender === 'assistant' ? 'assistant' : 'user';
+    const content = msg.content || msg.text || '';
+    if (!content.trim()) return;
+
+    // Ensure we don't send consecutive identical roles
+    if (anthropicMessages.length > 0 && anthropicMessages[anthropicMessages.length - 1].role === role) {
+      anthropicMessages[anthropicMessages.length - 1].content += `\n\n${content}`;
+    } else {
+      anthropicMessages.push({ role, content });
+    }
+  });
+
+  // Ensure first message is user
+  if (anthropicMessages.length === 0 || anthropicMessages[0].role !== 'user') {
+    anthropicMessages.unshift({ role: 'user', content: 'Hello assistant.' });
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: model || process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001',
+      max_tokens: 4096,
+      system,
+      messages: anthropicMessages,
+      temperature: typeof temperature === 'number' ? Math.min(Math.max(temperature, 0), 1) : 0.7
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    const errorMsg = data.error?.message || `Anthropic request failed with status ${response.status}`;
+    throw new Error(errorMsg);
+  }
+
+  const text = data.content?.[0]?.text || '';
+  return {
+    content: text,
+    model: data.model || model,
+    provider: 'Anthropic Claude',
+    usage: data.usage
+  };
+}
+
+/**
+ * Helper to call OpenRouter API
+ */
+async function callOpenRouter({ apiKey, model, messages, systemPrompt, temperature = 0.7 }) {
+  const conversation = [{ role: 'system', content: systemPrompt || DEFAULT_SYSTEM_PROMPT }];
+  messages.forEach((msg) => {
+    conversation.push({
+      role: msg.role || (msg.sender === 'user' ? 'user' : 'assistant'),
+      content: msg.content || msg.text || ''
+    });
+  });
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'http://localhost:5173',
+      'X-Title': 'Brynex AI Business Brain'
+    },
+    body: JSON.stringify({
+      model: model || process.env.OPENROUTER_MODEL || 'liquid/lfm-2.5-2.6b:free',
+      messages: conversation,
+      temperature: typeof temperature === 'number' ? temperature : 0.7
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok || !data.choices || data.choices.length === 0) {
+    throw new Error(data.error?.message || `OpenRouter request failed with status ${response.status}`);
+  }
+
+  return {
+    content: data.choices[0].message?.content || '',
+    model: data.model || model,
+    provider: 'OpenRouter AI',
+    usage: data.usage
+  };
+}
+
+/**
+ * Perform chat completion with Claude (Primary) with OpenRouter fallback
  */
 export const chatWithAi = async (req, res) => {
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+
+    if (!anthropicKey && !openrouterKey) {
       return res.status(500).json({
         success: false,
-        error: 'OpenRouter API key is not configured in backend environment.'
+        error: 'No AI API key (Anthropic or OpenRouter) is configured in backend environment.'
       });
     }
 
     const { messages = [], prompt, model, systemPrompt, temperature = 0.7 } = req.body;
 
-    // Build message list
-    const conversation = [];
-    conversation.push({
-      role: 'system',
-      content: systemPrompt || DEFAULT_SYSTEM_PROMPT
-    });
-
+    // Normalize messages format
+    const normalizedMessages = [];
     if (Array.isArray(messages) && messages.length > 0) {
       messages.forEach((msg) => {
-        conversation.push({
+        normalizedMessages.push({
           role: msg.role || (msg.sender === 'user' ? 'user' : 'assistant'),
           content: msg.content || msg.text || ''
         });
       });
     } else if (prompt) {
-      conversation.push({
+      normalizedMessages.push({
         role: 'user',
         content: prompt
       });
     }
 
-    const candidateModels = [];
-    if (model) candidateModels.push(model);
-    if (process.env.OPENROUTER_MODEL && !candidateModels.includes(process.env.OPENROUTER_MODEL)) {
-      candidateModels.push(process.env.OPENROUTER_MODEL);
-    }
-    FALLBACK_MODELS.forEach((m) => {
-      if (!candidateModels.includes(m)) candidateModels.push(m);
-    });
+    const isClaudeModelRequested = model && (model.startsWith('claude') || model.includes('anthropic'));
+    const preferClaude = !!anthropicKey && (process.env.AI_PROVIDER === 'anthropic' || isClaudeModelRequested || !openrouterKey);
 
-    let lastError = null;
-    let successfulData = null;
-    let usedModel = null;
-
-    // Try candidate models in sequence if rate-limited
-    for (const targetModel of candidateModels) {
-      try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost:5173',
-            'X-Title': 'Brynex AI Business Brain'
-          },
-          body: JSON.stringify({
-            model: targetModel,
-            messages: conversation,
-            temperature: typeof temperature === 'number' ? temperature : 0.7
-          })
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.choices && data.choices.length > 0) {
-          successfulData = data;
-          usedModel = data.model || targetModel;
-          break;
-        } else {
-          lastError = data.error?.message || `Failed with status ${response.status}`;
-          console.warn(`Model ${targetModel} attempt failed: ${lastError}. Trying fallback...`);
-        }
-      } catch (err) {
-        lastError = err.message;
-        console.warn(`Error contacting model ${targetModel}: ${err.message}`);
+    // 1. Try Anthropic Claude if configured
+    if (anthropicKey && (preferClaude || isClaudeModelRequested)) {
+      const claudeCandidates = [];
+      if (model && model.startsWith('claude')) claudeCandidates.push(model);
+      if (process.env.ANTHROPIC_MODEL && !claudeCandidates.includes(process.env.ANTHROPIC_MODEL)) {
+        claudeCandidates.push(process.env.ANTHROPIC_MODEL);
       }
+      CLAUDE_MODELS.forEach((m) => {
+        if (!claudeCandidates.includes(m)) claudeCandidates.push(m);
+      });
+
+      let claudeError = null;
+      for (const targetModel of claudeCandidates) {
+        try {
+          const result = await callClaude({
+            apiKey: anthropicKey,
+            model: targetModel,
+            messages: normalizedMessages,
+            systemPrompt,
+            temperature
+          });
+
+          return res.json({
+            success: true,
+            message: result.content,
+            model: result.model,
+            provider: 'Anthropic Claude',
+            usage: result.usage
+          });
+        } catch (err) {
+          claudeError = err.message;
+          console.warn(`Claude attempt with ${targetModel} failed: ${err.message}. Trying next option...`);
+        }
+      }
+
+      console.warn('All Claude model attempts failed. Fallback to OpenRouter if available:', claudeError);
     }
 
-    if (!successfulData) {
+    // 2. OpenRouter fallback or primary
+    if (openrouterKey) {
+      const orCandidates = [];
+      if (model && !model.startsWith('claude')) orCandidates.push(model);
+      if (process.env.OPENROUTER_MODEL && !orCandidates.includes(process.env.OPENROUTER_MODEL)) {
+        orCandidates.push(process.env.OPENROUTER_MODEL);
+      }
+      OPENROUTER_FALLBACK_MODELS.forEach((m) => {
+        if (!orCandidates.includes(m)) orCandidates.push(m);
+      });
+
+      let orError = null;
+      for (const targetModel of orCandidates) {
+        try {
+          const result = await callOpenRouter({
+            apiKey: openrouterKey,
+            model: targetModel,
+            messages: normalizedMessages,
+            systemPrompt,
+            temperature
+          });
+
+          return res.json({
+            success: true,
+            message: result.content,
+            model: result.model,
+            provider: 'OpenRouter AI',
+            usage: result.usage
+          });
+        } catch (err) {
+          orError = err.message;
+          console.warn(`OpenRouter model ${targetModel} failed: ${err.message}.`);
+        }
+      }
+
       return res.status(502).json({
         success: false,
-        error: lastError || 'All AI model attempts were unsuccessful. Please retry shortly.',
-        triedModels: candidateModels
+        error: orError || 'All AI model attempts were unsuccessful. Please retry shortly.'
       });
     }
 
-    const assistantMessage = successfulData.choices[0].message;
-
-    return res.json({
-      success: true,
-      message: assistantMessage.content,
-      rawMessage: assistantMessage,
-      model: usedModel,
-      usage: successfulData.usage
+    return res.status(502).json({
+      success: false,
+      error: 'AI request could not be processed by configured providers.'
     });
   } catch (error) {
     console.error('AI chat error:', error);
@@ -120,43 +244,79 @@ export const chatWithAi = async (req, res) => {
 };
 
 /**
- * Check OpenRouter connection status and verify token validity
+ * Check AI status and verify token validity (Claude primary, OpenRouter secondary)
  */
 export const getAiStatus = async (req, res) => {
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+
+    if (!anthropicKey && !openrouterKey) {
       return res.json({
         connected: false,
         status: 'missing_key',
-        message: 'No OpenRouter API key found in configuration.'
+        message: 'No Anthropic or OpenRouter API key found in configuration.'
       });
     }
 
-    const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
+    // Check Anthropic Claude first
+    if (anthropicKey) {
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/models', {
+          method: 'GET',
+          headers: {
+            'x-api-key': anthropicKey,
+            'anthropic-version': '2023-06-01'
+          }
+        });
+
+        if (response.ok) {
+          const modelsData = await response.json();
+          const activeModels = (modelsData.data || [])
+            .map((m) => ({ id: m.id, name: m.display_name || m.id, provider: 'Anthropic' }))
+            .slice(0, 6);
+
+          return res.json({
+            connected: true,
+            provider: 'Anthropic Claude',
+            status: 'active',
+            defaultModel: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001',
+            availableModels: activeModels.length > 0 ? activeModels : [
+              { id: 'claude-haiku-4-5-20251001', name: 'Claude 4.5 Haiku', provider: 'Anthropic' },
+              { id: 'claude-sonnet-4-6', name: 'Claude 4.6 Sonnet', provider: 'Anthropic' },
+              { id: 'claude-haiku-5-5', name: 'Claude 5.5 Haiku', provider: 'Anthropic' }
+            ]
+          });
+        }
+      } catch (err) {
+        console.warn('Anthropic status check error:', err.message);
       }
-    });
+    }
 
-    const keyData = await response.json();
-
-    if (!response.ok) {
-      return res.json({
-        connected: false,
-        status: 'invalid_key',
-        error: keyData.error?.message || 'Failed to authenticate with OpenRouter.'
+    // Fallback to OpenRouter verification
+    if (openrouterKey) {
+      const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${openrouterKey}` }
       });
+
+      const keyData = await response.json();
+      if (response.ok) {
+        return res.json({
+          connected: true,
+          provider: 'OpenRouter AI',
+          status: 'active',
+          defaultModel: process.env.OPENROUTER_MODEL || 'liquid/lfm-2.5-2.6b:free',
+          availableFallbacks: OPENROUTER_FALLBACK_MODELS,
+          data: keyData.data
+        });
+      }
     }
 
     return res.json({
-      connected: true,
-      provider: 'OpenRouter AI',
-      status: 'active',
-      defaultModel: process.env.OPENROUTER_MODEL || 'liquid/lfm-2.5-2.6b:free',
-      availableFallbacks: FALLBACK_MODELS,
-      data: keyData.data
+      connected: false,
+      status: 'invalid_key',
+      error: 'Failed to authenticate with configured AI provider.'
     });
   } catch (error) {
     return res.status(500).json({
@@ -167,7 +327,6 @@ export const getAiStatus = async (req, res) => {
   }
 };
 
-/**
 /**
  * Analyze workforce metrics / issue with AI
  */
@@ -231,37 +390,39 @@ Return your analysis in valid JSON format with this exact structure:
 }
 Return ONLY valid JSON. No surrounding markdown backticks or commentary.`;
 
-  req.body.prompt = prompt;
-  req.body.temperature = 0.3; // Low temperature for consistent JSON
-
   try {
-    // Intercept response to parse JSON
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:5173',
-        'X-Title': 'Brynex Left Brain HR'
-      },
-      body: JSON.stringify({
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    let content = '';
+    let usedModel = '';
+
+    if (anthropicKey) {
+      const result = await callClaude({
+        apiKey: anthropicKey,
+        model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001',
+        messages: [{ role: 'user', content: prompt }],
+        systemPrompt: 'You are an enterprise AI workforce intelligence diagnostic engine. Always respond in pure valid JSON.',
+        temperature: 0.2
+      });
+      content = result.content;
+      usedModel = result.model;
+    } else if (process.env.OPENROUTER_API_KEY) {
+      const result = await callOpenRouter({
+        apiKey: process.env.OPENROUTER_API_KEY,
         model: process.env.OPENROUTER_MODEL || 'liquid/lfm-2.5-2.6b:free',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
-      })
-    });
+        systemPrompt: 'You are an enterprise AI workforce intelligence diagnostic engine. Always respond in pure valid JSON.',
+        temperature: 0.2
+      });
+      content = result.content;
+      usedModel = result.model;
+    }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    
     // Attempt JSON parse
     let parsed;
     try {
-      const clean = content.replace(/```json/g, '').replace(/```/g, '').trim();
+      const clean = content.replace(/```json/gi, '').replace(/```/g, '').trim();
       parsed = JSON.parse(clean);
     } catch (e) {
-      // Fallback structured object
       parsed = {
         summary: `Cross-referenced telemetry indicates workforce variance driven by shift overtime and scheduling imbalances.`,
         rootCauses: [
@@ -287,7 +448,7 @@ Return ONLY valid JSON. No surrounding markdown backticks or commentary.`;
       };
     }
 
-    return res.json({ success: true, data: parsed, model: data.model });
+    return res.json({ success: true, data: parsed, model: usedModel });
   } catch (err) {
     console.error('HR Diagnosis error:', err);
     return res.status(500).json({ success: false, error: err.message });
@@ -348,28 +509,35 @@ Return your response in valid JSON format with this exact structure:
 Return ONLY valid JSON. No surrounding markdown backticks.`;
 
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:5173',
-        'X-Title': 'Brynex Decision Engine'
-      },
-      body: JSON.stringify({
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    let content = '';
+    let usedModel = '';
+
+    if (anthropicKey) {
+      const result = await callClaude({
+        apiKey: anthropicKey,
+        model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001',
+        messages: [{ role: 'user', content: prompt }],
+        systemPrompt: 'You are the Brynex One AI Layer 6 Decision Engine. Always respond in pure valid JSON.',
+        temperature: 0.2
+      });
+      content = result.content;
+      usedModel = result.model;
+    } else if (process.env.OPENROUTER_API_KEY) {
+      const result = await callOpenRouter({
+        apiKey: process.env.OPENROUTER_API_KEY,
         model: process.env.OPENROUTER_MODEL || 'liquid/lfm-2.5-2.6b:free',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
-      })
-    });
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
+        systemPrompt: 'You are the Brynex One AI Layer 6 Decision Engine. Always respond in pure valid JSON.',
+        temperature: 0.2
+      });
+      content = result.content;
+      usedModel = result.model;
+    }
 
     let parsed;
     try {
-      const clean = content.replace(/```json/g, '').replace(/```/g, '').trim();
+      const clean = content.replace(/```json/gi, '').replace(/```/g, '').trim();
       parsed = JSON.parse(clean);
     } catch (e) {
       parsed = {
@@ -408,9 +576,8 @@ Return ONLY valid JSON. No surrounding markdown backticks.`;
       };
     }
 
-    return res.json({ success: true, data: parsed, model: data.model });
+    return res.json({ success: true, data: parsed, model: usedModel });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
-

@@ -14,49 +14,12 @@ import {
 import { sendChatMessage, getDeployedTasks } from '../services/aiService';
 
 export default function AiTasks() {
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: 'Analyze frontline retail shift attrition patterns',
-      category: 'HR Intelligence',
-      status: 'pending',
-      priority: 'High',
-      aiOutput: null
-    },
-    {
-      id: 2,
-      title: 'Benchmark Q3 sales compensation against regional industry average',
-      category: 'Compensation',
-      status: 'completed',
-      priority: 'Medium',
-      aiOutput: 'Telemetry confirmed 8.4% compensation delta in Sales Retail. Recommended $1,200 retention incentive.'
-    },
-    {
-      id: 3,
-      title: 'Generate exit interview sentiment synthesis for West Branch',
-      category: 'HR Operations',
-      status: 'pending',
-      priority: 'Urgent',
-      aiOutput: null
-    },
-    {
-      id: 4,
-      title: 'Evaluate shift scheduling fatigue vs overtime expenditure',
-      category: 'Workforce Planning',
-      status: 'pending',
-      priority: 'Medium',
-      aiOutput: null
-    }
-  ]);
+  const [tasks, setTasks] = useState(() => getDeployedTasks());
 
   useEffect(() => {
     const deployed = getDeployedTasks();
     if (deployed && deployed.length > 0) {
-      setTasks((prev) => {
-        const existingIds = new Set(prev.map((t) => t.id));
-        const newItems = deployed.filter((t) => !existingIds.has(t.id));
-        return [...newItems, ...prev];
-      });
+      setTasks(deployed);
     }
   }, []);
   const [activeRunningId, setActiveRunningId] = useState(null);
@@ -227,7 +190,18 @@ export default function AiTasks() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {tasks.map((task) => {
+          {tasks.length === 0 ? (
+            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
+              <CheckSquare size={36} color="#cbd5e1" style={{ marginBottom: '10px' }} />
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#334155', margin: '0 0 6px 0' }}>
+                No Automated Tasks Queued
+              </h4>
+              <p style={{ fontSize: '13px', color: '#64748b', margin: 0, maxWidth: '440px', marginInline: 'auto' }}>
+                Deploy strategic decisions from HR Intelligence or click "Generate AI Action Tasks" above to trigger automated intelligence execution.
+              </p>
+            </div>
+          ) : (
+            tasks.map((task) => {
             const isRunning = activeRunningId === task.id;
             return (
               <div
@@ -341,7 +315,7 @@ export default function AiTasks() {
                 )}
               </div>
             );
-          })}
+          }))}
         </div>
       </div>
     </div>

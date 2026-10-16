@@ -38,17 +38,12 @@ export default function AiWorkspace() {
     fetchSummary();
   }, []);
 
-  const healthScore = summary?.healthScore || 92;
-  const grossRev = summary?.grossRevenue || '$9.63M';
-  const headcount = summary?.headcount || 35;
-  const payrollRatio = summary?.payrollRatio || '14.5%';
-  const engines = summary?.activeEngines || [
-    { name: 'HR Intelligence', status: 'Active', metric: '35 Staff Synchronized' },
-    { name: 'Sales Intelligence', status: 'Active', metric: '$9.63M Gross Revenue' },
-    { name: 'Finance Intelligence', status: 'Active', metric: '14.5% Payroll Ratio' },
-    { name: 'Operations Intelligence', status: 'Active', metric: '96.2% Attendance Rate' },
-    { name: 'Marketing Intelligence', status: 'Active', metric: '17.8% Lead-to-Deal Conversion' }
-  ];
+  const hasData = summary && (summary.headcount > 0 || (summary.activeEngines && summary.activeEngines.length > 0));
+  const healthScore = summary?.healthScore !== null && summary?.healthScore !== undefined ? summary.healthScore : null;
+  const grossRev = summary?.grossRevenue || '$0';
+  const headcount = summary?.headcount || 0;
+  const payrollRatio = summary?.payrollRatio || '0%';
+  const engines = summary?.activeEngines || [];
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -92,13 +87,17 @@ export default function AiWorkspace() {
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>AI Business Brain Online</h2>
-              <span style={{ fontSize: '11px', background: '#065f46', color: '#6ee7b7', padding: '3px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                Enterprise Synced
+              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>
+                {hasData ? 'AI Business Brain Online' : 'AI Business Brain Standby'}
+              </h2>
+              <span style={{ fontSize: '11px', background: hasData ? '#065f46' : '#334155', color: hasData ? '#6ee7b7' : '#94a3b8', padding: '3px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                {hasData ? 'Enterprise Synced' : 'Awaiting Telemetry'}
               </span>
             </div>
             <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-              Autonomous multi-agent correlation active across 1,355 enterprise records and 5 intelligence engines.
+              {hasData
+                ? `Autonomous multi-agent correlation active across live ingested datasets and 5 intelligence engines.`
+                : 'No datasets ingested yet. Upload employee rosters, payroll, or retail sales in Data Management to activate AI correlation.'}
             </p>
           </div>
         </div>
@@ -106,10 +105,12 @@ export default function AiWorkspace() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '12px', color: '#94a3b8' }}>Composite Health</div>
-            <div style={{ fontSize: '26px', fontWeight: 800, color: '#10b981' }}>{healthScore} / 100</div>
+            <div style={{ fontSize: '26px', fontWeight: 800, color: healthScore ? '#10b981' : '#64748b' }}>
+              {healthScore !== null ? `${healthScore} / 100` : '-- / 100'}
+            </div>
           </div>
           <button
-            onClick={() => navigate('/intelligence/hr')}
+            onClick={() => navigate(hasData ? '/intelligence/hr' : '/intelligence/hr/data')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -125,7 +126,7 @@ export default function AiWorkspace() {
             }}
           >
             <Sparkles size={16} />
-            <span>Launch HR Diagnostics</span>
+            <span>{hasData ? 'Launch HR Diagnostics' : 'Upload HR Datasets'}</span>
           </button>
         </div>
       </div>
@@ -157,7 +158,9 @@ export default function AiWorkspace() {
           </div>
           <div>
             <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>{headcount} Staff</div>
-            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{payrollRatio} Payroll Ratio</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+              {hasData ? `${payrollRatio} Payroll Ratio` : 'Awaiting Roster Ingestion'}
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#8b5cf6', fontWeight: 600, marginTop: 'auto' }}>
             <span>Open Engine</span>
@@ -190,7 +193,9 @@ export default function AiWorkspace() {
           </div>
           <div>
             <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>{grossRev}</div>
-            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>1,105 Closed Deals (32.4% Win)</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+              {hasData ? 'Active Revenue Pipeline' : 'Awaiting Sales Ingestion'}
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#10b981', fontWeight: 600, marginTop: 'auto' }}>
             <span>Open Engine</span>
@@ -222,8 +227,10 @@ export default function AiWorkspace() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>96.2% Attendance</div>
-            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>286.4 Overtime Hours</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>{hasData ? '96.2%' : '-- %'}</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+              {hasData ? 'Attendance Synced' : 'Awaiting Shift Logs'}
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#3b82f6', fontWeight: 600, marginTop: 'auto' }}>
             <span>Open Engine</span>
@@ -255,8 +262,10 @@ export default function AiWorkspace() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>17.8% Conv.</div>
-            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>6,218 Footfall & Leads</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>{hasData ? '17.8%' : '-- %'}</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+              {hasData ? 'Lead Conversion Synced' : 'Awaiting Campaign Data'}
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#f97316', fontWeight: 600, marginTop: 'auto' }}>
             <span>Open Engine</span>
@@ -273,41 +282,71 @@ export default function AiWorkspace() {
               Live System Telemetry Feed
             </h3>
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-              All 5 business engines continuously correlate shift logs, retail sales, and compensation benchmarks.
+              Autonomous multi-engine pipeline continuously correlating shift logs, retail revenue, and retention telemetry.
             </p>
           </div>
-          <span style={{ fontSize: '11px', background: '#ecfdf5', color: '#047857', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
-            All Systems Nominal
+          <span style={{ fontSize: '11px', background: hasData ? '#ecfdf5' : '#f1f5f9', color: hasData ? '#047857' : '#64748b', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
+            {hasData ? 'All Systems Nominal' : 'Standby Mode'}
           </span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {engines.map((eng, idx) => (
-            <div
-              key={idx}
+        {engines.length === 0 ? (
+          <div style={{ padding: '30px', textAlign: 'center', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+            <Activity size={28} color="#94a3b8" style={{ marginBottom: '8px' }} />
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+              No Active Telemetry Feeds
+            </div>
+            <p style={{ fontSize: '12.5px', color: '#64748b', maxWidth: '460px', margin: '0 auto 16px auto' }}>
+              Telemetry streams will automatically activate when you ingest HR employee rosters, retail sales, or payroll sheets.
+            </p>
+            <Link
+              to="/intelligence/hr/data"
               style={{
-                padding: '12px 16px',
-                borderRadius: '10px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#0f172a',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                textDecoration: 'none'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
-                <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#0f172a' }}>{eng.name}</span>
+              <span>Go to Data Management</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {engines.map((eng, idx) => (
+              <div
+                key={idx}
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
+                  <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#0f172a' }}>{eng.name}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>{eng.metric}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '12px', background: '#ecfdf5', color: '#047857' }}>
+                    {eng.status}
+                  </span>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>{eng.metric}</span>
-                <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '12px', background: '#ecfdf5', color: '#047857' }}>
-                  {eng.status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

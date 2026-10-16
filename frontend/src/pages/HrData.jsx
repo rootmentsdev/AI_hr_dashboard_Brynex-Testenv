@@ -324,37 +324,45 @@ export default function HrData() {
               </tr>
             </thead>
             <tbody>
-              {uploadedFiles.map((item) => (
-                <tr
-                  key={item.id}
-                  onClick={() => handleOpenFilePreview(item)}
-                  title="Click to preview file rows & download"
-                >
-                  <td className="hr-file-name-cell">
-                    <FileSpreadsheet size={16} color="#0ca678" />
-                    <span>{item.name}</span>
-                  </td>
-                  <td className="hr-holds-cell">{item.holds}</td>
-                  <td className="hr-rows-cell">{item.rows}</td>
-                  <td className="hr-period-cell">{item.period}</td>
-                  <td>
-                    <span className="hr-check-badge">
-                      <CheckCircle2 size={12} />
-                      <span>{item.status}</span>
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'right', paddingRight: '20px' }}>
-                    <button
-                      type="button"
-                      className="hr-table-delete-btn"
-                      onClick={(e) => handleDeleteFile(e, item)}
-                      title="Delete file"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+              {uploadedFiles.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '13.5px' }}>
+                    No files uploaded yet. Drag and drop CSV or Excel datasets above to begin.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                uploadedFiles.map((item) => (
+                  <tr
+                    key={item.id}
+                    onClick={() => handleOpenFilePreview(item)}
+                    title="Click to preview file rows & download"
+                  >
+                    <td className="hr-file-name-cell">
+                      <FileSpreadsheet size={16} color="#0ca678" />
+                      <span>{item.name}</span>
+                    </td>
+                    <td className="hr-holds-cell">{item.holds}</td>
+                    <td className="hr-rows-cell">{item.rows}</td>
+                    <td className="hr-period-cell">{item.period}</td>
+                    <td>
+                      <span className="hr-check-badge">
+                        <CheckCircle2 size={12} />
+                        <span>{item.status}</span>
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right', paddingRight: '20px' }}>
+                      <button
+                        type="button"
+                        className="hr-table-delete-btn"
+                        onClick={(e) => handleDeleteFile(e, item)}
+                        title="Delete file"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -368,11 +376,11 @@ export default function HrData() {
               Right Brain: Synced Employee Digital Profiles
             </h2>
             <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
-              Real workforce telemetry parsed and correlated from employees_master.csv and attendance_and_roster.csv.
+              Workforce telemetry parsed and correlated dynamically from your uploaded employee master and shift files.
             </p>
           </div>
           <span style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', background: '#e6fcf5', padding: '4px 12px', borderRadius: '16px' }}>
-            ● {syncedEmployees.length > 0 ? syncedEmployees.length : 35} Live Records Synced
+            ● {syncedEmployees.length} Live Records Synced
           </span>
         </div>
 
@@ -392,38 +400,46 @@ export default function HrData() {
               </tr>
             </thead>
             <tbody>
-              {syncedEmployees.map((emp) => (
-                <tr key={emp.id}>
-                  <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>{emp.id}</td>
-                  <td style={{ fontWeight: 600, color: '#1e293b' }}>{emp.name}</td>
-                  <td>{emp.role}</td>
-                  <td>{emp.branch}</td>
-                  <td>{emp.dept}</td>
-                  <td style={{ fontWeight: 500 }}>{emp.salary}</td>
-                  <td style={{ color: parseFloat(emp.ot) > 10 ? '#ef4444' : '#64748b', fontWeight: 500 }}>
-                    {emp.ot}
-                  </td>
-                  <td>
-                    <span style={{ color: parseInt(emp.att) < 90 ? '#f59e0b' : '#0ca678', fontWeight: 600 }}>
-                      {emp.att}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        padding: '3px 8px',
-                        borderRadius: '12px',
-                        background: emp.risk.includes('Critical') ? '#fef2f2' : emp.risk.includes('High') ? '#fff1f2' : emp.risk.includes('Medium') ? '#fffbeb' : '#f0fdf4',
-                        color: emp.risk.includes('Critical') ? '#b91c1c' : emp.risk.includes('High') ? '#e11d48' : emp.risk.includes('Medium') ? '#d97706' : '#16a34a'
-                      }}
-                    >
-                      {emp.risk}
-                    </span>
+              {syncedEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '13.5px' }}>
+                    No employee records synced. Upload an employee master dataset to populate live profiles.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                syncedEmployees.map((emp) => (
+                  <tr key={emp.id}>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>{emp.id}</td>
+                    <td style={{ fontWeight: 600, color: '#1e293b' }}>{emp.name}</td>
+                    <td>{emp.role}</td>
+                    <td>{emp.branch}</td>
+                    <td>{emp.dept}</td>
+                    <td style={{ fontWeight: 500 }}>{emp.salary}</td>
+                    <td style={{ color: parseFloat(emp.ot) > 10 ? '#ef4444' : '#64748b', fontWeight: 500 }}>
+                      {emp.ot}
+                    </td>
+                    <td>
+                      <span style={{ color: parseInt(emp.att) < 90 ? '#f59e0b' : '#0ca678', fontWeight: 600 }}>
+                        {emp.att}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          padding: '3px 8px',
+                          borderRadius: '12px',
+                          background: emp.risk.includes('Critical') ? '#fef2f2' : emp.risk.includes('High') ? '#fff1f2' : emp.risk.includes('Medium') ? '#fffbeb' : '#f0fdf4',
+                          color: emp.risk.includes('Critical') ? '#b91c1c' : emp.risk.includes('High') ? '#e11d48' : emp.risk.includes('Medium') ? '#d97706' : '#16a34a'
+                        }}
+                      >
+                        {emp.risk}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

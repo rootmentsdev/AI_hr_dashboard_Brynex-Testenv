@@ -15,11 +15,11 @@ import {
 export default function Integrations() {
   const integrationsList = [
     {
-      id: 'openrouter',
-      name: 'OpenRouter AI Engine',
+      id: 'claude',
+      name: 'Anthropic Claude AI Engine',
       category: 'AI / LLM Gateway',
       status: 'Connected',
-      desc: 'Multi-model reasoning infrastructure routing inference to Liquid LFM 2.5, Google Gemma, and Nemotron.',
+      desc: 'Next-gen reasoning infrastructure routing inference to Claude Haiku, Sonnet, and Opus with autonomous multi-agent analysis.',
       active: true,
       highlight: true
     },

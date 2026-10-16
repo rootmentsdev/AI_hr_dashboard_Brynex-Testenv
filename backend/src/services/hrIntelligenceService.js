@@ -79,19 +79,18 @@ export const analyzeHrData = async ({ rows, fileName, customRules = null, adminP
     }
   });
 
-  // Calculate Attrition Rate
-  // If no explicit exit column, estimate baseline heuristic based on attendance/status or default benchmark
-  let attritionRate = totalEmployees > 0 && exitedCount > 0 
+  // Calculate Attrition Rate purely from data
+  let attritionRate = totalEmployees > 0 
     ? ((exitedCount / totalEmployees) * 100).toFixed(1) 
-    : '7.8'; // Benchmark default if only active roster provided
+    : '0.0';
 
   let targetAttrition = (customRules && customRules.targetAttrition) || 5.0;
   let productivityRate = attendanceCount > 0 
     ? Math.min(100, Math.round((totalAttendance / attendanceCount))).toString() + '%'
-    : '87%';
+    : '100%';
 
   // Department most affected
-  let mostAffectedDept = 'Sales';
+  let mostAffectedDept = Object.keys(deptExits)[0] || Object.keys(deptTotal)[0] || 'Operations';
   let maxExits = -1;
   for (const dept of Object.keys(deptExits)) {
     if (deptExits[dept] > maxExits) {
@@ -102,74 +101,33 @@ export const analyzeHrData = async ({ rows, fileName, customRules = null, adminP
 
   // Health Score Formula
   const diffFromTarget = Math.max(0, parseFloat(attritionRate) - targetAttrition);
-  const healthScore = Math.max(50, Math.min(100, Math.round(95 - (diffFromTarget * 4))));
+  const healthScore = Math.max(50, Math.min(100, Math.round(100 - (diffFromTarget * 4))));
 
-  // Generate Attention Items (Admin prompt guided or auto-inferred)
-  const attentionItems = [
-    {
+  // Generate Attention Items dynamically based on actual anomalies found
+  const attentionItems = [];
+  if (exitedCount > 0) {
+    attentionItems.push({
       id: 1,
-      category: parseFloat(attritionRate) > targetAttrition + 2 ? 'Critical' : 'Need investigation',
-      priority: parseFloat(attritionRate) > targetAttrition + 2 ? 'High Priority' : 'Medium Priority',
-      status: 'Needs investigation',
-      title: `Attrition rate increased to ${attritionRate}% against a ${targetAttrition}% target.`,
-      description: `Analysis of ${fileName} shows elevated exits in ${mostAffectedDept} teams, affecting workforce stability and increasing recruitment replacement load.`,
-      branch: 'All branches',
-      topic: 'Cost efficiency & Retention',
-      dateRange: 'Current Period',
-      confidence: '84%',
-      detailTitle: `Employee attrition rate identified at ${attritionRate}%`,
-      department: `${mostAffectedDept} & Operations`,
-      whatsHappening: `Workforce scan of ${totalEmployees} records identified an attrition rate of ${attritionRate}%, exceeding the benchmark target of ${targetAttrition}%. Primary concentration observed in ${mostAffectedDept} department.`,
-      metrics: [
-        { label: 'Current attrition', val: `${attritionRate}%`, note: `+${(parseFloat(attritionRate) - targetAttrition).toFixed(1)} pp vs target` },
-        { label: 'Target', val: `${targetAttrition}%`, note: 'HR benchmark', hasDownArrow: true },
-        { label: 'Employees exited', val: `${exitedCount || Math.round(totalEmployees * (parseFloat(attritionRate)/100))}`, note: 'Roster records' },
-        { label: 'Most affected team', val: mostAffectedDept, note: 'Highest variance' }
-      ]
-    },
-    {
-      id: 2,
-      category: 'Need investigation',
+      category: parseFloat(attritionRate) > targetAttrition ? 'Critical' : 'Need investigation',
       priority: 'High Priority',
       status: 'Needs investigation',
-      title: `Attendance & productivity gap detected across ${mostAffectedDept}`,
-      description: `Average productivity is at ${productivityRate}. Scheduling bottlenecks and overtime disparity indicate potential operational fatigue.`,
+      title: `Attrition rate at ${attritionRate}% (${exitedCount} Exits Detected)`,
+      description: `Analysis of ${fileName} identifies ${exitedCount} employee exits, primary cluster in ${mostAffectedDept}.`,
       branch: 'All branches',
-      topic: 'Productivity & Shift Load',
+      topic: 'Attrition Risk & Retention',
       dateRange: 'Current Period',
-      confidence: '79%',
-      detailTitle: 'Workforce productivity and shift fatigue analysis',
-      department: 'Workforce Planning',
-      whatsHappening: `Telemetry correlates shifts with an overtime increase of 14% while overall attendance average stabilized at ${productivityRate}.`,
+      confidence: '90%',
+      detailTitle: `Workforce attrition tracking at ${attritionRate}%`,
+      department: mostAffectedDept,
+      whatsHappening: `Telemetry scan across ${totalEmployees} records identified ${exitedCount} departures.`,
       metrics: [
-        { label: 'Avg Productivity', val: productivityRate, note: 'Attendance telemetry' },
-        { label: 'Target', val: '92%', note: 'Company KPI', hasDownArrow: true },
-        { label: 'Total Headcount', val: `${totalEmployees}`, note: 'Active records' },
+        { label: 'Current attrition', val: `${attritionRate}%`, note: `Target: ${targetAttrition}%`, hasDownArrow: parseFloat(attritionRate) > targetAttrition },
+        { label: 'Exited staff', val: `${exitedCount} Staff`, note: 'Recorded departures' },
+        { label: 'Total Headcount', val: `${totalEmployees}`, note: 'Ingested records' },
         { label: 'Primary Department', val: mostAffectedDept, note: 'Focus cluster' }
       ]
-    },
-    {
-      id: 3,
-      category: 'Opportunity',
-      priority: 'Low Priority',
-      status: 'Needs investigation',
-      title: 'Talent retention and compensation alignment program',
-      description: 'Review internal mobility bands, shift flexibility, and compensation benchmarks to mitigate frontline turnover.',
-      branch: 'All branches',
-      topic: 'Workforce stability',
-      dateRange: 'Upcoming Quarter',
-      confidence: '92%',
-      detailTitle: 'Retention program optimization for talent stability',
-      department: 'Talent Retention Strategy',
-      whatsHappening: `Data-driven simulation demonstrates that stabilizing retention in ${mostAffectedDept} by 1.8% preserves company hiring budget significantly.`,
-      metrics: [
-        { label: 'Potential Savings', val: '$38,500', note: 'Recruitment & training' },
-        { label: 'Target Retention', val: '95%', note: 'Target goal', hasDownArrow: false },
-        { label: 'Eligible Teams', val: 'All', note: 'Company-wide' },
-        { label: 'Review Period', val: 'Q3', note: 'Immediate roadmap' }
-      ]
-    }
-  ];
+    });
+  }
 
   // Top KPI Metrics
   const kpiMetrics = [
