@@ -1,0 +1,271 @@
+date,branch,department_or_employee_id,daily_revenue,footfall_or_leads,transactions_count,inventory_availability_pct,customer_complaints_count
+2026-09-01,West Branch,Sales,84340.99,53,11,84.9,1
+2026-09-01,West Branch,Retail Operations,9554.55,18,2,99.3,0
+2026-09-01,West Branch,Inventory,1785.71,4,0,79.3,0
+2026-09-01,Central,Sales,114537.59,61,17,97.0,0
+2026-09-01,Central,Retail Operations,16116.93,27,4,95.9,1
+2026-09-01,Central,Inventory,1509.17,4,0,85.1,0
+2026-09-01,HQ,Sales,40047.09,21,3,74.9,0
+2026-09-01,HQ,Retail Operations,2531.68,2,0,94.4,0
+2026-09-01,HQ,Inventory,546.94,1,0,82.5,3
+2026-09-02,West Branch,Sales,117657.0,57,16,92.6,0
+2026-09-02,West Branch,Retail Operations,11659.15,23,3,96.8,2
+2026-09-02,West Branch,Inventory,2076.39,4,0,93.9,0
+2026-09-02,Central,Sales,163540.22,75,11,92.9,3
+2026-09-02,Central,Retail Operations,11874.67,22,3,92.3,0
+2026-09-02,Central,Inventory,1883.81,4,0,94.6,0
+2026-09-02,HQ,Sales,28450.57,17,2,86.8,0
+2026-09-02,HQ,Retail Operations,4883.03,4,0,91.6,0
+2026-09-02,HQ,Inventory,550.27,1,0,79.6,1
+2026-09-03,West Branch,Sales,53359.18,48,12,48.2,0
+2026-09-03,West Branch,Retail Operations,12217.35,25,4,84.0,0
+2026-09-03,West Branch,Inventory,0.0,0,0,54.5,0
+2026-09-03,Central,Sales,147408.69,83,24,93.9,0
+2026-09-03,Central,Retail Operations,13754.0,24,3,90.1,0
+2026-09-03,Central,Inventory,1246.83,2,0,83.9,2
+2026-09-03,HQ,Sales,43679.65,25,7,98.6,0
+2026-09-03,HQ,Retail Operations,2832.57,2,0,76.2,0
+2026-09-03,HQ,Inventory,867.47,2,0,86.6,0
+2026-09-04,West Branch,Sales,135872.14,62,7,94.8,1
+2026-09-04,West Branch,Retail Operations,14557.56,25,3,90.0,0
+2026-09-04,West Branch,Inventory,1778.73,4,0,94.8,0
+2026-09-04,Central,Sales,113685.14,66,18,85.6,1
+2026-09-04,Central,Retail Operations,16159.58,29,3,76.5,2
+2026-09-04,Central,Inventory,1768.52,3,0,93.6,0
+2026-09-04,HQ,Sales,35013.47,17,4,95.9,0
+2026-09-04,HQ,Retail Operations,3102.01,3,0,91.1,0
+2026-09-04,HQ,Inventory,856.14,2,0,79.6,0
+2026-09-05,West Branch,Sales,120171.42,61,17,75.1,1
+2026-09-05,West Branch,Retail Operations,18048.87,27,1,83.9,1
+2026-09-05,West Branch,Inventory,1496.35,3,0,84.9,0
+2026-09-05,Central,Sales,160144.69,96,16,75.8,0
+2026-09-05,Central,Retail Operations,15041.42,22,1,86.9,1
+2026-09-05,Central,Inventory,1357.49,3,0,85.9,0
+2026-09-05,HQ,Sales,47789.96,20,2,86.9,0
+2026-09-05,HQ,Retail Operations,3094.43,3,0,91.8,0
+2026-09-05,HQ,Inventory,869.2,2,0,72.2,0
+2026-09-06,West Branch,Sales,39107.79,36,11,47.4,0
+2026-09-06,West Branch,Retail Operations,12649.48,22,1,77.8,0
+2026-09-06,West Branch,Inventory,602.57,1,0,77.8,2
+2026-09-06,Central,Sales,137853.38,64,14,86.0,1
+2026-09-06,Central,Retail Operations,14811.43,27,5,86.1,0
+2026-09-06,Central,Inventory,2400.44,4,0,96.5,0
+2026-09-06,HQ,Sales,36403.44,16,3,85.2,1
+2026-09-06,HQ,Retail Operations,4067.79,4,0,80.2,0
+2026-09-06,HQ,Inventory,530.39,1,0,77.4,0
+2026-09-07,West Branch,Sales,125184.82,61,13,78.3,0
+2026-09-07,West Branch,Retail Operations,12698.7,29,3,86.9,0
+2026-09-07,West Branch,Inventory,534.7,1,0,89.1,0
+2026-09-07,Central,Sales,114546.27,70,10,76.5,1
+2026-09-07,Central,Retail Operations,13384.65,20,1,96.1,0
+2026-09-07,Central,Inventory,1946.01,4,0,76.9,0
+2026-09-07,HQ,Sales,21366.08,16,4,76.3,0
+2026-09-07,HQ,Retail Operations,2899.43,2,0,63.9,0
+2026-09-07,HQ,Inventory,1123.42,2,0,93.9,0
+2026-09-08,West Branch,Sales,133588.75,60,13,83.7,1
+2026-09-08,West Branch,Retail Operations,10650.88,18,3,72.7,0
+2026-09-08,West Branch,Inventory,1080.04,2,0,99.3,2
+2026-09-08,Central,Sales,141174.74,61,8,97.8,0
+2026-09-08,Central,Retail Operations,15536.04,24,4,94.0,2
+2026-09-08,Central,Inventory,1364.42,3,0,95.6,0
+2026-09-08,HQ,Sales,28835.09,19,2,73.1,2
+2026-09-08,HQ,Retail Operations,7321.99,5,0,77.3,2
+2026-09-08,HQ,Inventory,0.0,0,0,52.7,2
+2026-09-09,West Branch,Sales,119082.02,54,15,84.2,0
+2026-09-09,West Branch,Retail Operations,12254.25,18,3,98.8,0
+2026-09-09,West Branch,Inventory,1550.78,4,0,54.3,0
+2026-09-09,Central,Sales,151034.0,73,12,96.8,1
+2026-09-09,Central,Retail Operations,16257.57,24,3,79.5,1
+2026-09-09,Central,Inventory,2943.16,5,0,80.2,0
+2026-09-09,HQ,Sales,31705.48,16,4,74.6,1
+2026-09-09,HQ,Retail Operations,6148.98,4,0,83.3,0
+2026-09-09,HQ,Inventory,505.88,1,0,83.7,1
+2026-09-10,West Branch,Sales,139600.45,61,17,85.8,0
+2026-09-10,West Branch,Retail Operations,11609.41,21,1,87.8,0
+2026-09-10,West Branch,Inventory,490.16,1,0,75.2,0
+2026-09-10,Central,Sales,101928.8,72,11,73.5,0
+2026-09-10,Central,Retail Operations,12173.87,25,1,94.8,0
+2026-09-10,Central,Inventory,1702.21,3,0,93.6,1
+2026-09-10,HQ,Sales,13311.71,12,1,61.8,3
+2026-09-10,HQ,Retail Operations,5714.83,5,0,99.6,0
+2026-09-10,HQ,Inventory,0.0,0,0,84.9,3
+2026-09-11,West Branch,Sales,136197.38,74,22,81.4,1
+2026-09-11,West Branch,Retail Operations,14909.72,23,3,75.7,0
+2026-09-11,West Branch,Inventory,0.0,0,0,91.5,1
+2026-09-11,Central,Sales,103049.22,57,16,88.2,2
+2026-09-11,Central,Retail Operations,11944.55,19,1,93.8,2
+2026-09-11,Central,Inventory,881.43,2,0,92.1,0
+2026-09-11,HQ,Sales,18517.85,11,3,78.6,2
+2026-09-11,HQ,Retail Operations,2133.81,2,0,84.2,1
+2026-09-11,HQ,Inventory,584.58,1,0,93.2,0
+2026-09-12,West Branch,Sales,122757.61,72,22,77.3,0
+2026-09-12,West Branch,Retail Operations,9376.01,22,2,92.0,0
+2026-09-12,West Branch,Inventory,946.79,2,0,72.5,0
+2026-09-12,Central,Sales,179364.13,72,20,99.1,1
+2026-09-12,Central,Retail Operations,16276.15,31,5,80.2,0
+2026-09-12,Central,Inventory,1147.29,3,0,74.1,1
+2026-09-12,HQ,Sales,28177.52,18,2,76.3,1
+2026-09-12,HQ,Retail Operations,5721.96,5,0,83.4,1
+2026-09-12,HQ,Inventory,904.88,2,0,79.5,1
+2026-09-13,West Branch,Sales,146992.99,79,22,79.6,0
+2026-09-13,West Branch,Retail Operations,14534.79,24,2,99.1,2
+2026-09-13,West Branch,Inventory,1155.27,2,0,73.9,0
+2026-09-13,Central,Sales,162039.56,72,13,87.0,0
+2026-09-13,Central,Retail Operations,12571.13,21,3,98.5,0
+2026-09-13,Central,Inventory,2208.53,4,0,98.3,0
+2026-09-13,HQ,Sales,38662.35,20,5,72.8,1
+2026-09-13,HQ,Retail Operations,3199.99,3,0,94.8,1
+2026-09-13,HQ,Inventory,0.0,0,0,78.4,0
+2026-09-14,West Branch,Sales,159461.96,85,15,85.2,0
+2026-09-14,West Branch,Retail Operations,8060.29,19,3,75.2,0
+2026-09-14,West Branch,Inventory,904.41,2,0,90.1,0
+2026-09-14,Central,Sales,136748.57,62,16,96.5,0
+2026-09-14,Central,Retail Operations,12277.12,25,4,90.6,2
+2026-09-14,Central,Inventory,1519.3,4,0,94.8,0
+2026-09-14,HQ,Sales,21059.5,14,2,79.1,0
+2026-09-14,HQ,Retail Operations,2033.63,2,0,96.5,0
+2026-09-14,HQ,Inventory,1195.17,2,0,98.3,0
+2026-09-15,West Branch,Sales,113213.33,55,15,88.5,3
+2026-09-15,West Branch,Retail Operations,12127.09,21,2,92.7,0
+2026-09-15,West Branch,Inventory,1775.42,3,0,81.5,0
+2026-09-15,Central,Sales,181767.8,69,11,99.1,0
+2026-09-15,Central,Retail Operations,12793.68,29,4,85.0,1
+2026-09-15,Central,Inventory,1545.72,4,0,88.4,2
+2026-09-15,HQ,Sales,16254.18,13,1,51.0,0
+2026-09-15,HQ,Retail Operations,5304.38,4,0,75.9,1
+2026-09-15,HQ,Inventory,0.0,0,0,58.2,0
+2026-09-16,West Branch,Sales,114418.52,70,19,79.6,1
+2026-09-16,West Branch,Retail Operations,10687.39,23,3,97.9,2
+2026-09-16,West Branch,Inventory,753.56,2,0,77.1,0
+2026-09-16,Central,Sales,146489.36,72,17,84.1,0
+2026-09-16,Central,Retail Operations,12964.65,21,2,78.5,0
+2026-09-16,Central,Inventory,1569.01,3,0,84.4,0
+2026-09-16,HQ,Sales,29075.64,16,2,73.2,1
+2026-09-16,HQ,Retail Operations,3971.01,4,0,78.9,0
+2026-09-16,HQ,Inventory,614.47,1,0,84.7,0
+2026-09-17,West Branch,Sales,139396.7,69,9,73.5,1
+2026-09-17,West Branch,Retail Operations,12325.69,22,3,89.2,0
+2026-09-17,West Branch,Inventory,1504.19,3,0,87.4,1
+2026-09-17,Central,Sales,142916.89,60,11,87.8,0
+2026-09-17,Central,Retail Operations,15812.6,29,5,92.9,1
+2026-09-17,Central,Inventory,1366.51,3,0,47.3,1
+2026-09-17,HQ,Sales,38084.37,18,3,79.1,1
+2026-09-17,HQ,Retail Operations,2182.28,2,0,92.8,0
+2026-09-17,HQ,Inventory,0.0,0,0,80.6,0
+2026-09-18,West Branch,Sales,146164.15,73,19,75.2,0
+2026-09-18,West Branch,Retail Operations,9884.32,20,2,97.2,2
+2026-09-18,West Branch,Inventory,918.68,2,0,98.1,0
+2026-09-18,Central,Sales,156049.39,59,16,98.6,2
+2026-09-18,Central,Retail Operations,21890.04,32,2,81.0,0
+2026-09-18,Central,Inventory,2155.19,4,0,85.5,1
+2026-09-18,HQ,Sales,18511.68,13,2,81.2,1
+2026-09-18,HQ,Retail Operations,2536.03,2,0,93.3,0
+2026-09-18,HQ,Inventory,1815.12,3,0,97.8,0
+2026-09-19,West Branch,Sales,106272.02,54,15,77.8,0
+2026-09-19,West Branch,Retail Operations,14688.46,23,3,92.9,3
+2026-09-19,West Branch,Inventory,1062.28,2,0,81.0,0
+2026-09-19,Central,Sales,123101.25,82,11,82.7,0
+2026-09-19,Central,Retail Operations,9623.41,20,3,54.4,3
+2026-09-19,Central,Inventory,2203.73,5,0,88.3,1
+2026-09-19,HQ,Sales,34864.58,14,3,92.7,1
+2026-09-19,HQ,Retail Operations,4696.19,4,0,80.4,0
+2026-09-19,HQ,Inventory,0.0,0,0,85.3,0
+2026-09-20,West Branch,Sales,113697.85,61,9,92.7,0
+2026-09-20,West Branch,Retail Operations,9188.24,18,2,55.0,1
+2026-09-20,West Branch,Inventory,0.0,0,0,53.3,0
+2026-09-20,Central,Sales,116365.52,59,15,75.1,2
+2026-09-20,Central,Retail Operations,11890.74,21,1,77.0,0
+2026-09-20,Central,Inventory,2319.5,4,0,87.4,0
+2026-09-20,HQ,Sales,47417.36,21,3,90.9,1
+2026-09-20,HQ,Retail Operations,3495.71,3,0,82.7,0
+2026-09-20,HQ,Inventory,0.0,0,0,73.7,0
+2026-09-21,West Branch,Sales,99379.25,47,8,89.9,1
+2026-09-21,West Branch,Retail Operations,11119.23,23,1,77.6,0
+2026-09-21,West Branch,Inventory,1495.75,3,0,88.4,2
+2026-09-21,Central,Sales,81404.05,62,10,50.5,0
+2026-09-21,Central,Retail Operations,13370.91,22,1,76.6,0
+2026-09-21,Central,Inventory,1738.63,3,0,61.7,2
+2026-09-21,HQ,Sales,35231.18,19,4,87.0,0
+2026-09-21,HQ,Retail Operations,4919.68,4,0,94.0,0
+2026-09-21,HQ,Inventory,603.69,1,0,83.7,0
+2026-09-22,West Branch,Sales,183231.51,88,14,77.2,0
+2026-09-22,West Branch,Retail Operations,11198.77,23,2,94.3,0
+2026-09-22,West Branch,Inventory,2176.15,4,0,94.2,0
+2026-09-22,Central,Sales,172109.2,78,24,81.9,1
+2026-09-22,Central,Retail Operations,13669.7,31,2,98.0,0
+2026-09-22,Central,Inventory,2488.74,4,0,78.0,2
+2026-09-22,HQ,Sales,37477.81,17,4,97.4,0
+2026-09-22,HQ,Retail Operations,4600.87,4,0,87.7,3
+2026-09-22,HQ,Inventory,379.88,1,0,75.7,0
+2026-09-23,West Branch,Sales,67253.25,59,10,58.2,2
+2026-09-23,West Branch,Retail Operations,9059.62,20,3,89.7,1
+2026-09-23,West Branch,Inventory,778.15,2,0,93.5,1
+2026-09-23,Central,Sales,157152.73,73,20,86.2,0
+2026-09-23,Central,Retail Operations,18225.63,30,4,88.2,0
+2026-09-23,Central,Inventory,2813.07,5,0,85.4,1
+2026-09-23,HQ,Sales,43930.87,20,4,98.6,2
+2026-09-23,HQ,Retail Operations,5652.2,4,0,90.8,1
+2026-09-23,HQ,Inventory,1721.71,4,0,92.5,1
+2026-09-24,West Branch,Sales,59210.79,48,9,55.3,0
+2026-09-24,West Branch,Retail Operations,13215.73,25,1,80.2,2
+2026-09-24,West Branch,Inventory,1059.42,2,0,99.8,2
+2026-09-24,Central,Sales,155344.62,81,21,96.6,0
+2026-09-24,Central,Retail Operations,13822.23,29,2,83.5,0
+2026-09-24,Central,Inventory,2177.34,4,0,88.9,0
+2026-09-24,HQ,Sales,20242.36,17,2,49.2,1
+2026-09-24,HQ,Retail Operations,7013.19,5,0,74.5,1
+2026-09-24,HQ,Inventory,0.0,0,0,95.0,0
+2026-09-25,West Branch,Sales,151243.79,64,17,89.4,0
+2026-09-25,West Branch,Retail Operations,9802.3,21,3,79.2,0
+2026-09-25,West Branch,Inventory,1022.46,2,0,89.6,0
+2026-09-25,Central,Sales,117993.01,66,13,88.3,0
+2026-09-25,Central,Retail Operations,13733.89,21,3,93.0,0
+2026-09-25,Central,Inventory,973.37,2,0,82.9,0
+2026-09-25,HQ,Sales,34780.47,19,5,76.6,0
+2026-09-25,HQ,Retail Operations,1013.25,1,0,78.3,2
+2026-09-25,HQ,Inventory,393.12,1,0,75.8,1
+2026-09-26,West Branch,Sales,97672.52,63,12,80.8,0
+2026-09-26,West Branch,Retail Operations,12760.67,19,1,61.1,1
+2026-09-26,West Branch,Inventory,1411.33,3,0,82.5,0
+2026-09-26,Central,Sales,140374.27,77,14,76.2,0
+2026-09-26,Central,Retail Operations,10080.77,18,2,99.8,0
+2026-09-26,Central,Inventory,2103.49,4,0,72.5,0
+2026-09-26,HQ,Sales,31792.54,14,3,95.4,0
+2026-09-26,HQ,Retail Operations,3881.61,3,0,86.1,1
+2026-09-26,HQ,Inventory,994.36,2,0,90.3,0
+2026-09-27,West Branch,Sales,125486.98,80,10,82.0,0
+2026-09-27,West Branch,Retail Operations,10135.91,16,2,78.4,0
+2026-09-27,West Branch,Inventory,1392.17,3,0,72.8,1
+2026-09-27,Central,Sales,147443.31,80,18,93.3,2
+2026-09-27,Central,Retail Operations,11375.29,24,1,77.0,1
+2026-09-27,Central,Inventory,1740.94,4,0,76.2,1
+2026-09-27,HQ,Sales,43134.96,18,5,86.3,0
+2026-09-27,HQ,Retail Operations,5316.48,4,0,96.0,0
+2026-09-27,HQ,Inventory,1701.69,3,0,96.0,1
+2026-09-28,West Branch,Sales,198747.29,75,12,97.0,1
+2026-09-28,West Branch,Retail Operations,12843.24,21,2,91.3,1
+2026-09-28,West Branch,Inventory,1595.17,4,0,72.4,0
+2026-09-28,Central,Sales,50833.53,55,14,46.3,0
+2026-09-28,Central,Retail Operations,16003.49,24,1,93.6,0
+2026-09-28,Central,Inventory,2294.93,4,0,89.1,0
+2026-09-28,HQ,Sales,48039.29,22,2,78.2,1
+2026-09-28,HQ,Retail Operations,5977.79,4,0,94.1,1
+2026-09-28,HQ,Inventory,615.08,1,0,80.4,0
+2026-09-29,West Branch,Sales,136313.02,58,12,93.3,0
+2026-09-29,West Branch,Retail Operations,13921.52,21,1,72.2,1
+2026-09-29,West Branch,Inventory,1178.58,2,0,63.0,0
+2026-09-29,Central,Sales,64310.46,55,8,53.1,0
+2026-09-29,Central,Retail Operations,11809.1,26,3,78.7,0
+2026-09-29,Central,Inventory,1144.75,3,0,93.1,0
+2026-09-29,HQ,Sales,28706.61,14,4,91.3,0
+2026-09-29,HQ,Retail Operations,3313.84,3,0,72.1,0
+2026-09-29,HQ,Inventory,0.0,0,0,72.8,2
+2026-09-30,West Branch,Sales,100198.14,66,19,76.4,2
+2026-09-30,West Branch,Retail Operations,11716.7,24,3,90.3,0
+2026-09-30,West Branch,Inventory,1408.66,3,0,91.8,0
+2026-09-30,Central,Sales,163818.69,87,10,93.0,1
+2026-09-30,Central,Retail Operations,18565.85,31,5,72.2,0
+2026-09-30,Central,Inventory,1672.51,3,0,76.2,0
+2026-09-30,HQ,Sales,44506.25,16,3,95.8,1
+2026-09-30,HQ,Retail Operations,4342.87,3,0,81.3,1
+2026-09-30,HQ,Inventory,0.0,0,0,80.8,0

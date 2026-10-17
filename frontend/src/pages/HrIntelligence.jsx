@@ -39,7 +39,8 @@ import {
   Cpu,
   BrainCircuit,
   Check,
-  UploadCloud
+  UploadCloud,
+  FileSpreadsheet
 } from 'lucide-react';
 import {
   diagnoseHrIssue,
@@ -91,13 +92,15 @@ export default function HrIntelligence() {
       try {
         const res = await fetch('/api/hr/analysis');
         const json = await res.json();
-        if (json.status === 'success' && json.data) {
-          setLiveAnalysis(json.data);
-          if (json.data.reportingPeriod) {
+        if (json.status === 'success') {
+          setLiveAnalysis(json.data || null);
+          if (json.data?.reportingPeriod) {
             setDateRange(json.data.reportingPeriod);
           }
-          if (json.data.attentionItems && json.data.attentionItems.length > 0) {
+          if (json.data?.attentionItems && json.data.attentionItems.length > 0) {
             setSelectedIssueId(json.data.attentionItems[0].id);
+          } else {
+            setSelectedIssueId(null);
           }
         }
       } catch (err) {
@@ -106,7 +109,26 @@ export default function HrIntelligence() {
         setIsLoadingAnalysis(false);
       }
     };
+
     fetchAnalysis();
+
+    const handleDataUpdate = () => {
+      fetchAnalysis();
+    };
+
+    window.addEventListener('focus', fetchAnalysis);
+    window.addEventListener('hr-data-updated', handleDataUpdate);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'hr_data_last_updated') {
+        fetchAnalysis();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('focus', fetchAnalysis);
+      window.removeEventListener('hr-data-updated', handleDataUpdate);
+      window.removeEventListener('storage', handleDataUpdate);
+    };
   }, []);
 
   // Icon mapping for dynamic KPI tiles
@@ -122,6 +144,69 @@ export default function HrIntelligence() {
   const resolvedAttentionItems = (liveAnalysis?.attentionItems && Array.isArray(liveAnalysis.attentionItems))
     ? liveAnalysis.attentionItems
     : [];
+
+  // Extract or infer source CSV file for an issue
+  const getIssueSourceFile = (item) => {
+    if (!item) return '';
+    if (item.sourceFile && item.sourceFile.trim()) {
+      return item.sourceFile;
+    }
+    const combined = `${item.title || ''} ${item.description || ''} ${item.topic || ''} ${item.department || ''}`.toLowerCase();
+    
+    // Check for multi-dataset correlation first
+    if (
+      (combined.includes('correlation') || combined.includes('multi-dataset') || combined.includes('dual-dataset')) ||
+      (combined.includes('attendance') && combined.includes('sales')) ||
+      (combined.includes('roster') && combined.includes('revenue')) ||
+      (combined.includes('fatigue') && combined.includes('sales'))
+    ) {
+      return 'attendance_and_roster.csv + business_output_and_sales.csv';
+    }
+
+    // Check for attendance / roster telemetry
+    if (
+      combined.includes('attendance') ||
+      combined.includes('roster') ||
+      combined.includes('shift') ||
+      combined.includes('overtime') ||
+      combined.includes('rest violation') ||
+      combined.includes('rest interval') ||
+      combined.includes('fatigue') ||
+      combined.includes('productivity') ||
+      combined.includes('turnaround')
+    ) {
+      return 'attendance_and_roster.csv';
+    }
+
+    // Check for sales / store revenue telemetry
+    if (
+      combined.includes('sales') ||
+      combined.includes('revenue') ||
+      combined.includes('store') ||
+      combined.includes('branch') ||
+      combined.includes('footfall') ||
+      combined.includes('pos') ||
+      combined.includes('transaction') ||
+      combined.includes('conversion') ||
+      combined.includes('inventory')
+    ) {
+      return 'business_output_and_sales.csv';
+    }
+
+    // Check for employee master records
+    if (
+      combined.includes('employee') ||
+      combined.includes('resignation') ||
+      combined.includes('attrition') ||
+      combined.includes('notice') ||
+      combined.includes('headcount') ||
+      combined.includes('staff')
+    ) {
+      return 'employees_master.csv';
+    }
+
+    return liveAnalysis?.fileNames?.[0] || 'Connected Dataset';
+  };
 
   const resolvedKpiMetrics = (liveAnalysis?.kpiMetrics && Array.isArray(liveAnalysis.kpiMetrics) && liveAnalysis.kpiMetrics.length > 0)
     ? liveAnalysis.kpiMetrics.map((kpi) => ({
@@ -568,40 +653,40 @@ export default function HrIntelligence() {
                   textAlign: 'center',
                   background: '#ffffff',
                   borderRadius: '12px',
-                  border: '1px dashed #cbd5e1',
+                  border: '1.5px dashed #cbd5e1',
                   marginTop: '12px'
                 }}
               >
-                <AlertCircle size={32} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
+                <AlertCircle size={32} color="#0ca678" style={{ margin: '0 auto 12px' }} />
                 <h4 style={{ margin: '0 0 6px', fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>
-                  {liveAnalysis ? 'No Issues in Selected Filter' : 'No Data Ingested'}
+                  {!liveAnalysis || (liveAnalysis.attentionItems || []).length === 0
+                    ? 'No Datasets Connected'
+                    : 'No Issues in Selected Filter'}
                 </h4>
                 <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
-                  {liveAnalysis
-                    ? 'All workforce metrics and attendance rosters are currently within nominal thresholds.'
-                    : 'Upload your workforce files (Employees, Attendance, Roster, Sales) to detect live management issues.'}
+                  {!liveAnalysis || (liveAnalysis.attentionItems || []).length === 0
+                    ? 'All dataset telemetry has been cleared. Connect an Employee Master, Attendance Roster, or Sales CSV in Data Management to activate AI diagnostics.'
+                    : 'All workforce metrics and attendance rosters for this filter are currently within nominal thresholds.'}
                 </p>
-                {!liveAnalysis && (
-                  <button
-                    onClick={() => navigate('/intelligence/hr/data')}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 16px',
-                      background: '#0ca678',
-                      color: '#fff',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontSize: '13px'
-                    }}
-                  >
-                    <UploadCloud size={16} />
-                    Go to Data Management
-                  </button>
-                )}
+                <button
+                  onClick={() => navigate('/intelligence/hr/data')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    background: '#0ca678',
+                    color: '#fff',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '13px'
+                  }}
+                >
+                  <UploadCloud size={16} />
+                  <span>Go to Data Management</span>
+                </button>
               </div>
             ) : (
               filteredItems.map((item) => (
@@ -619,12 +704,20 @@ export default function HrIntelligence() {
                       ● {item.priority || 'High Priority'}
                     </span>
                     <span className="hr-status-badge-outline">{item.status || 'Needs investigation'}</span>
+                    <span className="hr-source-csv-tag" title={`Source CSV: ${getIssueSourceFile(item)}`}>
+                      <FileSpreadsheet size={11} color="#065f46" />
+                      <span>{getIssueSourceFile(item)}</span>
+                    </span>
                   </div>
 
                   <h4 className="hr-issue-card-title">{item.title}</h4>
                   <p className="hr-issue-card-desc">{item.description}</p>
 
                   <div className="hr-issue-card-meta">
+                    <div className="hr-meta-item" style={{ color: '#047857', fontWeight: 600 }}>
+                      <FileSpreadsheet size={12} color="#0ca678" />
+                      <span>{getIssueSourceFile(item)}</span>
+                    </div>
                     <div className="hr-meta-item">
                       <Building2 size={13} />
                       <span>{item.branch || 'All Branches'}</span>
@@ -658,36 +751,36 @@ export default function HrIntelligence() {
               minHeight: '450px'
             }}
           >
-            <BrainCircuit size={48} color="#94a3b8" style={{ marginBottom: '16px' }} />
+            <BrainCircuit size={48} color="#0ca678" style={{ marginBottom: '16px' }} />
             <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px 0' }}>
-              {liveAnalysis ? 'Select an Issue to Investigate' : 'Diagnostic Framework Standby'}
+              {resolvedAttentionItems.length === 0
+                ? 'Workforce Diagnostics on Standby'
+                : 'Select an Issue to Investigate'}
             </h3>
             <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '440px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              {liveAnalysis
-                ? 'Click on any detected attention item in the left column to inspect telemetry evidence, Claude AI root causes, and decision options.'
-                : 'Upload employee, shift, or payroll records in Data Management to activate the automated management diagnostic pipeline.'}
+              {resolvedAttentionItems.length === 0
+                ? 'The HR Dashboard analyzes workforce data (Employees, Attendance, Shift Rosters). When only sales data is connected, upload your Employee Master CSV in Data Management to activate live employee retention analytics, risk scoring, and productivity diagnostics.'
+                : 'Click on any detected attention item in the left column to inspect telemetry evidence, Claude AI root causes, and decision options.'}
             </p>
-            {!liveAnalysis && (
-              <button
-                onClick={() => navigate('/intelligence/hr/data')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '9px 18px',
-                  background: '#0ca678',
-                  color: '#fff',
-                  borderRadius: '8px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: '13px'
-                }}
-              >
-                <UploadCloud size={16} />
-                Go to Data Management
-              </button>
-            )}
+            <button
+              onClick={() => navigate('/intelligence/hr/data')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 18px',
+                background: '#0f172a',
+                color: '#fff',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '13px'
+              }}
+            >
+              <UploadCloud size={16} />
+              <span>Go to Data Management</span>
+            </button>
           </div>
         ) : (
           <div className="hr-detail-card">
@@ -705,7 +798,23 @@ export default function HrIntelligence() {
             {/* Title & Metadata */}
             <div>
               <h2 className="hr-detail-title">{selectedItem.title}</h2>
-              <div className="hr-detail-meta-row" style={{ marginTop: '8px' }}>
+              <div className="hr-detail-meta-row" style={{ marginTop: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                <div
+                  className="hr-meta-item"
+                  style={{
+                    color: '#065f46',
+                    background: '#ecfdf5',
+                    border: '1px solid #a7f3d0',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '12px'
+                  }}
+                  title={`Source Dataset: ${getIssueSourceFile(selectedItem)}`}
+                >
+                  <FileSpreadsheet size={13} color="#0ca678" />
+                  <span>Source CSV: {getIssueSourceFile(selectedItem)}</span>
+                </div>
                 <div className="hr-meta-item">
                   <Building2 size={14} />
                   <span>{selectedItem.branch || 'All Branches'}</span>

@@ -188,6 +188,9 @@ const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = activeCust
 
     // Apply prompt & rule filtering to cached synced employees
     cachedSyncedEmployees = filterEmployeesByPrompt(allSyncedEmployees, activeAdminPrompt, activeCustomRules);
+  } else {
+    allSyncedEmployees = [];
+    cachedSyncedEmployees = [];
   }
 
   // 2. Correlate Business Sales
@@ -251,6 +254,8 @@ const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = activeCust
         customerComplaints: totalComplaints
       }
     };
+  } else {
+    cachedEnterpriseAnalytics = null;
   }
 };
 
@@ -348,7 +353,9 @@ export const getUploadedFiles = (req, res) => {
       status: f.status,
       savedFilename: f.savedFilename,
       downloadUrl: f.savedFilename ? `/api/hr/files/${f.savedFilename}/download` : null,
-      uploadedAt: f.uploadedAt
+      uploadedAt: f.uploadedAt,
+      columns: f.parsedRows && f.parsedRows.length > 0 ? Object.keys(f.parsedRows[0]) : [],
+      data: f.parsedRows || []
     }))
   });
 };
@@ -423,24 +430,47 @@ export const deleteHrFile = async (req, res) => {
 
     if (uploadedFilesStore.length > 0) {
       await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
+      // Immediately purge deleted file data from latestAnalysis using mathematical correlator
       latestAnalysis = await analyzeMultiFileHrData({
         files: uploadedFilesStore,
         customRules: activeCustomRules,
         adminPrompt: activeAdminPrompt
       });
+
+      // Send immediate response so frontend UI updates instantaneously (<50ms)
+      res.json({
+        status: 'success',
+        message: `File "${removedFile.name}" deleted successfully.`,
+        remainingFilesCount: uploadedFilesStore.length,
+        analysis: latestAnalysis
+      });
+
+      // Run deep Claude AI synthesis in the background to refine analysis without blocking UI
+      runClaudeDocumentAnalysis({
+        files: uploadedFilesStore,
+        customRules: activeCustomRules,
+        adminPrompt: activeAdminPrompt
+      }).then((aiResult) => {
+        if (aiResult && aiResult.attentionItems) {
+          latestAnalysis = aiResult;
+        }
+      }).catch((aiErr) => {
+        console.warn('Claude dynamic analysis background update on delete:', aiErr.message);
+      });
+      return;
     } else {
       latestAnalysis = null;
       allSyncedEmployees = [];
       cachedSyncedEmployees = [];
       cachedEnterpriseAnalytics = null;
-    }
 
-    res.json({
-      status: 'success',
-      message: `File "${removedFile.name}" deleted successfully.`,
-      remainingFilesCount: uploadedFilesStore.length,
-      analysis: latestAnalysis
-    });
+      return res.json({
+        status: 'success',
+        message: `File "${removedFile.name}" deleted successfully. All datasets cleared.`,
+        remainingFilesCount: 0,
+        analysis: null
+      });
+    }
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }

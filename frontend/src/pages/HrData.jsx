@@ -19,7 +19,13 @@ import {
   Edit3,
   Filter,
   Info,
-  Layers
+  Layers,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+  Users,
+  Clock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './HrData.css';
@@ -184,6 +190,11 @@ export default function HrData() {
         await fetchAnalysis();
         setShowPromptConfirmModal(false);
         setPendingUpload(null);
+
+        try {
+          localStorage.setItem('hr_data_last_updated', String(Date.now()));
+          window.dispatchEvent(new CustomEvent('hr-data-updated'));
+        } catch (_) {}
 
         setToast({
           title: `File "${file.name}" Ingested & Analyzed`,
@@ -483,6 +494,11 @@ export default function HrData() {
         await fetchFiles();
         await fetchEmployees();
         await fetchAnalysis();
+
+        try {
+          localStorage.setItem('hr_data_last_updated', String(Date.now()));
+          window.dispatchEvent(new CustomEvent('hr-data-updated'));
+        } catch (_) {}
       } else {
         alert(data.message || 'Error deleting file.');
       }
@@ -495,6 +511,801 @@ export default function HrData() {
   // Determine which employees to display in the table
   const displayedEmployees = showAllProfiles ? allEmployees : syncedEmployees;
   const isPromptFilterActive = Boolean(activeAdminPrompt && activeAdminPrompt.trim());
+
+  // Section-specific search and collapse state
+  const [sectionSearchQueries, setSectionSearchQueries] = useState({});
+  const [collapsedSections, setCollapsedSections] = useState({});
+
+  const handleToggleSectionCollapse = (fileId) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [fileId]: !prev[fileId]
+    }));
+  };
+
+  const handleSectionSearchChange = (fileId, val) => {
+    setSectionSearchQueries((prev) => ({
+      ...prev,
+      [fileId]: val
+    }));
+  };
+
+  const getDatasetCategory = (file) => {
+    const name = (file.name || '').toLowerCase();
+    const holds = (file.holds || '').toLowerCase();
+    const cols = (file.columns || []).map((c) => String(c).toLowerCase());
+
+    if (
+      holds.includes('revenue') ||
+      holds.includes('sales') ||
+      name.includes('sale') ||
+      name.includes('revenue') ||
+      name.includes('business') ||
+      cols.includes('daily_revenue') ||
+      cols.includes('revenue')
+    ) {
+      return 'sales';
+    }
+
+    if (
+      holds.includes('people') ||
+      name.includes('employee') ||
+      name.includes('staff') ||
+      cols.includes('base_salary_monthly') ||
+      (cols.includes('employee_id') && (cols.includes('full_name') || cols.includes('role_id')))
+    ) {
+      return 'employees';
+    }
+
+    if (
+      holds.includes('attendance') ||
+      name.includes('attend') ||
+      name.includes('roster') ||
+      name.includes('shift') ||
+      cols.includes('shift_date') ||
+      cols.includes('overtime_hours')
+    ) {
+      return 'attendance';
+    }
+
+    return 'generic';
+  };
+
+  // Render Sales / Branch Revenue & Telemetry Section
+  const renderSalesSection = (file, sectionNum) => {
+    const rows = file.data || [];
+    const query = (sectionSearchQueries[file.id] || '').toLowerCase().trim();
+    const isCollapsed = Boolean(collapsedSections[file.id]);
+
+    const filteredRows = query
+      ? rows.filter((r) =>
+          Object.values(r).some((val) => String(val || '').toLowerCase().includes(query))
+        )
+      : rows;
+
+    const totalDailyRev = rows.reduce(
+      (sum, r) => sum + (parseFloat(String(r.daily_revenue || r.revenue || 0).replace(/[^0-9.-]/g, '')) || 0),
+      0
+    );
+    const totalTx = rows.reduce(
+      (sum, r) => sum + (parseInt(String(r.transactions_count || r.transactions || 0), 10) || 0),
+      0
+    );
+    const totalFootfall = rows.reduce(
+      (sum, r) => sum + (parseInt(String(r.footfall_or_leads || r.footfall || 0), 10) || 0),
+      0
+    );
+    const uniqueBranches = Array.from(new Set(rows.map((r) => r.branch).filter(Boolean)));
+    const totalPeriodRev = rows.reduce(
+      (sum, r) => sum + (parseFloat(String(r.period_to_date_revenue || 0).replace(/[^0-9.-]/g, '')) || 0),
+      0
+    );
+
+    return (
+      <div className="hr-uploaded-section hr-dataset-card" key={file.id}>
+        <div className="hr-dataset-header">
+          <div className="hr-dataset-title-block">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="hr-section-badge">Section {sectionNum}</span>
+              <h2 className="hr-uploaded-title" style={{ margin: 0 }}>
+                {file.name}
+              </h2>
+            </div>
+            <p className="hr-dataset-subtitle">
+              Branch Revenue & Sales Telemetry · Financial performance, daily transactions, footfall & conversion
+            </p>
+          </div>
+
+          <div className="hr-dataset-actions-block">
+            <span className="hr-records-count-pill">
+              ● {filteredRows.length} of {rows.length} Records Loaded
+            </span>
+
+            <div className="hr-section-search-wrapper">
+              <Search size={14} color="#94a3b8" />
+              <input
+                type="text"
+                placeholder="Search branch, date..."
+                value={sectionSearchQueries[file.id] || ''}
+                onChange={(e) => handleSectionSearchChange(file.id, e.target.value)}
+                className="hr-section-search-input"
+              />
+              {sectionSearchQueries[file.id] && (
+                <button
+                  type="button"
+                  className="hr-search-clear-btn"
+                  onClick={() => handleSectionSearchChange(file.id, '')}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {file.downloadUrl && (
+              <a
+                href={file.downloadUrl}
+                download
+                className="hr-dataset-btn-subtle"
+                title="Download CSV"
+              >
+                <Download size={14} />
+              </a>
+            )}
+
+            <button
+              type="button"
+              className="hr-dataset-btn-subtle"
+              onClick={() => handleToggleSectionCollapse(file.id)}
+              title={isCollapsed ? 'Expand Section' : 'Collapse Section'}
+            >
+              {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+            </button>
+          </div>
+        </div>
+
+        {!isCollapsed && (
+          <>
+            {/* Sales KPI Row */}
+            <div className="hr-inscope-metrics-row hr-sales-metrics-row">
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">Daily Revenue (FTD)</div>
+                <div className="hr-inscope-metric-val" style={{ color: '#0ca678' }}>
+                  ₹{Math.round(totalDailyRev).toLocaleString()}
+                </div>
+              </div>
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">Daily Transactions</div>
+                <div className="hr-inscope-metric-val">{totalTx.toLocaleString()} Tx</div>
+              </div>
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">Active Branches</div>
+                <div className="hr-inscope-metric-val">{uniqueBranches.length} Branches</div>
+              </div>
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">MTD Revenue Total</div>
+                <div className="hr-inscope-metric-val">
+                  ₹{Math.round(totalPeriodRev).toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Sales Table */}
+            <div className="hr-table-wrapper" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+              <table className="hr-data-table">
+                <thead>
+                  <tr>
+                    <th>Branch</th>
+                    <th>Date</th>
+                    <th>Daily Revenue</th>
+                    <th>Transactions</th>
+                    <th>Footfall / Leads</th>
+                    <th>Period-to-Date Rev</th>
+                    <th>MTD Tx</th>
+                    <th>ABV (MTD)</th>
+                    <th>Conversion (MTD)</th>
+                    <th>Complaints</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.length === 0 ? (
+                    <tr>
+                      <td colSpan="10" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '13.5px' }}>
+                        No records match search "{query}".
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRows.map((row, rIdx) => {
+                      const dailyRev = parseFloat(String(row.daily_revenue || row.revenue || 0).replace(/[^0-9.-]/g, '')) || 0;
+                      const ptdRev = parseFloat(String(row.period_to_date_revenue || 0).replace(/[^0-9.-]/g, '')) || 0;
+                      const txCount = row.transactions_count || row.transactions || '0';
+                      const footfall = row.footfall_or_leads || row.footfall || '0';
+                      const abvMtd = row.abv_mtd || row.abv_ftd || '-';
+                      const convMtd = row.conversion_pct_mtd || row.conversion_pct_ftd || '0%';
+                      const complaints = parseInt(row.customer_complaints_count || 0, 10);
+
+                      return (
+                        <tr key={row.branch ? `${row.branch}-${row.date}-${rIdx}` : rIdx}>
+                          <td style={{ fontWeight: 600, color: '#0f172a' }}>{row.branch || 'Branch'}</td>
+                          <td style={{ color: '#64748b', fontSize: '12.5px', fontFamily: 'monospace' }}>{row.date || 'N/A'}</td>
+                          <td style={{ fontWeight: 600, color: '#0ca678' }}>₹{Math.round(dailyRev).toLocaleString()}</td>
+                          <td style={{ fontWeight: 500 }}>{txCount}</td>
+                          <td style={{ color: '#64748b' }}>{footfall}</td>
+                          <td style={{ fontWeight: 500, color: '#1e293b' }}>
+                            {ptdRev > 0 ? `₹${Math.round(ptdRev).toLocaleString()}` : '-'}
+                          </td>
+                          <td style={{ color: '#475569' }}>{row.period_to_date_transactions_count || '-'}</td>
+                          <td style={{ color: '#475569' }}>{abvMtd !== '-' ? `₹${abvMtd}` : '-'}</td>
+                          <td>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', background: '#e6fcf5', padding: '2px 8px', borderRadius: '10px' }}>
+                              {convMtd}
+                            </span>
+                          </td>
+                          <td>
+                            {complaints > 0 ? (
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: '#ef4444', background: '#fef2f2', padding: '2px 8px', borderRadius: '10px' }}>
+                                {complaints} Alert
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontSize: '12px' }}>0</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Render Employee Digital Profiles Section
+  const renderEmployeesSection = (file, sectionNum) => {
+    const isCollapsed = Boolean(collapsedSections[file.id]);
+    const query = (sectionSearchQueries[file.id] || '').toLowerCase().trim();
+
+    const empList = displayedEmployees.length > 0 ? displayedEmployees : (file.data || []);
+    const filteredEmployees = query
+      ? empList.filter((e) =>
+          Object.values(e).some((val) => String(val || '').toLowerCase().includes(query))
+        )
+      : empList;
+
+    return (
+      <div className="hr-uploaded-section hr-dataset-card" key={file.id}>
+        <div className="hr-dataset-header">
+          <div className="hr-dataset-title-block">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="hr-section-badge">Section {sectionNum}</span>
+              <h2 className="hr-uploaded-title" style={{ margin: 0 }}>
+                {file.name}
+              </h2>
+              {isPromptFilterActive && (
+                <span style={{ fontSize: '11px', background: '#e6fcf5', color: '#0ca678', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                  Prompt Filter Active
+                </span>
+              )}
+            </div>
+            <p className="hr-dataset-subtitle">
+              Right Brain: Synced Employee Digital Profiles · Workforce telemetry, roles, branches & retention risk
+            </p>
+          </div>
+
+          <div className="hr-dataset-actions-block">
+            <span className="hr-records-count-pill">
+              ● {filteredEmployees.length} of {allEmployees.length || empList.length} Records In Scope
+            </span>
+
+            <div className="hr-section-search-wrapper">
+              <Search size={14} color="#94a3b8" />
+              <input
+                type="text"
+                placeholder="Search name, role, dept..."
+                value={sectionSearchQueries[file.id] || ''}
+                onChange={(e) => handleSectionSearchChange(file.id, e.target.value)}
+                className="hr-section-search-input"
+              />
+              {sectionSearchQueries[file.id] && (
+                <button
+                  type="button"
+                  className="hr-search-clear-btn"
+                  onClick={() => handleSectionSearchChange(file.id, '')}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {file.downloadUrl && (
+              <a
+                href={file.downloadUrl}
+                download
+                className="hr-dataset-btn-subtle"
+                title="Download CSV"
+              >
+                <Download size={14} />
+              </a>
+            )}
+
+            <button
+              type="button"
+              className="hr-dataset-btn-subtle"
+              onClick={() => handleToggleSectionCollapse(file.id)}
+              title={isCollapsed ? 'Expand Section' : 'Collapse Section'}
+            >
+              {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+            </button>
+          </div>
+        </div>
+
+        {!isCollapsed && (
+          <>
+            {/* Prompt Active Banner */}
+            {isPromptFilterActive && (
+              <div className="hr-prompt-active-banner">
+                <div className="hr-prompt-banner-left">
+                  <div className="hr-prompt-banner-icon">
+                    <Sparkles size={16} />
+                  </div>
+                  <div className="hr-prompt-banner-text">
+                    <h4>AI Focus Applied: "{activeAdminPrompt}"</h4>
+                    <p>
+                      Analyzing {syncedEmployees.length} matching profile{syncedEmployees.length === 1 ? '' : 's'} based on your instructions.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="hr-prompt-banner-actions">
+                  <button
+                    type="button"
+                    className="hr-prompt-banner-btn hr-prompt-banner-btn-secondary"
+                    onClick={() => setShowAllProfiles(!showAllProfiles)}
+                  >
+                    {showAllProfiles ? `Show Filtered (${syncedEmployees.length})` : `Show All (${allEmployees.length})`}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="hr-prompt-banner-btn hr-prompt-banner-btn-secondary"
+                    onClick={() => setShowRulesModal(true)}
+                  >
+                    <Edit3 size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                    <span>Change Prompt</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="hr-prompt-banner-btn"
+                    onClick={handleClearPromptFilter}
+                  >
+                    <RotateCcw size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                    <span>Clear Filter</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* In-Scope Overview Details Card */}
+            <div className="hr-prompt-inscope-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Layers size={16} color="#0ca678" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                    AI Analysis Details for this Focus
+                  </span>
+                  <span style={{ fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '10px' }}>
+                    {activeAdminPrompt ? `Prompt: ${activeAdminPrompt}` : 'Standard Autonomous Analysis'}
+                  </span>
+                </div>
+
+                {latestAnalysis?.healthScore && (
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', background: '#e6fcf5', padding: '3px 10px', borderRadius: '12px' }}>
+                    Composite Health: {latestAnalysis.healthScore}%
+                  </span>
+                )}
+              </div>
+
+              <div className="hr-inscope-metrics-row">
+                <div className="hr-inscope-metric-pill">
+                  <div className="hr-inscope-metric-label">In-Scope Profiles</div>
+                  <div className="hr-inscope-metric-val">{syncedEmployees.length || empList.length} Employees</div>
+                </div>
+                <div className="hr-inscope-metric-pill">
+                  <div className="hr-inscope-metric-label">Avg. In-Scope Salary</div>
+                  <div className="hr-inscope-metric-val">
+                    {empList.length > 0
+                      ? `$${Math.round(
+                          empList.reduce((sum, e) => sum + (parseFloat(String(e.salary || e.base_salary_monthly || 0).replace(/[$,]/g, '')) || 0), 0) /
+                            empList.length
+                        ).toLocaleString()}`
+                      : 'N/A'}
+                  </div>
+                </div>
+                <div className="hr-inscope-metric-pill">
+                  <div className="hr-inscope-metric-label">Overtime Logged</div>
+                  <div className="hr-inscope-metric-val">
+                    {empList.length > 0
+                      ? `${empList
+                          .reduce((sum, e) => sum + (parseFloat(String(e.ot || 0).replace(/[^0-9.]/g, '')) || 0), 0)
+                          .toFixed(1)} hrs`
+                      : '0 hrs'}
+                  </div>
+                </div>
+                <div className="hr-inscope-metric-pill">
+                  <div className="hr-inscope-metric-label">Risk Profile</div>
+                  <div className="hr-inscope-metric-val" style={{ color: empList.some((e) => (e.risk || '').includes('Critical') || (e.risk || '').includes('High')) ? '#e11d48' : '#16a34a' }}>
+                    {empList.filter((e) => (e.risk || '').includes('Critical') || (e.risk || '').includes('High')).length} High Risk
+                  </div>
+                </div>
+              </div>
+
+              {latestAnalysis?.attentionSummary && (
+                <p style={{ fontSize: '12.5px', color: '#475569', margin: '4px 0 0 0', lineHeight: 1.5, background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', borderLeft: '3px solid #0ca678' }}>
+                  <strong>AI Executive Insight:</strong> {latestAnalysis.attentionSummary}
+                </p>
+              )}
+            </div>
+
+            {/* Profiles Table */}
+            <div className="hr-table-wrapper" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+              <table className="hr-data-table">
+                <thead>
+                  <tr>
+                    <th>Emp ID</th>
+                    <th>Employee Name</th>
+                    <th>Role Title</th>
+                    <th>Branch</th>
+                    <th>Department</th>
+                    <th>Base Salary</th>
+                    <th>Overtime (Mo)</th>
+                    <th>Attendance</th>
+                    <th>Retention Risk</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan="9" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '13.5px' }}>
+                        No employee profiles match "{query || activeAdminPrompt}".
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEmployees.map((emp) => {
+                      const id = emp.id || emp.employee_id;
+                      const name = emp.name || emp.full_name;
+                      const role = emp.role || emp.role_id || 'Staff';
+                      const branch = emp.branch || 'HQ';
+                      const dept = emp.dept || emp.department || 'Operations';
+                      const salary = emp.salary || (emp.base_salary_monthly ? `$${parseFloat(emp.base_salary_monthly).toLocaleString()}` : 'N/A');
+                      const ot = emp.ot || '0 hrs';
+                      const att = emp.att || '100%';
+                      const risk = emp.risk || 'Low (Stable)';
+
+                      return (
+                        <tr key={id}>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>{id}</td>
+                          <td style={{ fontWeight: 600, color: '#1e293b' }}>{name}</td>
+                          <td style={{ fontWeight: 500, color: '#0ca678' }}>{role}</td>
+                          <td>{branch}</td>
+                          <td>{dept}</td>
+                          <td style={{ fontWeight: 500 }}>{salary}</td>
+                          <td style={{ color: parseFloat(ot) > 10 ? '#ef4444' : '#64748b', fontWeight: 500 }}>
+                            {ot}
+                          </td>
+                          <td>
+                            <span style={{ color: parseInt(att) < 90 ? '#f59e0b' : '#0ca678', fontWeight: 600 }}>
+                              {att}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                background: risk.includes('Critical') ? '#fef2f2' : risk.includes('High') ? '#fff1f2' : risk.includes('Medium') ? '#fffbeb' : '#f0fdf4',
+                                color: risk.includes('Critical') ? '#b91c1c' : risk.includes('High') ? '#e11d48' : risk.includes('Medium') ? '#d97706' : '#16a34a'
+                              }}
+                            >
+                              {risk}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Render Attendance & Roster Telemetry Section
+  const renderAttendanceSection = (file, sectionNum) => {
+    const isCollapsed = Boolean(collapsedSections[file.id]);
+    const query = (sectionSearchQueries[file.id] || '').toLowerCase().trim();
+    const rows = file.data || [];
+
+    const filteredRows = query
+      ? rows.filter((r) =>
+          Object.values(r).some((val) => String(val || '').toLowerCase().includes(query))
+        )
+      : rows;
+
+    const totalOt = rows.reduce(
+      (sum, r) => sum + (parseFloat(String(r.overtime_hours || r.ot || 0)) || 0),
+      0
+    );
+    const fatigueCount = rows.filter((r) => {
+      const rest = parseFloat(r.rest_interval_hours || r.rest || 12);
+      const ot = parseFloat(r.overtime_hours || r.ot || 0);
+      return rest < 11 || ot > 3;
+    }).length;
+
+    return (
+      <div className="hr-uploaded-section hr-dataset-card" key={file.id}>
+        <div className="hr-dataset-header">
+          <div className="hr-dataset-title-block">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="hr-section-badge">Section {sectionNum}</span>
+              <h2 className="hr-uploaded-title" style={{ margin: 0 }}>
+                {file.name}
+              </h2>
+            </div>
+            <p className="hr-dataset-subtitle">
+              Attendance & Roster Telemetry · Shift duration, overtime hours, and mandatory rest intervals
+            </p>
+          </div>
+
+          <div className="hr-dataset-actions-block">
+            <span className="hr-records-count-pill">
+              ● {filteredRows.length} of {rows.length} Shift Records
+            </span>
+
+            <div className="hr-section-search-wrapper">
+              <Search size={14} color="#94a3b8" />
+              <input
+                type="text"
+                placeholder="Search Emp ID, date..."
+                value={sectionSearchQueries[file.id] || ''}
+                onChange={(e) => handleSectionSearchChange(file.id, e.target.value)}
+                className="hr-section-search-input"
+              />
+              {sectionSearchQueries[file.id] && (
+                <button
+                  type="button"
+                  className="hr-search-clear-btn"
+                  onClick={() => handleSectionSearchChange(file.id, '')}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {file.downloadUrl && (
+              <a
+                href={file.downloadUrl}
+                download
+                className="hr-dataset-btn-subtle"
+                title="Download CSV"
+              >
+                <Download size={14} />
+              </a>
+            )}
+
+            <button
+              type="button"
+              className="hr-dataset-btn-subtle"
+              onClick={() => handleToggleSectionCollapse(file.id)}
+              title={isCollapsed ? 'Expand Section' : 'Collapse Section'}
+            >
+              {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+            </button>
+          </div>
+        </div>
+
+        {!isCollapsed && (
+          <>
+            <div className="hr-inscope-metrics-row">
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">Total Shift Records</div>
+                <div className="hr-inscope-metric-val">{rows.length} Shifts</div>
+              </div>
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">Total Overtime Logged</div>
+                <div className="hr-inscope-metric-val" style={{ color: totalOt > 50 ? '#ef4444' : '#0ca678' }}>
+                  {totalOt.toFixed(1)} hrs
+                </div>
+              </div>
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">Fatigue / Rest Alerts</div>
+                <div className="hr-inscope-metric-val" style={{ color: fatigueCount > 0 ? '#e11d48' : '#16a34a' }}>
+                  {fatigueCount} Violations
+                </div>
+              </div>
+            </div>
+
+            <div className="hr-table-wrapper" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+              <table className="hr-data-table">
+                <thead>
+                  <tr>
+                    <th>Emp ID</th>
+                    <th>Shift Date</th>
+                    <th>Scheduled Hours</th>
+                    <th>Productive Hours</th>
+                    <th>Overtime</th>
+                    <th>Rest Interval</th>
+                    <th>Compliance Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '13.5px' }}>
+                        No shift records match search "{query}".
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRows.map((r, idx) => {
+                      const empId = r.employee_id || r.id || r.emp_id || 'EMP';
+                      const date = r.shift_date || r.date || 'N/A';
+                      const sched = r.scheduled_hours || '8';
+                      const prod = r.actual_productive_hours || r.hours || '8';
+                      const ot = parseFloat(r.overtime_hours || r.ot || 0);
+                      const rest = parseFloat(r.rest_interval_hours || r.rest || 12);
+                      const isFatigued = rest < 11 || ot > 3;
+
+                      return (
+                        <tr key={`${empId}-${date}-${idx}`}>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>{empId}</td>
+                          <td style={{ color: '#64748b', fontSize: '12.5px' }}>{date}</td>
+                          <td>{sched} hrs</td>
+                          <td style={{ fontWeight: 500 }}>{prod} hrs</td>
+                          <td style={{ color: ot > 0 ? '#ef4444' : '#64748b', fontWeight: 500 }}>
+                            {ot > 0 ? `+${ot} hrs` : '0 hrs'}
+                          </td>
+                          <td style={{ color: rest < 11 ? '#ef4444' : '#0ca678', fontWeight: 600 }}>
+                            {rest} hrs
+                          </td>
+                          <td>
+                            {isFatigued ? (
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: '#b91c1c', background: '#fef2f2', padding: '2px 8px', borderRadius: '10px' }}>
+                                Fatigue Warning
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: '10px' }}>
+                                Compliant
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Render Generic / Other CSV Section
+  const renderGenericSection = (file, sectionNum) => {
+    const isCollapsed = Boolean(collapsedSections[file.id]);
+    const query = (sectionSearchQueries[file.id] || '').toLowerCase().trim();
+    const rows = file.data || [];
+    const cols = file.columns || (rows.length > 0 ? Object.keys(rows[0]) : []);
+
+    const filteredRows = query
+      ? rows.filter((r) =>
+          Object.values(r).some((val) => String(val || '').toLowerCase().includes(query))
+        )
+      : rows;
+
+    return (
+      <div className="hr-uploaded-section hr-dataset-card" key={file.id}>
+        <div className="hr-dataset-header">
+          <div className="hr-dataset-title-block">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="hr-section-badge">Section {sectionNum}</span>
+              <h2 className="hr-uploaded-title" style={{ margin: 0 }}>
+                {file.name}
+              </h2>
+            </div>
+            <p className="hr-dataset-subtitle">
+              Connected Dataset Telemetry · {cols.length} Columns, {rows.length} Records
+            </p>
+          </div>
+
+          <div className="hr-dataset-actions-block">
+            <span className="hr-records-count-pill">
+              ● {filteredRows.length} of {rows.length} Records
+            </span>
+
+            <div className="hr-section-search-wrapper">
+              <Search size={14} color="#94a3b8" />
+              <input
+                type="text"
+                placeholder="Search dataset..."
+                value={sectionSearchQueries[file.id] || ''}
+                onChange={(e) => handleSectionSearchChange(file.id, e.target.value)}
+                className="hr-section-search-input"
+              />
+              {sectionSearchQueries[file.id] && (
+                <button
+                  type="button"
+                  className="hr-search-clear-btn"
+                  onClick={() => handleSectionSearchChange(file.id, '')}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {file.downloadUrl && (
+              <a
+                href={file.downloadUrl}
+                download
+                className="hr-dataset-btn-subtle"
+                title="Download CSV"
+              >
+                <Download size={14} />
+              </a>
+            )}
+
+            <button
+              type="button"
+              className="hr-dataset-btn-subtle"
+              onClick={() => handleToggleSectionCollapse(file.id)}
+              title={isCollapsed ? 'Expand Section' : 'Collapse Section'}
+            >
+              {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+            </button>
+          </div>
+        </div>
+
+        {!isCollapsed && (
+          <div className="hr-table-wrapper" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+            <table className="hr-data-table">
+              <thead>
+                <tr>
+                  {cols.slice(0, 10).map((c) => (
+                    <th key={c}>{c.replace(/_/g, ' ').toUpperCase()}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={cols.length || 1} style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '13.5px' }}>
+                      No records match search "{query}".
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((r, idx) => (
+                    <tr key={idx}>
+                      {cols.slice(0, 10).map((c) => (
+                        <td key={c}>{String(r[c] ?? '-')}</td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="hr-data-container">
@@ -659,201 +1470,32 @@ export default function HrData() {
         </div>
       </div>
 
-      {/* 4. Right Brain Live Roster Section & Prompt Focus Overview */}
-      <div className="hr-uploaded-section" style={{ marginTop: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div>
-            <h2 className="hr-uploaded-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Right Brain: Synced Employee Digital Profiles</span>
-              {isPromptFilterActive && (
-                <span style={{ fontSize: '11px', background: '#e6fcf5', color: '#0ca678', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                  Prompt Filter Active
-                </span>
-              )}
-            </h2>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
-              Workforce telemetry parsed and correlated dynamically from your uploaded employee master and shift files.
-            </p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', background: '#e6fcf5', padding: '4px 12px', borderRadius: '16px' }}>
-              ● {displayedEmployees.length} of {allEmployees.length || displayedEmployees.length} Records In Scope
-            </span>
-          </div>
-        </div>
-
-        {/* Prompt Active Banner (if user entered a prompt) */}
-        {isPromptFilterActive && (
-          <div className="hr-prompt-active-banner">
-            <div className="hr-prompt-banner-left">
-              <div className="hr-prompt-banner-icon">
-                <Sparkles size={16} />
+      {/* 4. Connected Dataset Sections (One dedicated section per connected CSV file; if 2+ files, shows both details like 2 sections) */}
+      <div className="hr-connected-datasets-wrapper" style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
+        {uploadedFiles.length === 0 ? (
+          <div className="hr-uploaded-section hr-dataset-card hr-empty-dataset-card">
+            <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#f1f5f9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
+                <Database size={26} color="#64748b" />
               </div>
-              <div className="hr-prompt-banner-text">
-                <h4>AI Focus Applied: "{activeAdminPrompt}"</h4>
-                <p>
-                  Analyzing {syncedEmployees.length} matching profile{syncedEmployees.length === 1 ? '' : 's'} based on your instructions.
-                </p>
-              </div>
-            </div>
-
-            <div className="hr-prompt-banner-actions">
-              <button
-                type="button"
-                className="hr-prompt-banner-btn hr-prompt-banner-btn-secondary"
-                onClick={() => setShowAllProfiles(!showAllProfiles)}
-                title="Toggle between filtered profiles and all profiles"
-              >
-                {showAllProfiles ? `Show Filtered (${syncedEmployees.length})` : `Show All (${allEmployees.length})`}
-              </button>
-
-              <button
-                type="button"
-                className="hr-prompt-banner-btn hr-prompt-banner-btn-secondary"
-                onClick={() => setShowRulesModal(true)}
-              >
-                <Edit3 size={13} style={{ display: 'inline', marginRight: '4px' }} />
-                <span>Change Prompt</span>
-              </button>
-
-              <button
-                type="button"
-                className="hr-prompt-banner-btn"
-                onClick={handleClearPromptFilter}
-                title="Reset to default autonomous view"
-              >
-                <RotateCcw size={13} style={{ display: 'inline', marginRight: '4px' }} />
-                <span>Clear Filter</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* In-Scope Overview Details Card */}
-        {uploadedFiles.length > 0 && (
-          <div className="hr-prompt-inscope-card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Layers size={16} color="#0ca678" />
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                  AI Analysis Details for this Focus
-                </span>
-                <span style={{ fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '10px' }}>
-                  {activeAdminPrompt ? `Prompt: ${activeAdminPrompt}` : 'Standard Autonomous Analysis'}
-                </span>
-              </div>
-
-              {latestAnalysis?.healthScore && (
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', background: '#e6fcf5', padding: '3px 10px', borderRadius: '12px' }}>
-                  Composite Health: {latestAnalysis.healthScore}%
-                </span>
-              )}
-            </div>
-
-            <div className="hr-inscope-metrics-row">
-              <div className="hr-inscope-metric-pill">
-                <div className="hr-inscope-metric-label">In-Scope Profiles</div>
-                <div className="hr-inscope-metric-val">{syncedEmployees.length} Employees</div>
-              </div>
-              <div className="hr-inscope-metric-pill">
-                <div className="hr-inscope-metric-label">Avg. In-Scope Salary</div>
-                <div className="hr-inscope-metric-val">
-                  {syncedEmployees.length > 0
-                    ? `$${Math.round(
-                        syncedEmployees.reduce((sum, e) => sum + (parseFloat(String(e.salary).replace(/[$,]/g, '')) || 0), 0) /
-                          syncedEmployees.length
-                      ).toLocaleString()}`
-                    : 'N/A'}
-                </div>
-              </div>
-              <div className="hr-inscope-metric-pill">
-                <div className="hr-inscope-metric-label">Overtime Logged</div>
-                <div className="hr-inscope-metric-val">
-                  {syncedEmployees.length > 0
-                    ? `${syncedEmployees
-                        .reduce((sum, e) => sum + (parseFloat(String(e.ot).replace(/[^0-9.]/g, '')) || 0), 0)
-                        .toFixed(1)} hrs`
-                    : '0 hrs'}
-                </div>
-              </div>
-              <div className="hr-inscope-metric-pill">
-                <div className="hr-inscope-metric-label">Risk Profile</div>
-                <div className="hr-inscope-metric-val" style={{ color: syncedEmployees.some((e) => e.risk.includes('Critical') || e.risk.includes('High')) ? '#e11d48' : '#16a34a' }}>
-                  {syncedEmployees.filter((e) => e.risk.includes('Critical') || e.risk.includes('High')).length} High Risk
-                </div>
-              </div>
-            </div>
-
-            {latestAnalysis?.attentionSummary && (
-              <p style={{ fontSize: '12.5px', color: '#475569', margin: '4px 0 0 0', lineHeight: 1.5, background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', borderLeft: '3px solid #0ca678' }}>
-                <strong>AI Executive Insight:</strong> {latestAnalysis.attentionSummary}
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', margin: '0 0 6px 0' }}>
+                No Connected Datasets
+              </h3>
+              <p style={{ fontSize: '13px', color: '#64748b', maxWidth: '460px', margin: '0 auto', lineHeight: 1.5 }}>
+                Connect a Sales CSV, Employee Master, or Shift Roster above. Each connected CSV will automatically render its own dedicated, live telemetry section here.
               </p>
-            )}
+            </div>
           </div>
+        ) : (
+          uploadedFiles.map((file, idx) => {
+            const category = getDatasetCategory(file);
+            const sectionNum = idx + 1;
+            if (category === 'sales') return renderSalesSection(file, sectionNum);
+            if (category === 'employees') return renderEmployeesSection(file, sectionNum);
+            if (category === 'attendance') return renderAttendanceSection(file, sectionNum);
+            return renderGenericSection(file, sectionNum);
+          })
         )}
-
-        {/* Synced Profiles Table */}
-        <div className="hr-table-wrapper" style={{ maxHeight: '420px', overflowY: 'auto' }}>
-          <table className="hr-data-table">
-            <thead>
-              <tr>
-                <th>Emp ID</th>
-                <th>Employee Name</th>
-                <th>Role Title</th>
-                <th>Branch</th>
-                <th>Department</th>
-                <th>Base Salary</th>
-                <th>Overtime (Mo)</th>
-                <th>Attendance</th>
-                <th>Retention Risk</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayedEmployees.length === 0 ? (
-                <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '13.5px' }}>
-                    {isPromptFilterActive
-                      ? `No employee profiles match the prompt filter "${activeAdminPrompt}". Click "Show All" or "Change Prompt" above.`
-                      : 'No employee records synced. Upload an employee master dataset to populate live profiles.'}
-                  </td>
-                </tr>
-              ) : (
-                displayedEmployees.map((emp) => (
-                  <tr key={emp.id}>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>{emp.id}</td>
-                    <td style={{ fontWeight: 600, color: '#1e293b' }}>{emp.name}</td>
-                    <td style={{ fontWeight: 500, color: '#0ca678' }}>{emp.role}</td>
-                    <td>{emp.branch}</td>
-                    <td>{emp.dept}</td>
-                    <td style={{ fontWeight: 500 }}>{emp.salary}</td>
-                    <td style={{ color: parseFloat(emp.ot) > 10 ? '#ef4444' : '#64748b', fontWeight: 500 }}>
-                      {emp.ot}
-                    </td>
-                    <td>
-                      <span style={{ color: parseInt(emp.att) < 90 ? '#f59e0b' : '#0ca678', fontWeight: 600 }}>
-                        {emp.att}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          padding: '3px 8px',
-                          borderRadius: '12px',
-                          background: emp.risk.includes('Critical') ? '#fef2f2' : emp.risk.includes('High') ? '#fff1f2' : emp.risk.includes('Medium') ? '#fffbeb' : '#f0fdf4',
-                          color: emp.risk.includes('Critical') ? '#b91c1c' : emp.risk.includes('High') ? '#e11d48' : emp.risk.includes('Medium') ? '#d97706' : '#16a34a'
-                        }}
-                      >
-                        {emp.risk}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       {/* =========================================================================
