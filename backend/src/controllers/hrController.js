@@ -4,18 +4,111 @@ import { parseUploadedFile } from '../services/fileParserService.js';
 import { analyzeMultiFileHrData, identifyFileScope } from '../services/multiFileCorrelatorService.js';
 import { runClaudeDocumentAnalysis } from '../services/aiDocumentAnalyzerService.js';
 
-// Clean in-memory stores (strictly populated by actual file uploads)
+// In-memory stores (strictly populated by actual file uploads)
 let uploadedFilesStore = [];
 let latestAnalysis = null;
+let allSyncedEmployees = [];
 let cachedSyncedEmployees = [];
 let cachedEnterpriseAnalytics = null;
+let activeAdminPrompt = '';
+let activeCustomRules = null;
+
+/**
+ * Filter employees list based on prompt keywords and custom rules
+ */
+export const filterEmployeesByPrompt = (employees = [], prompt = '', customRules = null) => {
+  if (!employees || employees.length === 0) return [];
+  let filtered = [...employees];
+
+  // 1. Department filter from customRules
+  if (customRules?.targetDepartment && customRules.targetDepartment !== 'All') {
+    const dTarget = customRules.targetDepartment.toLowerCase();
+    filtered = filtered.filter((e) => (e.dept || '').toLowerCase().includes(dTarget));
+  }
+
+  // 2. Keyword/phrase filter from prompt
+  const p = (prompt || '').trim().toLowerCase();
+  if (p && !p.includes('no prompt') && !p.includes('all data') && !p.includes('show all')) {
+    // Check specific conditions: overtime
+    if (p.includes('overtime') || p.includes(' ot ')) {
+      const otMatch = filtered.filter((e) => {
+        const val = parseFloat(String(e.ot).replace(/[^0-9.]/g, '')) || 0;
+        return val > 0;
+      });
+      if (otMatch.length > 0) return otMatch;
+    }
+
+    // Check specific conditions: notice / resignation / exit
+    if (p.includes('notice') || p.includes('resigned') || p.includes('exit') || p.includes('attrition')) {
+      const exitMatch = filtered.filter((e) => {
+        const r = (e.risk || '').toLowerCase();
+        return r.includes('critical') || r.includes('high') || r.includes('notice') || r.includes('exit');
+      });
+      if (exitMatch.length > 0) return exitMatch;
+    }
+
+    // Strip filler phrases to isolate core target (e.g. "only show FASHION CONSULTANT data" -> "fashion consultant")
+    const cleaned = p
+      .replace(/\bonly show\b/gi, '')
+      .replace(/\bshow\b/gi, '')
+      .replace(/\bfocus on\b/gi, '')
+      .replace(/\bfilter by\b/gi, '')
+      .replace(/\bdata\b/gi, '')
+      .replace(/\bemployees?\b/gi, '')
+      .replace(/\bstaff\b/gi, '')
+      .replace(/\bprofiles?\b/gi, '')
+      .replace(/\bplease\b/gi, '')
+      .replace(/\ball\b/gi, '')
+      .trim();
+
+    if (cleaned.length > 0) {
+      // Direct substring match on role, dept, branch, name, or id
+      const exactMatch = filtered.filter((e) => {
+        const role = (e.role || '').toLowerCase();
+        const dept = (e.dept || '').toLowerCase();
+        const branch = (e.branch || '').toLowerCase();
+        const name = (e.name || '').toLowerCase();
+        const id = (e.id || '').toLowerCase();
+        return (
+          role.includes(cleaned) ||
+          dept.includes(cleaned) ||
+          branch.includes(cleaned) ||
+          name.includes(cleaned) ||
+          id.includes(cleaned)
+        );
+      });
+
+      if (exactMatch.length > 0) {
+        return exactMatch;
+      }
+
+      // Word-by-word token matching for multi-word queries
+      const tokens = cleaned.split(/\s+/).filter((t) => t.length > 2);
+      if (tokens.length > 0) {
+        const tokenMatch = filtered.filter((e) => {
+          const hay = `${e.role} ${e.dept} ${e.branch} ${e.name} ${e.id}`.toLowerCase();
+          return tokens.some((t) => hay.includes(t));
+        });
+        if (tokenMatch.length > 0) {
+          return tokenMatch;
+        }
+      }
+    }
+  }
+
+  return filtered;
+};
 
 /**
  * Recompute employee profiles and enterprise analytics dynamically from uploaded files
  */
-const recomputeAnalytics = async () => {
+const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = activeCustomRules) => {
+  activeAdminPrompt = prompt || '';
+  activeCustomRules = rules || null;
+
   if (uploadedFilesStore.length === 0) {
     latestAnalysis = null;
+    allSyncedEmployees = [];
     cachedSyncedEmployees = [];
     cachedEnterpriseAnalytics = null;
     return;
@@ -61,7 +154,7 @@ const recomputeAnalytics = async () => {
       });
     }
 
-    cachedSyncedEmployees = (empFile.parsedRows || []).map((e) => {
+    allSyncedEmployees = (empFile.parsedRows || []).map((e) => {
       const id = e.employee_id || e.id || e.emp_id || 'EMP';
       const stat = attMap[id] || { otHours: 0, totalHours: 0, records: 0, restIntervals: [] };
       const avgRest = stat.restIntervals.length ? (stat.restIntervals.reduce((a, b) => a + b, 0) / stat.restIntervals.length) : 12;
@@ -92,6 +185,9 @@ const recomputeAnalytics = async () => {
         risk
       };
     });
+
+    // Apply prompt & rule filtering to cached synced employees
+    cachedSyncedEmployees = filterEmployeesByPrompt(allSyncedEmployees, activeAdminPrompt, activeCustomRules);
   }
 
   // 2. Correlate Business Sales
@@ -118,7 +214,8 @@ const recomputeAnalytics = async () => {
       branchTx[b] = (branchTx[b] || 0) + tx;
     });
 
-    const totalPayroll = cachedSyncedEmployees.reduce((sum, e) => {
+    const activeEmpList = cachedSyncedEmployees.length > 0 ? cachedSyncedEmployees : allSyncedEmployees;
+    const totalPayroll = activeEmpList.reduce((sum, e) => {
       const num = parseFloat(String(e.salary).replace(/[$,]/g, '')) || 0;
       return sum + num;
     }, 0);
@@ -144,6 +241,7 @@ const recomputeAnalytics = async () => {
       },
       operations: {
         activeHeadcount: cachedSyncedEmployees.length,
+        totalHeadcount: allSyncedEmployees.length,
         totalOvertimeHours: attFile ? (attFile.parsedRows || []).reduce((sum, r) => sum + (parseFloat(r.overtime_hours || r.ot) || 0), 0).toFixed(1) : '0'
       },
       marketing: {
@@ -173,6 +271,9 @@ export const uploadHrFile = async (req, res) => {
       }
     }
 
+    activeAdminPrompt = adminPrompt;
+    activeCustomRules = customRules;
+
     // 1. Parse file content into tabular rows
     const parsedRows = await parseUploadedFile(filePath, originalname);
 
@@ -195,23 +296,23 @@ export const uploadHrFile = async (req, res) => {
 
     uploadedFilesStore.unshift(newFileRecord);
 
-    // 4. Recompute cross-correlated analytics
-    await recomputeAnalytics();
+    // 4. Recompute cross-correlated analytics with prompt and rules
+    await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
 
     // 5. Perform Multi-File Correlated AI Analysis using Claude
     let dynamicAnalysis = null;
     try {
       dynamicAnalysis = await runClaudeDocumentAnalysis({
         files: uploadedFilesStore,
-        customRules,
-        adminPrompt
+        customRules: activeCustomRules,
+        adminPrompt: activeAdminPrompt
       });
     } catch (aiErr) {
       console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
       dynamicAnalysis = await analyzeMultiFileHrData({
         files: uploadedFilesStore,
-        customRules,
-        adminPrompt
+        customRules: activeCustomRules,
+        adminPrompt: activeAdminPrompt
       });
     }
 
@@ -221,7 +322,10 @@ export const uploadHrFile = async (req, res) => {
       status: 'success',
       message: `File "${originalname}" analyzed dynamically by Claude AI across ${uploadedFilesStore.length} connected datasets.`,
       file: newFileRecord,
-      analysis: dynamicAnalysis
+      analysis: dynamicAnalysis,
+      activePrompt: activeAdminPrompt,
+      employeesCount: cachedSyncedEmployees.length,
+      totalEmployeesCount: allSyncedEmployees.length
     });
   } catch (error) {
     console.error('File upload & analysis error:', error);
@@ -318,12 +422,15 @@ export const deleteHrFile = async (req, res) => {
     uploadedFilesStore.splice(fileIndex, 1);
 
     if (uploadedFilesStore.length > 0) {
-      await recomputeAnalytics();
+      await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
       latestAnalysis = await analyzeMultiFileHrData({
-        files: uploadedFilesStore
+        files: uploadedFilesStore,
+        customRules: activeCustomRules,
+        adminPrompt: activeAdminPrompt
       });
     } else {
       latestAnalysis = null;
+      allSyncedEmployees = [];
       cachedSyncedEmployees = [];
       cachedEnterpriseAnalytics = null;
     }
@@ -342,13 +449,19 @@ export const deleteHrFile = async (req, res) => {
 export const getLatestHrAnalysis = (req, res) => {
   res.json({
     status: 'success',
-    data: latestAnalysis
+    data: latestAnalysis,
+    activePrompt: activeAdminPrompt,
+    customRules: activeCustomRules,
+    employeesCount: cachedSyncedEmployees.length,
+    totalEmployeesCount: allSyncedEmployees.length
   });
 };
 
 export const runCustomAiAnalysis = async (req, res) => {
   try {
-    const { adminPrompt, customRules } = req.body;
+    const { adminPrompt = '', customRules = null } = req.body;
+    activeAdminPrompt = adminPrompt;
+    activeCustomRules = customRules;
 
     if (uploadedFilesStore.length === 0) {
       return res.json({
@@ -358,19 +471,21 @@ export const runCustomAiAnalysis = async (req, res) => {
       });
     }
 
+    await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
+
     let dynamicAnalysis = null;
     try {
       dynamicAnalysis = await runClaudeDocumentAnalysis({
         files: uploadedFilesStore,
-        customRules,
-        adminPrompt
+        customRules: activeCustomRules,
+        adminPrompt: activeAdminPrompt
       });
     } catch (aiErr) {
       console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
       dynamicAnalysis = await analyzeMultiFileHrData({
         files: uploadedFilesStore,
-        customRules,
-        adminPrompt
+        customRules: activeCustomRules,
+        adminPrompt: activeAdminPrompt
       });
     }
 
@@ -378,7 +493,11 @@ export const runCustomAiAnalysis = async (req, res) => {
 
     res.json({
       status: 'success',
-      data: dynamicAnalysis
+      data: dynamicAnalysis,
+      activePrompt: activeAdminPrompt,
+      customRules: activeCustomRules,
+      employeesCount: cachedSyncedEmployees.length,
+      totalEmployeesCount: allSyncedEmployees.length
     });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
@@ -386,10 +505,20 @@ export const runCustomAiAnalysis = async (req, res) => {
 };
 
 export const getSyncedEmployees = (req, res) => {
+  const { all, prompt } = req.query;
+  const p = prompt !== undefined ? prompt : activeAdminPrompt;
+  const list = all === 'true'
+    ? allSyncedEmployees
+    : filterEmployeesByPrompt(allSyncedEmployees, p, activeCustomRules);
+
   res.json({
     status: 'success',
-    count: cachedSyncedEmployees.length,
-    data: cachedSyncedEmployees
+    count: list.length,
+    totalCount: allSyncedEmployees.length,
+    activePrompt: activeAdminPrompt,
+    customRules: activeCustomRules,
+    data: list,
+    allEmployees: allSyncedEmployees
   });
 };
 
@@ -402,5 +531,8 @@ export const getEnterpriseAnalytics = (req, res) => {
 
 export const getCachedEnterpriseAnalytics = () => cachedEnterpriseAnalytics;
 export const getCachedSyncedEmployees = () => cachedSyncedEmployees;
+export const getAllSyncedEmployees = () => allSyncedEmployees;
 export const getCachedLatestAnalysis = () => latestAnalysis;
 export const getUploadedFilesStore = () => uploadedFilesStore;
+export const getActiveAdminPrompt = () => activeAdminPrompt;
+export const getActiveCustomRules = () => activeCustomRules;

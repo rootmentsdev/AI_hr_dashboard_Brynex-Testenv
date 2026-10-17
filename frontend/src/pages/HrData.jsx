@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   FileText,
   Plus,
-  Link,
   Trash2,
   X,
   Eye,
@@ -13,7 +12,14 @@ import {
   Sliders,
   Sparkles,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  Database,
+  Check,
+  RotateCcw,
+  Edit3,
+  Filter,
+  Info,
+  Layers
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './HrData.css';
@@ -23,7 +29,8 @@ export default function HrData() {
   const fileInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  
+  const [isRecalculating, setIsRecalculating] = useState(false);
+
   // Modals state
   const [showSheetModal, setShowSheetModal] = useState(false);
   const [sheetUrl, setSheetUrl] = useState('');
@@ -31,8 +38,18 @@ export default function HrData() {
   const [previewFile, setPreviewFile] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
+  // Pre-connection Prompt Modal State
+  const [showPromptConfirmModal, setShowPromptConfirmModal] = useState(false);
+  const [pendingUpload, setPendingUpload] = useState(null); // { file: File, type: 'file' }
+  const [confirmModalChoice, setConfirmModalChoice] = useState('none'); // 'none' | 'active' | 'saved' | 'custom'
+  const [confirmModalPromptText, setConfirmModalPromptText] = useState('');
+  const [confirmModalSelectedPromptId, setConfirmModalSelectedPromptId] = useState('');
+  const [confirmModalSaveToDb, setConfirmModalSaveToDb] = useState(false);
+  const [confirmModalNewTitle, setConfirmModalNewTitle] = useState('');
+
   // Admin Custom Rules & Manual Selection Options
   const [adminPrompt, setAdminPrompt] = useState('');
+  const [activeAdminPrompt, setActiveAdminPrompt] = useState('');
   const [targetAttrition, setTargetAttrition] = useState('5.0');
   const [targetProductivity, setTargetProductivity] = useState('90');
   const [targetDepartment, setTargetDepartment] = useState('All');
@@ -40,9 +57,32 @@ export default function HrData() {
   const [calculationMode, setCalculationMode] = useState('hybrid'); // 'hybrid' | 'manual' | 'autonomous'
   const [timeHorizon, setTimeHorizon] = useState('01-30 Sep 2026');
 
-  // File records list
+  // Saved Prompts from MongoDB Atlas
+  const [savedPrompts, setSavedPrompts] = useState([]);
+  const [activeSavedPromptId, setActiveSavedPromptId] = useState(null);
+  const [newPromptTitle, setNewPromptTitle] = useState('');
+  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
+
+  // File records & Synced Employee Profiles list
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [syncedEmployees, setSyncedEmployees] = useState([]);
+  const [allEmployees, setAllEmployees] = useState([]);
+  const [showAllProfiles, setShowAllProfiles] = useState(false);
+  const [latestAnalysis, setLatestAnalysis] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  // Fetch saved prompts from MongoDB Atlas
+  const fetchPrompts = async () => {
+    try {
+      const res = await fetch('/api/prompts');
+      const data = await res.json();
+      if (data.status === 'success' && Array.isArray(data.prompts)) {
+        setSavedPrompts(data.prompts);
+      }
+    } catch (err) {
+      console.warn('Could not fetch prompts from MongoDB:', err);
+    }
+  };
 
   // Fetch existing uploaded files from backend
   const fetchFiles = async () => {
@@ -62,26 +102,61 @@ export default function HrData() {
     try {
       const res = await fetch('/api/hr/employees');
       const data = await res.json();
-      if (data.status === 'success' && data.data) {
-        setSyncedEmployees(data.data);
+      if (data.status === 'success') {
+        setSyncedEmployees(data.data || []);
+        setAllEmployees(data.allEmployees || data.data || []);
+        if (data.activePrompt) {
+          setActiveAdminPrompt(data.activePrompt);
+          setAdminPrompt(data.activePrompt);
+        }
       }
     } catch (err) {
       console.warn('Could not fetch backend employees:', err);
     }
   };
 
+  // Fetch latest AI analysis from backend
+  const fetchAnalysis = async () => {
+    try {
+      const res = await fetch('/api/hr/analysis');
+      const data = await res.json();
+      if (data.status === 'success' && data.data) {
+        setLatestAnalysis(data.data);
+        if (data.activePrompt) {
+          setActiveAdminPrompt(data.activePrompt);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch analysis:', err);
+    }
+  };
+
   useEffect(() => {
+    fetchPrompts();
     fetchFiles();
     fetchEmployees();
+    fetchAnalysis();
   }, []);
 
-  const handleUploadFile = async (file) => {
+  // Open the pre-connection modal before uploading
+  const openPromptConfirmModal = (file) => {
+    setPendingUpload({ file });
+    setConfirmModalChoice('none'); // Default: No prompt needed
+    setConfirmModalPromptText(activeAdminPrompt || '');
+    setConfirmModalSelectedPromptId(savedPrompts[0]?._id || '');
+    setConfirmModalSaveToDb(false);
+    setConfirmModalNewTitle('');
+    setShowPromptConfirmModal(true);
+  };
+
+  // Upload file execution
+  const executeUpload = async (file, promptToSend) => {
     if (!file) return;
     setIsUploading(true);
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('adminPrompt', adminPrompt);
+    formData.append('adminPrompt', promptToSend || '');
     formData.append(
       'customRules',
       JSON.stringify({
@@ -102,11 +177,19 @@ export default function HrData() {
       const data = await res.json();
 
       if (data.status === 'success') {
+        setActiveAdminPrompt(promptToSend || '');
+        setAdminPrompt(promptToSend || '');
         await fetchFiles();
         await fetchEmployees();
-        if (window.confirm(`File "${file.name}" analyzed by AI!\nWould you like to open the HR Intelligence Dashboard now?`)) {
-          navigate('/intelligence/hr');
-        }
+        await fetchAnalysis();
+        setShowPromptConfirmModal(false);
+        setPendingUpload(null);
+
+        setToast({
+          title: `File "${file.name}" Ingested & Analyzed`,
+          message: `Workforce dataset correlated. Prompt applied: "${promptToSend || 'Standard Autonomous Analysis'}".`,
+          showViewDashboard: true
+        });
       } else {
         alert(data.message || 'Upload failed');
       }
@@ -118,10 +201,55 @@ export default function HrData() {
     }
   };
 
+  // Handle user confirming their prompt in the pre-connection modal
+  const handleConfirmPromptAndConnect = async () => {
+    if (!pendingUpload?.file) return;
+
+    let chosenPrompt = '';
+    if (confirmModalChoice === 'none') {
+      chosenPrompt = '';
+    } else if (confirmModalChoice === 'active') {
+      chosenPrompt = activeAdminPrompt;
+    } else if (confirmModalChoice === 'saved') {
+      const found = savedPrompts.find((p) => p._id === confirmModalSelectedPromptId);
+      chosenPrompt = found ? found.promptText : '';
+    } else if (confirmModalChoice === 'custom') {
+      chosenPrompt = confirmModalPromptText.trim();
+
+      // If user opted to save to MongoDB Atlas
+      if (confirmModalSaveToDb && chosenPrompt) {
+        try {
+          await fetch('/api/prompts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: confirmModalNewTitle.trim() || undefined,
+              promptText: chosenPrompt,
+              customRules: {
+                targetAttrition: parseFloat(targetAttrition) || 5.0,
+                targetProductivity: parseFloat(targetProductivity) || 90,
+                targetDepartment,
+                focusPriority,
+                calculationMode,
+                timeHorizon
+              }
+            })
+          });
+          await fetchPrompts();
+        } catch (err) {
+          console.warn('Could not save prompt to MongoDB:', err);
+        }
+      }
+    }
+
+    await executeUpload(pendingUpload.file, chosenPrompt);
+  };
+
   const handleFileSelect = (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      handleUploadFile(files[0]);
+      openPromptConfirmModal(files[0]);
+      e.target.value = '';
     }
   };
 
@@ -130,7 +258,7 @@ export default function HrData() {
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      handleUploadFile(files[0]);
+      openPromptConfirmModal(files[0]);
     }
   };
 
@@ -151,13 +279,171 @@ export default function HrData() {
       const text = await response.text();
       const blob = new Blob([text], { type: 'text/csv' });
       const file = new File([blob], 'Google_Sheet_Export.csv', { type: 'text/csv' });
-      await handleUploadFile(file);
-      setSheetUrl('');
       setShowSheetModal(false);
+      setSheetUrl('');
+      openPromptConfirmModal(file);
     } catch (err) {
       alert(err.message || 'Error fetching sheet. Please download it as a CSV and upload it directly.');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  // Save current prompt to MongoDB Atlas
+  const handleSaveCurrentPromptToAtlas = async () => {
+    if (!adminPrompt.trim()) {
+      alert('Please enter prompt text before saving.');
+      return;
+    }
+
+    setIsSavingPrompt(true);
+    try {
+      const res = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newPromptTitle.trim() || undefined,
+          promptText: adminPrompt.trim(),
+          customRules: {
+            targetAttrition: parseFloat(targetAttrition) || 5.0,
+            targetProductivity: parseFloat(targetProductivity) || 90,
+            targetDepartment,
+            focusPriority,
+            calculationMode,
+            timeHorizon
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        await fetchPrompts();
+        setActiveSavedPromptId(data.prompt._id);
+        setNewPromptTitle('');
+        alert(`Saved successfully to MongoDB Atlas as "${data.prompt.title}"!`);
+      } else {
+        alert(data.message || 'Error saving prompt to database.');
+      }
+    } catch (err) {
+      console.error('Error saving prompt:', err);
+      alert('Failed to connect to MongoDB backend.');
+    } finally {
+      setIsSavingPrompt(false);
+    }
+  };
+
+  // Delete prompt from MongoDB Atlas
+  const handleDeleteSavedPrompt = async (e, promptId) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this prompt from MongoDB Atlas?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/prompts/${promptId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.status === 'success') {
+        if (activeSavedPromptId === promptId) {
+          setActiveSavedPromptId(null);
+        }
+        await fetchPrompts();
+      }
+    } catch (err) {
+      alert('Error deleting prompt.');
+    }
+  };
+
+  // Load a saved prompt into the rules modal
+  const handleSelectSavedPrompt = (prompt) => {
+    setActiveSavedPromptId(prompt._id);
+    setAdminPrompt(prompt.promptText);
+    if (prompt.customRules) {
+      if (prompt.customRules.targetAttrition !== undefined) setTargetAttrition(String(prompt.customRules.targetAttrition));
+      if (prompt.customRules.targetProductivity !== undefined) setTargetProductivity(String(prompt.customRules.targetProductivity));
+      if (prompt.customRules.targetDepartment) setTargetDepartment(prompt.customRules.targetDepartment);
+      if (prompt.customRules.focusPriority) setFocusPriority(prompt.customRules.focusPriority);
+      if (prompt.customRules.calculationMode) setCalculationMode(prompt.customRules.calculationMode);
+      if (prompt.customRules.timeHorizon) setTimeHorizon(prompt.customRules.timeHorizon);
+    }
+  };
+
+  // Reset to "No Prompt (Default)"
+  const handleSelectNoPrompt = () => {
+    setActiveSavedPromptId(null);
+    setAdminPrompt('');
+  };
+
+  // Apply & Re-calculate with prompt and rules
+  const handleApplyRules = async () => {
+    setIsRecalculating(true);
+    try {
+      const res = await fetch('/api/hr/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminPrompt,
+          customRules: {
+            targetAttrition: parseFloat(targetAttrition) || 5.0,
+            targetProductivity: parseFloat(targetProductivity) || 90,
+            targetDepartment,
+            focusPriority,
+            calculationMode,
+            timeHorizon
+          }
+        })
+      });
+      const json = await res.json();
+      setShowRulesModal(false);
+
+      if (json.status === 'success') {
+        setActiveAdminPrompt(adminPrompt);
+        setShowAllProfiles(false);
+        await fetchEmployees();
+        setToast({
+          title: 'AI Prompt & Rules Applied',
+          message: adminPrompt ? `In-scope profiles and AI analysis updated for: "${adminPrompt}".` : 'Autonomous AI analysis re-calculated across all profiles.',
+          showViewDashboard: true
+        });
+      }
+    } catch (err) {
+      console.error('Failed to apply manual rules:', err);
+      alert('Error re-calculating analysis.');
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
+
+  // Clear prompt filter and show all records
+  const handleClearPromptFilter = async () => {
+    try {
+      setIsRecalculating(true);
+      const res = await fetch('/api/hr/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminPrompt: '',
+          customRules: {
+            targetAttrition: parseFloat(targetAttrition) || 5.0,
+            targetProductivity: parseFloat(targetProductivity) || 90,
+            targetDepartment: 'All',
+            focusPriority: 'All',
+            calculationMode,
+            timeHorizon
+          }
+        })
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        setActiveAdminPrompt('');
+        setAdminPrompt('');
+        setActiveSavedPromptId(null);
+        setShowAllProfiles(true);
+        await fetchEmployees();
+        await fetchAnalysis();
+      }
+    } catch (err) {
+      console.error('Error clearing filter:', err);
+    } finally {
+      setIsRecalculating(false);
     }
   };
 
@@ -195,6 +481,8 @@ export default function HrData() {
           setPreviewFile(null);
         }
         await fetchFiles();
+        await fetchEmployees();
+        await fetchAnalysis();
       } else {
         alert(data.message || 'Error deleting file.');
       }
@@ -203,6 +491,10 @@ export default function HrData() {
       alert('Error deleting file from server.');
     }
   };
+
+  // Determine which employees to display in the table
+  const displayedEmployees = showAllProfiles ? allEmployees : syncedEmployees;
+  const isPromptFilterActive = Boolean(activeAdminPrompt && activeAdminPrompt.trim());
 
   return (
     <div className="hr-data-container">
@@ -213,15 +505,24 @@ export default function HrData() {
           <p>Start with spreadsheets. Connect live systems when you are ready.</p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* MongoDB Atlas Status Pill */}
+          <span className="hr-mongo-pill" title="MongoDB Atlas connection active">
+            <Database size={13} color="#059669" />
+            <span>Atlas Connected</span>
+          </span>
+
           <button
             type="button"
             className="hr-admin-rules-btn"
             onClick={() => setShowRulesModal(true)}
-            title="Configure analysis parameters"
+            title="Configure analysis parameters & saved prompts"
           >
             <Sliders size={15} />
             <span>AI & Admin Rules</span>
+            {isPromptFilterActive && (
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#0ca678' }} />
+            )}
           </button>
 
           <button
@@ -259,7 +560,7 @@ export default function HrData() {
           {isUploading ? <Loader2 size={24} className="spin" /> : <UploadCloud size={24} />}
         </div>
         <h3 className="hr-upload-title">
-          {isUploading ? 'Scanning & Analyzing with AI...' : 'Drop a CSV, Excel, PDF or paste a Google Sheets link'}
+          {isUploading ? 'Scanning & Ingesting Dataset...' : 'Drop a CSV, Excel, PDF or paste a Google Sheets link'}
         </h3>
         <p className="hr-upload-subtitle">
           Employees, attendance and branch revenue are the three files the HR Brain needs first.
@@ -358,22 +659,140 @@ export default function HrData() {
         </div>
       </div>
 
-      {/* 4. Right Brain Live Roster Section */}
+      {/* 4. Right Brain Live Roster Section & Prompt Focus Overview */}
       <div className="hr-uploaded-section" style={{ marginTop: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h2 className="hr-uploaded-title" style={{ margin: 0 }}>
-              Right Brain: Synced Employee Digital Profiles
+            <h2 className="hr-uploaded-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Right Brain: Synced Employee Digital Profiles</span>
+              {isPromptFilterActive && (
+                <span style={{ fontSize: '11px', background: '#e6fcf5', color: '#0ca678', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                  Prompt Filter Active
+                </span>
+              )}
             </h2>
             <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
               Workforce telemetry parsed and correlated dynamically from your uploaded employee master and shift files.
             </p>
           </div>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', background: '#e6fcf5', padding: '4px 12px', borderRadius: '16px' }}>
-            ● {syncedEmployees.length} Live Records Synced
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', background: '#e6fcf5', padding: '4px 12px', borderRadius: '16px' }}>
+              ● {displayedEmployees.length} of {allEmployees.length || displayedEmployees.length} Records In Scope
+            </span>
+          </div>
         </div>
 
+        {/* Prompt Active Banner (if user entered a prompt) */}
+        {isPromptFilterActive && (
+          <div className="hr-prompt-active-banner">
+            <div className="hr-prompt-banner-left">
+              <div className="hr-prompt-banner-icon">
+                <Sparkles size={16} />
+              </div>
+              <div className="hr-prompt-banner-text">
+                <h4>AI Focus Applied: "{activeAdminPrompt}"</h4>
+                <p>
+                  Analyzing {syncedEmployees.length} matching profile{syncedEmployees.length === 1 ? '' : 's'} based on your instructions.
+                </p>
+              </div>
+            </div>
+
+            <div className="hr-prompt-banner-actions">
+              <button
+                type="button"
+                className="hr-prompt-banner-btn hr-prompt-banner-btn-secondary"
+                onClick={() => setShowAllProfiles(!showAllProfiles)}
+                title="Toggle between filtered profiles and all profiles"
+              >
+                {showAllProfiles ? `Show Filtered (${syncedEmployees.length})` : `Show All (${allEmployees.length})`}
+              </button>
+
+              <button
+                type="button"
+                className="hr-prompt-banner-btn hr-prompt-banner-btn-secondary"
+                onClick={() => setShowRulesModal(true)}
+              >
+                <Edit3 size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                <span>Change Prompt</span>
+              </button>
+
+              <button
+                type="button"
+                className="hr-prompt-banner-btn"
+                onClick={handleClearPromptFilter}
+                title="Reset to default autonomous view"
+              >
+                <RotateCcw size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                <span>Clear Filter</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* In-Scope Overview Details Card */}
+        {uploadedFiles.length > 0 && (
+          <div className="hr-prompt-inscope-card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Layers size={16} color="#0ca678" />
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                  AI Analysis Details for this Focus
+                </span>
+                <span style={{ fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '10px' }}>
+                  {activeAdminPrompt ? `Prompt: ${activeAdminPrompt}` : 'Standard Autonomous Analysis'}
+                </span>
+              </div>
+
+              {latestAnalysis?.healthScore && (
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#0ca678', background: '#e6fcf5', padding: '3px 10px', borderRadius: '12px' }}>
+                  Composite Health: {latestAnalysis.healthScore}%
+                </span>
+              )}
+            </div>
+
+            <div className="hr-inscope-metrics-row">
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">In-Scope Profiles</div>
+                <div className="hr-inscope-metric-val">{syncedEmployees.length} Employees</div>
+              </div>
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">Avg. In-Scope Salary</div>
+                <div className="hr-inscope-metric-val">
+                  {syncedEmployees.length > 0
+                    ? `$${Math.round(
+                        syncedEmployees.reduce((sum, e) => sum + (parseFloat(String(e.salary).replace(/[$,]/g, '')) || 0), 0) /
+                          syncedEmployees.length
+                      ).toLocaleString()}`
+                    : 'N/A'}
+                </div>
+              </div>
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">Overtime Logged</div>
+                <div className="hr-inscope-metric-val">
+                  {syncedEmployees.length > 0
+                    ? `${syncedEmployees
+                        .reduce((sum, e) => sum + (parseFloat(String(e.ot).replace(/[^0-9.]/g, '')) || 0), 0)
+                        .toFixed(1)} hrs`
+                    : '0 hrs'}
+                </div>
+              </div>
+              <div className="hr-inscope-metric-pill">
+                <div className="hr-inscope-metric-label">Risk Profile</div>
+                <div className="hr-inscope-metric-val" style={{ color: syncedEmployees.some((e) => e.risk.includes('Critical') || e.risk.includes('High')) ? '#e11d48' : '#16a34a' }}>
+                  {syncedEmployees.filter((e) => e.risk.includes('Critical') || e.risk.includes('High')).length} High Risk
+                </div>
+              </div>
+            </div>
+
+            {latestAnalysis?.attentionSummary && (
+              <p style={{ fontSize: '12.5px', color: '#475569', margin: '4px 0 0 0', lineHeight: 1.5, background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', borderLeft: '3px solid #0ca678' }}>
+                <strong>AI Executive Insight:</strong> {latestAnalysis.attentionSummary}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Synced Profiles Table */}
         <div className="hr-table-wrapper" style={{ maxHeight: '420px', overflowY: 'auto' }}>
           <table className="hr-data-table">
             <thead>
@@ -390,18 +809,20 @@ export default function HrData() {
               </tr>
             </thead>
             <tbody>
-              {syncedEmployees.length === 0 ? (
+              {displayedEmployees.length === 0 ? (
                 <tr>
                   <td colSpan="9" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '13.5px' }}>
-                    No employee records synced. Upload an employee master dataset to populate live profiles.
+                    {isPromptFilterActive
+                      ? `No employee profiles match the prompt filter "${activeAdminPrompt}". Click "Show All" or "Change Prompt" above.`
+                      : 'No employee records synced. Upload an employee master dataset to populate live profiles.'}
                   </td>
                 </tr>
               ) : (
-                syncedEmployees.map((emp) => (
+                displayedEmployees.map((emp) => (
                   <tr key={emp.id}>
                     <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>{emp.id}</td>
                     <td style={{ fontWeight: 600, color: '#1e293b' }}>{emp.name}</td>
-                    <td>{emp.role}</td>
+                    <td style={{ fontWeight: 500, color: '#0ca678' }}>{emp.role}</td>
                     <td>{emp.branch}</td>
                     <td>{emp.dept}</td>
                     <td style={{ fontWeight: 500 }}>{emp.salary}</td>
@@ -435,110 +856,280 @@ export default function HrData() {
         </div>
       </div>
 
-      {/* Preview Modal */}
-      {previewFile && (
-        <div className="hr-modal-overlay" onClick={() => setPreviewFile(null)}>
-          <div className="hr-modal-card hr-preview-modal-card" onClick={(e) => e.stopPropagation()}>
+      {/* =========================================================================
+          5. PRE-CONNECTION PROMPT CONFIRMATION MODAL
+          Automatically asks user to configure or skip prompt before connecting
+      ========================================================================= */}
+      {showPromptConfirmModal && pendingUpload && (
+        <div className="hr-modal-overlay" onClick={() => !isUploading && setShowPromptConfirmModal(false)}>
+          <div className="hr-prompt-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="hr-modal-header">
-              <div>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <FileSpreadsheet size={18} color="#0ca678" />
-                  <span>{previewFile.name}</span>
-                </h3>
-                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                  Previewing {previewFile.data?.length || 0} rows of {previewFile.rowsCount || previewFile.data?.length || 0} total records
-                </p>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sparkles size={18} color="#0ca678" />
+                <span>Configure AI Prompt Before Connecting Document</span>
+              </h3>
+              <button
+                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => !isUploading && setShowPromptConfirmModal(false)}
+                disabled={isUploading}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <FileSpreadsheet size={16} color="#0ca678" />
+              <div style={{ flex: 1, fontSize: '12.5px', color: '#1e293b' }}>
+                Connecting: <strong>{pendingUpload.file?.name}</strong> ({((pendingUpload.file?.size || 0) / 1024).toFixed(1)} KB)
+              </div>
+              <span className="hr-mongo-pill">
+                <Database size={12} />
+                <span>MongoDB Atlas</span>
+              </span>
+            </div>
+
+            <p style={{ fontSize: '12.5px', color: '#64748b', margin: 0 }}>
+              How would you like the AI to analyze this document? You can proceed with no prompt, use the active one, or pick a saved prompt:
+            </p>
+
+            <div className="hr-prompt-choice-list">
+              {/* Option 1: No Prompt Needed (Default) */}
+              <div
+                className={`hr-prompt-choice-card ${confirmModalChoice === 'none' ? 'selected' : ''}`}
+                onClick={() => setConfirmModalChoice('none')}
+              >
+                <div className="hr-prompt-radio-dot">
+                  {confirmModalChoice === 'none' && <div className="hr-prompt-radio-inner" />}
+                </div>
+                <div className="hr-prompt-choice-content">
+                  <div className="hr-prompt-choice-header">
+                    <span className="hr-prompt-choice-title">No prompt needed</span>
+                    <span className="hr-prompt-badge-default">Default</span>
+                  </div>
+                  <p className="hr-prompt-choice-desc">
+                    Perform autonomous AI analysis across all workforce data and detect universal management benchmarks automatically.
+                  </p>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <a
-                  href={`/api/hr/files/${previewFile.savedFilename || previewFile.name}/download`}
-                  className="hr-action-icon-btn"
-                  download
-                  title="Download raw file"
+              {/* Option 2: Use Same / Active Prompt (if one exists) */}
+              {activeAdminPrompt && (
+                <div
+                  className={`hr-prompt-choice-card ${confirmModalChoice === 'active' ? 'selected' : ''}`}
+                  onClick={() => setConfirmModalChoice('active')}
                 >
-                  <Download size={14} />
-                  <span>Download</span>
-                </a>
-                <button
-                  type="button"
-                  className="hr-action-icon-btn hr-action-danger-btn"
-                  onClick={(e) => handleDeleteFile(e, previewFile)}
-                  title="Delete file from server"
+                  <div className="hr-prompt-radio-dot">
+                    {confirmModalChoice === 'active' && <div className="hr-prompt-radio-inner" />}
+                  </div>
+                  <div className="hr-prompt-choice-content">
+                    <div className="hr-prompt-choice-header">
+                      <span className="hr-prompt-choice-title">Use Active Prompt</span>
+                      <span className="hr-prompt-badge-active">Currently Active</span>
+                    </div>
+                    <p className="hr-prompt-choice-desc">
+                      "{activeAdminPrompt}"
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Option 3: Choose from Saved Prompts */}
+              {savedPrompts.length > 0 && (
+                <div
+                  className={`hr-prompt-choice-card ${confirmModalChoice === 'saved' ? 'selected' : ''}`}
+                  onClick={() => setConfirmModalChoice('saved')}
                 >
-                  <Trash2 size={14} />
-                  <span>Delete</span>
-                </button>
-                <button
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
-                  onClick={() => setPreviewFile(null)}
-                >
-                  <X size={18} />
-                </button>
+                  <div className="hr-prompt-radio-dot">
+                    {confirmModalChoice === 'saved' && <div className="hr-prompt-radio-inner" />}
+                  </div>
+                  <div className="hr-prompt-choice-content">
+                    <div className="hr-prompt-choice-header">
+                      <span className="hr-prompt-choice-title">Select from Saved Prompts ({savedPrompts.length})</span>
+                    </div>
+                    <p className="hr-prompt-choice-desc">
+                      Choose a previously saved prompt from MongoDB Atlas:
+                    </p>
+
+                    {confirmModalChoice === 'saved' && (
+                      <div style={{ marginTop: '8px' }} onClick={(e) => e.stopPropagation()}>
+                        <select
+                          className="hr-modal-input"
+                          value={confirmModalSelectedPromptId}
+                          onChange={(e) => setConfirmModalSelectedPromptId(e.target.value)}
+                          style={{ background: '#fff' }}
+                        >
+                          {savedPrompts.map((p) => (
+                            <option key={p._id} value={p._id}>
+                              {p.title}: "{p.promptText.substring(0, 50)}..."
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Option 4: Enter New Custom Prompt */}
+              <div
+                className={`hr-prompt-choice-card ${confirmModalChoice === 'custom' ? 'selected' : ''}`}
+                onClick={() => setConfirmModalChoice('custom')}
+              >
+                <div className="hr-prompt-radio-dot">
+                  {confirmModalChoice === 'custom' && <div className="hr-prompt-radio-inner" />}
+                </div>
+                <div className="hr-prompt-choice-content">
+                  <div className="hr-prompt-choice-header">
+                    <span className="hr-prompt-choice-title">Write New Custom Prompt</span>
+                  </div>
+                  <p className="hr-prompt-choice-desc">
+                    Provide manual focus instructions for Claude AI to analyze specific roles, departments, or conditions.
+                  </p>
+
+                  {confirmModalChoice === 'custom' && (
+                    <div style={{ marginTop: '10px' }} onClick={(e) => e.stopPropagation()}>
+                      <textarea
+                        className="hr-modal-textarea"
+                        rows={2}
+                        value={confirmModalPromptText}
+                        onChange={(e) => setConfirmModalPromptText(e.target.value)}
+                        placeholder="e.g. only show FASHION CONSULTANT data"
+                        autoFocus
+                      />
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                        <input
+                          type="checkbox"
+                          id="saveToAtlasCheck"
+                          checked={confirmModalSaveToDb}
+                          onChange={(e) => setConfirmModalSaveToDb(e.target.checked)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <label htmlFor="saveToAtlasCheck" style={{ fontSize: '12px', color: '#475569', cursor: 'pointer' }}>
+                          Save to MongoDB Atlas (e.g. Prompt {savedPrompts.length + 1})
+                        </label>
+                      </div>
+
+                      {confirmModalSaveToDb && (
+                        <input
+                          type="text"
+                          className="hr-modal-input"
+                          style={{ marginTop: '6px' }}
+                          placeholder={`Custom Title (default: Prompt ${savedPrompts.length + 1})`}
+                          value={confirmModalNewTitle}
+                          onChange={(e) => setConfirmModalNewTitle(e.target.value)}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="hr-preview-scroll-area">
-              <table className="hr-preview-table">
-                <thead>
-                  <tr>
-                    {previewFile.columns?.map((col) => (
-                      <th key={col}>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewFile.data?.map((row, idx) => (
-                    <tr key={idx}>
-                      {previewFile.columns?.map((col) => (
-                        <td key={col}>{String(row[col] ?? '')}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="hr-modal-actions" style={{ marginTop: '12px' }}>
+            <div className="hr-modal-actions">
               <button
                 type="button"
-                className="hr-action-icon-btn"
-                onClick={() => {
-                  setPreviewFile(null);
-                  navigate('/intelligence/hr');
-                }}
-                style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px' }}
+                className="hr-prompt-banner-btn hr-prompt-banner-btn-secondary"
+                onClick={() => setShowPromptConfirmModal(false)}
+                disabled={isUploading}
               >
-                <span>View in HR Intelligence</span>
-                <ArrowRight size={14} />
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  padding: '9px 20px',
+                  background: '#0ca678',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: isUploading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onClick={handleConfirmPromptAndConnect}
+                disabled={isUploading}
+              >
+                {isUploading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
+                <span>{isUploading ? 'Connecting & Analyzing...' : 'Connect Document & Analyze'}</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Admin Rules & Prompting Modal */}
+      {/* =========================================================================
+          6. ADMIN RULES & SAVED PROMPTS MODAL
+      ========================================================================= */}
       {showRulesModal && (
-        <div className="hr-modal-overlay" onClick={() => setShowRulesModal(false)}>
+        <div className="hr-modal-overlay" onClick={() => !isRecalculating && setShowRulesModal(false)}>
           <div className="hr-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="hr-modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Sparkles size={18} color="#0ca678" />
                 <span>AI & Admin Analysis Rules</span>
               </h3>
-              <button
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                onClick={() => setShowRulesModal(false)}
-              >
-                <X size={18} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="hr-mongo-pill">
+                  <Database size={11} />
+                  <span>MongoDB Atlas</span>
+                </span>
+                <button
+                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                  onClick={() => setShowRulesModal(false)}
+                  disabled={isRecalculating}
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             <p style={{ fontSize: '12.5px', color: '#64748b' }}>
-              Set custom parameters for the AI. If left empty, the AI autonomously extracts rules and benchmarks from your uploaded files.
+              Set custom parameters and AI prompts. Prompts are persisted in MongoDB Atlas so you can reuse Prompt 1, Prompt 2, etc. anytime.
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '70vh', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '72vh', overflowY: 'auto', paddingRight: '4px' }}>
+              {/* Saved Prompts Chip Selector */}
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span>Saved Prompts (from MongoDB Atlas)</span>
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>Default is "No Prompt"</span>
+                </label>
+
+                <div className="hr-saved-prompts-bar">
+                  <button
+                    type="button"
+                    className={`hr-saved-prompt-chip ${!adminPrompt && !activeSavedPromptId ? 'active' : ''}`}
+                    onClick={handleSelectNoPrompt}
+                  >
+                    <span>No Prompt (Default)</span>
+                  </button>
+
+                  {savedPrompts.map((p) => (
+                    <button
+                      key={p._id}
+                      type="button"
+                      className={`hr-saved-prompt-chip ${activeSavedPromptId === p._id ? 'active' : ''}`}
+                      onClick={() => handleSelectSavedPrompt(p)}
+                      title={`"${p.promptText}"`}
+                    >
+                      <span>{p.title}</span>
+                      <span
+                        className="chip-delete"
+                        onClick={(e) => handleDeleteSavedPrompt(e, p._id)}
+                        title="Delete from MongoDB"
+                      >
+                        ×
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Row 1: Target Attrition & Productivity Baseline */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
@@ -641,19 +1232,54 @@ export default function HrData() {
 
               {/* Row 4: Prompting Instructions for AI */}
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '600', color: '#334155', display: 'block', marginBottom: '4px' }}>
-                  Admin Prompt / Focus Instructions for AI
+                <label style={{ fontSize: '12px', fontWeight: '600', color: '#334155', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span>Admin Prompt / Focus Instructions for AI</span>
+                  {activeSavedPromptId && (
+                    <span style={{ color: '#0ca678' }}>
+                      Loaded from {savedPrompts.find((p) => p._id === activeSavedPromptId)?.title}
+                    </span>
+                  )}
                 </label>
                 <textarea
                   className="hr-modal-textarea"
                   rows={2}
                   value={adminPrompt}
                   onChange={(e) => setAdminPrompt(e.target.value)}
-                  placeholder="e.g. Focus specifically on frontline retail teams and calculate potential cost savings from schedule restructuring..."
+                  placeholder="e.g. only show FASHION CONSULTANT data"
                 />
+
+                {/* Save Prompt to MongoDB Atlas controls */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    className="hr-modal-input"
+                    style={{ flex: 1, padding: '6px 10px', fontSize: '12px' }}
+                    placeholder={`Name (default: Prompt ${savedPrompts.length + 1})`}
+                    value={newPromptTitle}
+                    onChange={(e) => setNewPromptTitle(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    style={{
+                      padding: '7px 12px',
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: '#334155',
+                      cursor: isSavingPrompt ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onClick={handleSaveCurrentPromptToAtlas}
+                    disabled={isSavingPrompt}
+                  >
+                    {isSavingPrompt ? 'Saving...' : 'Save as New Prompt in MongoDB'}
+                  </button>
+                </div>
               </div>
 
-              <div className="hr-modal-actions" style={{ marginTop: '6px' }}>
+              <div className="hr-modal-actions" style={{ marginTop: '8px' }}>
                 <button
                   type="button"
                   style={{
@@ -666,51 +1292,28 @@ export default function HrData() {
                   }}
                   onClick={() => setShowRulesModal(false)}
                 >
-                  Save Rules
+                  Close
                 </button>
                 <button
                   type="button"
                   style={{
-                    padding: '8px 16px',
+                    padding: '8px 18px',
                     background: '#0ca678',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '8px',
-                    cursor: 'pointer',
+                    cursor: isRecalculating ? 'not-allowed' : 'pointer',
                     fontSize: '13px',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
                   }}
-                  onClick={async () => {
-                    try {
-                      const res = await fetch('/api/hr/analyze', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          adminPrompt,
-                          customRules: {
-                            targetAttrition: parseFloat(targetAttrition) || 5.0,
-                            targetProductivity: parseFloat(targetProductivity) || 90,
-                            targetDepartment,
-                            focusPriority,
-                            calculationMode,
-                            timeHorizon
-                          }
-                        })
-                      });
-                      const json = await res.json();
-                      setShowRulesModal(false);
-                      if (json.status === 'success') {
-                        if (window.confirm('Manual parameters applied to HR Dashboard! Would you like to view the dashboard now?')) {
-                          navigate('/intelligence/hr');
-                        }
-                      }
-                    } catch (err) {
-                      console.error('Failed to apply manual rules:', err);
-                      setShowRulesModal(false);
-                    }
-                  }}
+                  onClick={handleApplyRules}
+                  disabled={isRecalculating}
                 >
-                  Apply & Re-Calculate
+                  {isRecalculating ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                  <span>{isRecalculating ? 'Re-Calculating...' : 'Apply & Re-Calculate'}</span>
                 </button>
               </div>
             </div>
@@ -718,7 +1321,89 @@ export default function HrData() {
         </div>
       )}
 
-      {/* Google Sheets Modal */}
+      {/* 7. Preview Modal */}
+      {previewFile && (
+        <div className="hr-modal-overlay" onClick={() => setPreviewFile(null)}>
+          <div className="hr-modal-card hr-preview-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="hr-modal-header">
+              <div>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileSpreadsheet size={18} color="#0ca678" />
+                  <span>{previewFile.name}</span>
+                </h3>
+                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                  Previewing {previewFile.data?.length || 0} rows of {previewFile.rowsCount || previewFile.data?.length || 0} total records
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <a
+                  href={`/api/hr/files/${previewFile.savedFilename || previewFile.name}/download`}
+                  className="hr-action-icon-btn"
+                  download
+                  title="Download raw file"
+                >
+                  <Download size={14} />
+                  <span>Download</span>
+                </a>
+                <button
+                  type="button"
+                  className="hr-action-icon-btn hr-action-danger-btn"
+                  onClick={(e) => handleDeleteFile(e, previewFile)}
+                  title="Delete file from server"
+                >
+                  <Trash2 size={14} />
+                  <span>Delete</span>
+                </button>
+                <button
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                  onClick={() => setPreviewFile(null)}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="hr-preview-scroll-area">
+              <table className="hr-preview-table">
+                <thead>
+                  <tr>
+                    {previewFile.columns?.map((col) => (
+                      <th key={col}>{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewFile.data?.map((row, idx) => (
+                    <tr key={idx}>
+                      {previewFile.columns?.map((col) => (
+                        <td key={col}>{String(row[col] ?? '')}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="hr-modal-actions" style={{ marginTop: '12px' }}>
+              <button
+                type="button"
+                className="hr-action-icon-btn"
+                onClick={() => {
+                  setPreviewFile(null);
+                  navigate('/intelligence/hr');
+                }}
+                style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px' }}
+              >
+                <span>View in HR Intelligence</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. Google Sheets Modal */}
       {showSheetModal && (
         <div className="hr-modal-overlay" onClick={() => setShowSheetModal(false)}>
           <div className="hr-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -776,6 +1461,63 @@ export default function HrData() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Floating Modern Toast Notification */}
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            background: '#0f172a',
+            color: '#ffffff',
+            borderRadius: '12px',
+            padding: '14px 20px',
+            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            zIndex: 9999,
+            maxWidth: '480px',
+            animation: 'fadeIn 0.2s ease'
+          }}
+        >
+          <Sparkles size={20} color="#0ca678" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '13.5px', fontWeight: 600 }}>{toast.title}</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px', lineHeight: 1.4 }}>{toast.message}</div>
+          </div>
+          {toast.showViewDashboard && (
+            <button
+              type="button"
+              style={{
+                background: '#0ca678',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '7px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+              onClick={() => {
+                setToast(null);
+                navigate('/intelligence/hr');
+              }}
+            >
+              View Dashboard →
+            </button>
+          )}
+          <button
+            type="button"
+            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+            onClick={() => setToast(null)}
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
     </div>

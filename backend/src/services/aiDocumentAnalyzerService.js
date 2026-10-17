@@ -116,6 +116,24 @@ export const runClaudeDocumentAnalysis = async ({ files, adminPrompt = '', custo
     return null;
   }
 
+  // Also extract prompt-matching rows across files if a prompt is given
+  let matchingRecordsSample = [];
+  if (adminPrompt && adminPrompt.trim()) {
+    const pClean = adminPrompt.toLowerCase()
+      .replace(/only show|show|focus on|filter by|data|employees?|staff|please|all/gi, '')
+      .trim();
+    if (pClean.length > 2) {
+      files.forEach(f => {
+        (f.parsedRows || []).forEach(r => {
+          const str = JSON.stringify(r).toLowerCase();
+          if (str.includes(pClean) && matchingRecordsSample.length < 25) {
+            matchingRecordsSample.push(r);
+          }
+        });
+      });
+    }
+  }
+
   const totalHeadcountOrRows = files.reduce((sum, f) => sum + (f.parsedRows?.length || 0), 0);
 
   const prompt = `You are the Chief AI Workforce & Management Intelligence Brain for Brynex One AI.
@@ -124,8 +142,20 @@ You are analyzing actual uploaded enterprise datasets to support executive manag
 DATASET TELEMETRY EXTRACTED FROM UPLOADED FILES:
 ${JSON.stringify(telemetry, null, 2)}
 
+${matchingRecordsSample.length > 0 ? `SPECIFIC RECORDS MATCHING USER FOCUS PROMPT:
+${JSON.stringify(matchingRecordsSample, null, 2)}
+` : ''}
+
 USER CUSTOM INSTRUCTIONS / PROMPT:
 ${adminPrompt ? `"${adminPrompt}"` : 'Analyze the dataset comprehensively across workforce availability, shifts, retention, productivity, and organizational risks.'}
+
+${adminPrompt && adminPrompt.trim() ? `CRITICAL PROMPT FOCUS DIRECTIVE:
+The user has provided a custom instruction / prompt: "${adminPrompt}".
+- You MUST tailor your ENTIRE analysis, attention items, issues, root causes, evidence, and recommendations strictly to align with this prompt.
+- If the prompt specifies a role (e.g. "FASHION CONSULTANT"), department, branch, or criteria, only evaluate records matching that instruction.
+- The "kpiMetrics" (especially "monitored", "issues", "productivity") and "attentionSummary" must directly reflect this target group.
+- Citing specific names, roles, branches, salaries, and metrics from the actual records matching this prompt is mandatory.
+` : ''}
 
 CUSTOM BENCHMARKS / RULES:
 - Target Attrition: ${(customRules && customRules.targetAttrition) || 5.0}%
@@ -134,7 +164,7 @@ CUSTOM BENCHMARKS / RULES:
 
 TASK:
 1. Examine the actual row data, columns, numeric values, anomalies, and records from the files above.
-2. Identify between 2 and 3 distinct, high-impact Management Attention items that require executive attention (e.g., turnover risks, scheduling fatigue/rest turnaround violations, overtime concentration, department capacity imbalances, revenue vs labor mismatches).
+2. Identify between 2 and 3 distinct, high-impact Management Attention items that require executive attention (strictly adhering to any user prompt provided).
 3. Keep descriptions concise and impactful (1-2 sentences). For each issue, provide concrete evidence records using actual values/names/IDs from the dataset, Left-Brain diagnostic root causes with confidence ratings, and strategic countermeasures (Option A Recommended, Option B).
 4. Compute an overall composite HR Health Score (0 to 100) based strictly on the findings in the data.
 

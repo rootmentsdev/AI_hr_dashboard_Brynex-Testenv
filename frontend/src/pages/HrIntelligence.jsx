@@ -303,6 +303,12 @@ export default function HrIntelligence() {
                       Right Brain: {liveAnalysis ? `${liveAnalysis.totalRecords || (liveAnalysis.kpiMetrics?.find((k) => k.id === 'monitored')?.value) || 0} Records Synced` : 'Awaiting Ingestion'}
                     </span>
                   </span>
+                  {liveAnalysis?.adminPromptApplied && liveAnalysis.adminPromptApplied !== 'Autonomous Multi-Dataset Synthesis' && liveAnalysis.adminPromptApplied !== 'Autonomous Analysis' && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 600, padding: '4px 10px', borderRadius: '16px', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
+                      <Sparkles size={12} />
+                      <span>Prompt Focus: "{liveAnalysis.adminPromptApplied}"</span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

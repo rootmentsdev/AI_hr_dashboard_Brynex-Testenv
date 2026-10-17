@@ -18,6 +18,20 @@ import {
   getCachedSyncedEmployees,
   getUploadedFilesStore
 } from '../controllers/hrController.js';
+import {
+  getPrompts,
+  createPrompt,
+  updatePrompt,
+  deletePrompt
+} from '../controllers/promptController.js';
+import {
+  getConversations,
+  getConversationById,
+  createConversation,
+  saveConversationMessages,
+  updateConversationTitle,
+  deleteConversation
+} from '../controllers/chatController.js';
 
 const router = express.Router();
 
@@ -64,6 +78,20 @@ router.get('/hr/analysis', getLatestHrAnalysis);
 router.post('/hr/analyze', runCustomAiAnalysis);
 router.get('/hr/employees', getSyncedEmployees);
 router.get('/analytics/enterprise', getEnterpriseAnalytics);
+
+// Saved Prompts Routes (MongoDB Atlas)
+router.get('/prompts', getPrompts);
+router.post('/prompts', createPrompt);
+router.put('/prompts/:id', updatePrompt);
+router.delete('/prompts/:id', deletePrompt);
+
+// AI Conversation History Routes (MongoDB Atlas - ChatGPT / Claude style)
+router.get('/ai/conversations', getConversations);
+router.get('/ai/conversations/:id', getConversationById);
+router.post('/ai/conversations', createConversation);
+router.post('/ai/conversations/:id/messages', saveConversationMessages);
+router.put('/ai/conversations/:id', updateConversationTitle);
+router.delete('/ai/conversations/:id', deleteConversation);
 
 // Cross-Engine Intelligence routes connected dynamically to ingested analytics
 router.get('/sales', (req, res) => {
