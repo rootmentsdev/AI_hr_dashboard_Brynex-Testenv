@@ -12,6 +12,30 @@ let cachedSyncedEmployees = [];
 let cachedEnterpriseAnalytics = null;
 let activeAdminPrompt = '';
 let activeCustomRules = null;
+let isAiAnalyzingGlobal = false;
+
+const REGISTRY_PATH = path.join(process.cwd(), 'uploads', 'files_registry.json');
+
+const persistFilesRegistry = () => {
+  try {
+    const dataToSave = {
+      files: uploadedFilesStore.map((f) => ({
+        id: f.id,
+        name: f.name,
+        savedFilename: f.savedFilename,
+        holds: f.holds,
+        period: f.period,
+        status: f.status,
+        uploadedAt: f.uploadedAt
+      })),
+      activeAdminPrompt,
+      activeCustomRules
+    };
+    fs.writeFileSync(REGISTRY_PATH, JSON.stringify(dataToSave, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Failed to persist file registry:', err.message);
+  }
+};
 
 /**
  * Filter employees list based on prompt keywords and custom rules
@@ -259,6 +283,48 @@ const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = activeCust
   }
 };
 
+const hydrateFilesFromDisk = async () => {
+  try {
+    if (fs.existsSync(REGISTRY_PATH)) {
+      const content = fs.readFileSync(REGISTRY_PATH, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (parsed && Array.isArray(parsed.files)) {
+        activeAdminPrompt = parsed.activeAdminPrompt || '';
+        activeCustomRules = parsed.activeCustomRules || null;
+
+        const restored = [];
+        for (const meta of parsed.files) {
+          const filePath = path.join(process.cwd(), 'uploads', meta.savedFilename);
+          if (fs.existsSync(filePath)) {
+            const parsedRows = await parseUploadedFile(filePath, meta.name);
+            restored.push({
+              ...meta,
+              downloadUrl: `/api/hr/files/${meta.savedFilename}/download`,
+              rows: parsedRows.length,
+              parsedRows
+            });
+          }
+        }
+
+        if (restored.length > 0) {
+          uploadedFilesStore = restored;
+          await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
+          latestAnalysis = await analyzeMultiFileHrData({
+            files: uploadedFilesStore,
+            customRules: activeCustomRules,
+            adminPrompt: activeAdminPrompt
+          });
+          console.log(`[Hydration] Successfully hydrated ${restored.length} connected files and computed initial analysis.`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to hydrate files from disk:', err.message);
+  }
+};
+
+hydrateFilesFromDisk();
+
 export const uploadHrFile = async (req, res) => {
   try {
     if (!req.file) {
@@ -300,38 +366,48 @@ export const uploadHrFile = async (req, res) => {
     };
 
     uploadedFilesStore.unshift(newFileRecord);
+    persistFilesRegistry();
 
     // 4. Recompute cross-correlated analytics with prompt and rules
     await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
 
-    // 5. Perform Multi-File Correlated AI Analysis using Claude
-    let dynamicAnalysis = null;
-    try {
-      dynamicAnalysis = await runClaudeDocumentAnalysis({
-        files: uploadedFilesStore,
-        customRules: activeCustomRules,
-        adminPrompt: activeAdminPrompt
-      });
-    } catch (aiErr) {
-      console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
-      dynamicAnalysis = await analyzeMultiFileHrData({
-        files: uploadedFilesStore,
-        customRules: activeCustomRules,
-        adminPrompt: activeAdminPrompt
-      });
-    }
+    // 5. Compute instant mathematical correlation analysis so latestAnalysis is ready immediately (<10ms)
+    latestAnalysis = await analyzeMultiFileHrData({
+      files: uploadedFilesStore,
+      customRules: activeCustomRules,
+      adminPrompt: activeAdminPrompt
+    });
 
-    latestAnalysis = dynamicAnalysis;
+    isAiAnalyzingGlobal = true;
 
-    return res.json({
+    // 6. Return response to the frontend IMMEDIATELY so the upload modal closes in <100ms!
+    res.json({
       status: 'success',
-      message: `File "${originalname}" analyzed dynamically by Claude AI across ${uploadedFilesStore.length} connected datasets.`,
+      message: `File "${originalname}" connected successfully across ${uploadedFilesStore.length} datasets. Claude AI intelligence synthesis running in background.`,
       file: newFileRecord,
-      analysis: dynamicAnalysis,
+      analysis: latestAnalysis,
+      isAiAnalyzing: true,
       activePrompt: activeAdminPrompt,
       employeesCount: cachedSyncedEmployees.length,
       totalEmployeesCount: allSyncedEmployees.length
     });
+
+    // 7. Perform deep Claude AI synthesis in the background
+    runClaudeDocumentAnalysis({
+      files: uploadedFilesStore,
+      customRules: activeCustomRules,
+      adminPrompt: activeAdminPrompt
+    }).then((dynamicAnalysis) => {
+      if (dynamicAnalysis && dynamicAnalysis.attentionItems) {
+        latestAnalysis = dynamicAnalysis;
+      }
+    }).catch((aiErr) => {
+      console.warn('Claude dynamic analysis background fallback:', aiErr.message);
+    }).finally(() => {
+      isAiAnalyzingGlobal = false;
+    });
+
+    return;
   } catch (error) {
     console.error('File upload & analysis error:', error);
     return res.status(500).json({
@@ -427,6 +503,7 @@ export const deleteHrFile = async (req, res) => {
     }
 
     uploadedFilesStore.splice(fileIndex, 1);
+    persistFilesRegistry();
 
     if (uploadedFilesStore.length > 0) {
       await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
@@ -437,12 +514,15 @@ export const deleteHrFile = async (req, res) => {
         adminPrompt: activeAdminPrompt
       });
 
+      isAiAnalyzingGlobal = true;
+
       // Send immediate response so frontend UI updates instantaneously (<50ms)
       res.json({
         status: 'success',
         message: `File "${removedFile.name}" deleted successfully.`,
         remainingFilesCount: uploadedFilesStore.length,
-        analysis: latestAnalysis
+        analysis: latestAnalysis,
+        isAiAnalyzing: true
       });
 
       // Run deep Claude AI synthesis in the background to refine analysis without blocking UI
@@ -456,9 +536,12 @@ export const deleteHrFile = async (req, res) => {
         }
       }).catch((aiErr) => {
         console.warn('Claude dynamic analysis background update on delete:', aiErr.message);
+      }).finally(() => {
+        isAiAnalyzingGlobal = false;
       });
       return;
     } else {
+      isAiAnalyzingGlobal = false;
       latestAnalysis = null;
       allSyncedEmployees = [];
       cachedSyncedEmployees = [];
@@ -480,6 +563,7 @@ export const getLatestHrAnalysis = (req, res) => {
   res.json({
     status: 'success',
     data: latestAnalysis,
+    isAiAnalyzing: isAiAnalyzingGlobal,
     activePrompt: activeAdminPrompt,
     customRules: activeCustomRules,
     employeesCount: cachedSyncedEmployees.length,
@@ -503,32 +587,39 @@ export const runCustomAiAnalysis = async (req, res) => {
 
     await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
 
-    let dynamicAnalysis = null;
-    try {
-      dynamicAnalysis = await runClaudeDocumentAnalysis({
-        files: uploadedFilesStore,
-        customRules: activeCustomRules,
-        adminPrompt: activeAdminPrompt
-      });
-    } catch (aiErr) {
-      console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
-      dynamicAnalysis = await analyzeMultiFileHrData({
-        files: uploadedFilesStore,
-        customRules: activeCustomRules,
-        adminPrompt: activeAdminPrompt
-      });
-    }
+    latestAnalysis = await analyzeMultiFileHrData({
+      files: uploadedFilesStore,
+      customRules: activeCustomRules,
+      adminPrompt: activeAdminPrompt
+    });
 
-    latestAnalysis = dynamicAnalysis;
+    isAiAnalyzingGlobal = true;
 
     res.json({
       status: 'success',
-      data: dynamicAnalysis,
+      data: latestAnalysis,
+      isAiAnalyzing: true,
       activePrompt: activeAdminPrompt,
       customRules: activeCustomRules,
       employeesCount: cachedSyncedEmployees.length,
       totalEmployeesCount: allSyncedEmployees.length
     });
+
+    runClaudeDocumentAnalysis({
+      files: uploadedFilesStore,
+      customRules: activeCustomRules,
+      adminPrompt: activeAdminPrompt
+    }).then((dynamicAnalysis) => {
+      if (dynamicAnalysis && dynamicAnalysis.attentionItems) {
+        latestAnalysis = dynamicAnalysis;
+      }
+    }).catch((aiErr) => {
+      console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
+    }).finally(() => {
+      isAiAnalyzingGlobal = false;
+    });
+
+    return;
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }

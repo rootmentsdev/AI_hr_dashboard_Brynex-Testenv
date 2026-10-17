@@ -183,13 +183,13 @@ export default function HrData() {
       const data = await res.json();
 
       if (data.status === 'success') {
+        setShowPromptConfirmModal(false);
+        setPendingUpload(null);
         setActiveAdminPrompt(promptToSend || '');
         setAdminPrompt(promptToSend || '');
         await fetchFiles();
         await fetchEmployees();
         await fetchAnalysis();
-        setShowPromptConfirmModal(false);
-        setPendingUpload(null);
 
         try {
           localStorage.setItem('hr_data_last_updated', String(Date.now()));
@@ -197,8 +197,8 @@ export default function HrData() {
         } catch (_) {}
 
         setToast({
-          title: `File "${file.name}" Ingested & Analyzed`,
-          message: `Workforce dataset correlated. Prompt applied: "${promptToSend || 'Standard Autonomous Analysis'}".`,
+          title: `File "${file.name}" Connected!`,
+          message: `Dataset connected to MongoDB. Claude AI deep intelligence synthesis is running in the background on the HR Intelligence dashboard.`,
           showViewDashboard: true
         });
       } else {
@@ -1697,7 +1697,7 @@ export default function HrData() {
                 disabled={isUploading}
               >
                 {isUploading ? <Loader2 size={15} className="spin" /> : <Sparkles size={15} />}
-                <span>{isUploading ? 'Connecting & Analyzing...' : 'Connect Document & Analyze'}</span>
+                <span>{isUploading ? 'Connecting File...' : 'Connect Document'}</span>
               </button>
             </div>
           </div>

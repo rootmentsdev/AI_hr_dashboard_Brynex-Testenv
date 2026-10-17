@@ -6,6 +6,8 @@
  * Zero hardcoded text, zero mock datasets.
  */
 
+import { analyzeMultiFileHrData } from './multiFileCorrelatorService.js';
+
 // Helper to extract a statistical profile and representative rows from tabular data
 export const extractDatasetTelemetry = (files = []) => {
   if (!files || files.length === 0) return null;
@@ -142,25 +144,40 @@ export const runClaudeDocumentAnalysis = async ({ files, adminPrompt = '', custo
 
   const totalHeadcountOrRows = files.reduce((sum, f) => sum + (f.parsedRows?.length || 0), 0);
   const filesListStr = files.map((f, i) => `Dataset ${i + 1}: "${f.name}" (${f.holds || 'Connected Dataset'}) - ${f.parsedRows?.length || 0} rows`).join('\n');
-  const minIssues = files.length > 1 ? Math.max(3, files.length * 2) : 2;
-  const maxIssues = files.length > 1 ? Math.min(6, files.length * 3) : 3;
+  // Target: At least 3 distinct issues per connected dataset (+ 1 cross-dataset correlation if > 1 dataset)
+  const targetPerFile = 3;
+  const expectedTotalIssues = (files.length * targetPerFile) + (files.length > 1 ? 1 : 0);
 
-  const multiDatasetDirective = files.length > 1 ? `
-CRITICAL MULTI-DATASET COVERAGE DIRECTIVE (MANDATORY):
-There are ${files.length} distinct datasets currently connected:
+  const fileItemDirectives = files.map((f, i) => `
+  * FOR DATASET ${i + 1} ("${f.name}"):
+    Generate AT LEAST 3 distinct, high-impact Management Attention items directly from its rows/columns:
+    - Issue A for "${f.name}": Primary risk / compliance / alert (e.g. exit notices, rest turnaround violations, zero-revenue branches).
+    - Issue B for "${f.name}": Operational / cost / capacity variance (e.g. overtime concentration, salary cost disparities, lead conversion / footfall sensor gaps).
+    - Issue C for "${f.name}": Strategic / efficiency / staffing opportunity (e.g. productivity gaps, department headcount imbalances, branch transaction velocity disparities).
+    Each of these 3 items MUST set "sourceFile": "${f.name}".
+  `).join('\n');
+
+  const multiDatasetDirective = `
+CRITICAL COVERAGE DIRECTIVE (MANDATORY REQUIREMENT: AT LEAST 3 ISSUES PER CSV):
+There are ${files.length} connected dataset(s):
 ${filesListStr}
 
-The executive user requires that ALL connected datasets be analyzed simultaneously in the HR Intelligence Dashboard:
-- You MUST analyze and generate attention items covering EVERY connected dataset:
-  * For File 1 ("${files[0].name}"): Generate at least 1-2 distinct attention items with evidence from its actual rows/columns.
-  * For File 2 ("${files[1].name}"): Generate at least 1-2 distinct attention items with evidence from its actual rows/columns.
-  ${files.length > 2 ? `* For remaining connected files: Generate dedicated attention items for each file.` : ''}
-- Also include a cross-dataset correlation issue linking the datasets together (e.g. how shift scheduling, attendance, or rest fatigue in one file directly impacts store sales revenue or transaction bottlenecks in the other).
-- TOTAL ATTENTION ITEMS: Generate between ${minIssues} and ${maxIssues} items total.
-- Under NO circumstances should you only analyze one file and omit the other. Every single uploaded file MUST have clear representation in the generated attention items.
-- In each attention item's "description", explicitly cite which dataset the signal came from (e.g., "From sales telemetry in ${files[0].name}..." or "From shift roster records in ${files[1].name}...").
-` : `
-Analyze the connected dataset "${files[0]?.name}" and generate between 2 and 3 distinct, high-impact Management Attention items based on its real data.
+THE EXECUTIVE USER EXPLICITLY REQUIRES AT LEAST 3 DISTINCT ISSUES FOR EVERY CONNECTED CSV FILE:
+${fileItemDirectives}
+
+${files.length > 1 ? `* PLUS 1 DEDICATED CROSS-DATASET CORRELATION ISSUE:
+  - Generate 1 additional correlation item synthesizing linkages across files (e.g. how shift turnaround fatigue and overtime in attendance directly impacts store revenue and sales bottlenecks).
+  - Its "sourceFile" must list the correlated file names (e.g. "${files[0].name} + ${files[1].name}").
+` : ''}
+
+TOTAL ATTENTION ITEMS:
+You MUST generate AT LEAST ${expectedTotalIssues} attention items in the "attentionItems" array:
+- If 3 CSVs are connected: generate at least 9 dataset items (3 for each file) + 1 cross-dataset correlation = at least 10 items total.
+- If 2 CSVs are connected: generate at least 6 dataset items (3 for each file) + 1 cross-dataset correlation = at least 7 items total.
+- If 1 CSV is connected: generate at least 3 distinct dataset items.
+
+Under NO circumstances should you output fewer than 3 issues for any connected file.
+Every item MUST have concise fields (1-2 sentences in "description", 2 evidence items, 1 possibleCause, and 2 concise decisionOptions).
 `;
 
   const prompt = `You are the Chief AI Workforce & Management Intelligence Brain for Brynex One AI.
@@ -210,8 +227,8 @@ Respond ONLY with a single valid, parseable JSON object matching this exact sche
   "reportingPeriod": "Date range detected from data (e.g. 01-30 Sep 2026)",
   "attentionSummary": "1-2 sentence high-level executive summary of key management signals found across ALL connected files",
   "kpiMetrics": [
-    { "id": "issues", "title": "Issues Detected", "value": "${minIssues}", "trend": "Active risks detected", "trendPositive": false, "colorClass": "hr-kpi-icon-purple" },
-    { "id": "decisions", "title": "Awaited Decisions", "value": "${minIssues}", "trend": "Requires executive review", "trendPositive": true, "colorClass": "hr-kpi-icon-red" },
+    { "id": "issues", "title": "Issues Detected", "value": "${expectedTotalIssues}", "trend": "Active risks detected", "trendPositive": false, "colorClass": "hr-kpi-icon-purple" },
+    { "id": "decisions", "title": "Awaited Decisions", "value": "${expectedTotalIssues}", "trend": "Requires executive review", "trendPositive": true, "colorClass": "hr-kpi-icon-red" },
     { "id": "monitored", "title": "Records Monitored", "value": "${totalHeadcountOrRows}", "trend": "Live telemetry parsed across ${files.length} datasets", "trendPositive": true, "colorClass": "hr-kpi-icon-green" },
     { "id": "opportunities", "title": "Opportunities", "value": "2", "trend": "Optimization levers", "trendPositive": true, "colorClass": "hr-kpi-icon-orange" },
     { "id": "productivity", "title": "Avg. Productivity", "value": "88%", "trend": "+2% vs target", "trendPositive": true, "colorClass": "hr-kpi-icon-blue" }
@@ -324,6 +341,83 @@ Respond ONLY with a single valid, parseable JSON object matching this exact sche
   parsedAnalysis.fileNames = files.map((f) => f.name);
   parsedAnalysis.connectedFilesCount = files.length;
   parsedAnalysis.adminPromptApplied = adminPrompt || 'Autonomous Analysis';
+
+  // Guarantee that every connected CSV file has AT LEAST 3 attention items
+  try {
+    const baseline = await analyzeMultiFileHrData({ files, customRules, adminPrompt });
+    if (baseline && Array.isArray(baseline.attentionItems)) {
+      if (!Array.isArray(parsedAnalysis.attentionItems)) {
+        parsedAnalysis.attentionItems = [];
+      }
+
+      files.forEach((file) => {
+        const fileItems = parsedAnalysis.attentionItems.filter((item) => {
+          const s = (item.sourceFile || '').toLowerCase();
+          const f = file.name.toLowerCase();
+          return s.includes(f) || f.includes(s);
+        });
+
+        if (fileItems.length < 3) {
+          const needed = 3 - fileItems.length;
+          const fileBaselines = baseline.attentionItems.filter((bItem) => {
+            const bs = (bItem.sourceFile || '').toLowerCase();
+            const f = file.name.toLowerCase();
+            return bs.includes(f) || f.includes(bs);
+          });
+
+          let added = 0;
+          fileBaselines.forEach((bItem) => {
+            if (added < needed) {
+              const alreadyExists = parsedAnalysis.attentionItems.some((ai) => 
+                ai.title?.toLowerCase() === bItem.title?.toLowerCase()
+              );
+              if (!alreadyExists) {
+                parsedAnalysis.attentionItems.push({
+                  ...bItem,
+                  id: `suppl-${file.name}-${added + 1}`
+                });
+                added++;
+              }
+            }
+          });
+        }
+      });
+
+      // If multiple files connected, ensure at least 1 cross-dataset correlation item is included
+      if (files.length > 1) {
+        const hasCorrelation = parsedAnalysis.attentionItems.some((ai) => {
+          const s = (ai.sourceFile || '').toLowerCase();
+          const t = (ai.title || '').toLowerCase();
+          return s.includes('+') || t.includes('cross-dataset') || t.includes('correlation');
+        });
+        if (!hasCorrelation) {
+          const corrItem = baseline.attentionItems.find((bItem) => 
+            (bItem.sourceFile || '').includes('+') || (bItem.title || '').includes('Cross-Dataset')
+          );
+          if (corrItem) {
+            parsedAnalysis.attentionItems.push(corrItem);
+          }
+        }
+      }
+    }
+  } catch (supplErr) {
+    console.warn('Could not supplement attention items:', supplErr.message);
+  }
+
+  // Guarantee that kpiMetrics "issues" and "decisions" strictly match parsedAnalysis.attentionItems.length!
+  if (parsedAnalysis.attentionItems && Array.isArray(parsedAnalysis.attentionItems)) {
+    if (parsedAnalysis.kpiMetrics && Array.isArray(parsedAnalysis.kpiMetrics)) {
+      const issuesKpi = parsedAnalysis.kpiMetrics.find((k) => k.id === 'issues');
+      if (issuesKpi) {
+        issuesKpi.value = String(parsedAnalysis.attentionItems.length);
+        issuesKpi.trend = `${parsedAnalysis.attentionItems.length} active risks across datasets`;
+      }
+      const decisionsKpi = parsedAnalysis.kpiMetrics.find((k) => k.id === 'decisions');
+      if (decisionsKpi) {
+        decisionsKpi.value = String(parsedAnalysis.attentionItems.length);
+      }
+    }
+  }
 
   return parsedAnalysis;
 };

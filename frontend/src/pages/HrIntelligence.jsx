@@ -40,7 +40,8 @@ import {
   BrainCircuit,
   Check,
   UploadCloud,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Loader2
 } from 'lucide-react';
 import {
   diagnoseHrIssue,
@@ -71,6 +72,7 @@ export default function HrIntelligence() {
   // Live dynamic analysis state from uploaded dataset
   const [liveAnalysis, setLiveAnalysis] = useState(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(true);
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
 
   // Left-Brain AI Diagnosis State
   const [isDiagnosing, setIsDiagnosing] = useState(false);
@@ -87,29 +89,36 @@ export default function HrIntelligence() {
   const [actionKpi, setActionKpi] = useState('Optimize Schedule & Retention');
   const [deploymentSuccess, setDeploymentSuccess] = useState(false);
 
-  useEffect(() => {
-    const fetchAnalysis = async () => {
-      try {
-        const res = await fetch('/api/hr/analysis');
-        const json = await res.json();
-        if (json.status === 'success') {
-          setLiveAnalysis(json.data || null);
-          if (json.data?.reportingPeriod) {
-            setDateRange(json.data.reportingPeriod);
-          }
-          if (json.data?.attentionItems && json.data.attentionItems.length > 0) {
-            setSelectedIssueId(json.data.attentionItems[0].id);
-          } else {
-            setSelectedIssueId(null);
-          }
+  const fetchAnalysis = async (isBackgroundPoll = false) => {
+    try {
+      if (!isBackgroundPoll) setIsLoadingAnalysis(true);
+      const res = await fetch('/api/hr/analysis');
+      const json = await res.json();
+      if (json.status === 'success') {
+        setLiveAnalysis(json.data || null);
+        setIsAiAnalyzing(Boolean(json.isAiAnalyzing));
+        if (json.data?.reportingPeriod) {
+          setDateRange(json.data.reportingPeriod);
         }
-      } catch (err) {
-        console.warn('Could not load live HR analysis:', err);
-      } finally {
-        setIsLoadingAnalysis(false);
+        if (json.data?.attentionItems && json.data.attentionItems.length > 0) {
+          setSelectedIssueId((prev) => {
+            if (prev && json.data.attentionItems.some((item) => item.id === prev)) {
+              return prev;
+            }
+            return json.data.attentionItems[0].id;
+          });
+        } else {
+          setSelectedIssueId(null);
+        }
       }
-    };
+    } catch (err) {
+      console.warn('Could not load live HR analysis:', err);
+    } finally {
+      if (!isBackgroundPoll) setIsLoadingAnalysis(false);
+    }
+  };
 
+  useEffect(() => {
     fetchAnalysis();
 
     const handleDataUpdate = () => {
@@ -130,6 +139,31 @@ export default function HrIntelligence() {
       window.removeEventListener('storage', handleDataUpdate);
     };
   }, []);
+
+  // Background polling while Claude AI is dynamically synthesizing in background
+  useEffect(() => {
+    let intervalId = null;
+    if (isAiAnalyzing) {
+      intervalId = setInterval(async () => {
+        try {
+          const res = await fetch('/api/hr/analysis');
+          const json = await res.json();
+          if (json.status === 'success') {
+            setLiveAnalysis(json.data || null);
+            setIsAiAnalyzing(Boolean(json.isAiAnalyzing));
+            if (!json.isAiAnalyzing && intervalId) {
+              clearInterval(intervalId);
+            }
+          }
+        } catch (e) {
+          console.warn('Polling error:', e);
+        }
+      }, 2500);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isAiAnalyzing]);
 
   // Icon mapping for dynamic KPI tiles
   const kpiIconMap = {
@@ -209,13 +243,25 @@ export default function HrIntelligence() {
   };
 
   const resolvedKpiMetrics = (liveAnalysis?.kpiMetrics && Array.isArray(liveAnalysis.kpiMetrics) && liveAnalysis.kpiMetrics.length > 0)
-    ? liveAnalysis.kpiMetrics.map((kpi) => ({
-        ...kpi,
-        icon: kpiIconMap[kpi.id] || <Activity size={14} />
-      }))
+    ? liveAnalysis.kpiMetrics.map((kpi) => {
+        let val = kpi.value;
+        let trend = kpi.trend;
+        if (kpi.id === 'issues') {
+          val = String(resolvedAttentionItems.length);
+          trend = `${resolvedAttentionItems.length} active risks across datasets`;
+        } else if (kpi.id === 'decisions') {
+          val = String(resolvedAttentionItems.length);
+        }
+        return {
+          ...kpi,
+          value: val,
+          trend: trend,
+          icon: kpiIconMap[kpi.id] || <Activity size={14} />
+        };
+      })
     : [
-        { id: 'issues', title: 'Issues Detected', value: '0', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-purple', icon: <Network size={14} /> },
-        { id: 'decisions', title: 'Awaited Decisions', value: '0', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-red', icon: <FileText size={14} /> },
+        { id: 'issues', title: 'Issues Detected', value: String(resolvedAttentionItems.length), trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-purple', icon: <Network size={14} /> },
+        { id: 'decisions', title: 'Awaited Decisions', value: String(resolvedAttentionItems.length), trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-red', icon: <FileText size={14} /> },
         { id: 'monitored', title: 'Being Monitored', value: '0', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-green', icon: <AppWindow size={14} /> },
         { id: 'opportunities', title: 'Opportunities', value: '0', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-orange', icon: <UserCheck size={14} /> },
         { id: 'productivity', title: 'Avg. Productivity', value: '--', trend: 'Awaiting dataset', trendPositive: true, colorClass: 'hr-kpi-icon-blue', icon: <Activity size={14} /> }
@@ -363,6 +409,33 @@ export default function HrIntelligence() {
         </div>
       </div>
 
+      {/* Live Claude AI Background Synthesis Progress Banner */}
+      {isAiAnalyzing && (
+        <div className="hr-ai-analyzing-live-banner">
+          <div className="hr-ai-analyzing-left">
+            <div className="hr-ai-analyzing-pulse-orb">
+              <Sparkles size={16} className="hr-ai-orb-icon" />
+            </div>
+            <div>
+              <div className="hr-ai-analyzing-headline">
+                <span>Claude AI Deep Intelligence Synthesis in Progress</span>
+                <span className="hr-ai-live-badge">
+                  <span className="hr-live-dot"></span>
+                  LIVE ANALYZING
+                </span>
+              </div>
+              <p className="hr-ai-analyzing-sub">
+                Correlating workforce records, shift rest intervals, and management impact projections across connected datasets. Diagnostics and recommendations will update automatically once synthesis is complete.
+              </p>
+            </div>
+          </div>
+          <div className="hr-ai-analyzing-right">
+            <Loader2 size={15} className="hr-spin-animation" />
+            <span>Synthesizing Telemetry...</span>
+          </div>
+        </div>
+      )}
+
       {/* 2. Top Banner Grid: Hero Banner + AI Ask Pill & HR Health Score */}
       <div className="hr-top-banner-grid">
         {/* Left Banner Wrapper */}
@@ -388,6 +461,17 @@ export default function HrIntelligence() {
                       Right Brain: {liveAnalysis ? `${liveAnalysis.totalRecords || (liveAnalysis.kpiMetrics?.find((k) => k.id === 'monitored')?.value) || 0} Records Synced` : 'Awaiting Ingestion'}
                     </span>
                   </span>
+                  {isAiAnalyzing ? (
+                    <span className="hr-brain-pill-analyzing">
+                      <Loader2 size={12} className="hr-spin-animation" />
+                      <span>Claude 3.5 Re-Synthesizing Telemetry...</span>
+                    </span>
+                  ) : (
+                    <span className="hr-brain-pill-ready">
+                      <CheckCircle2 size={12} />
+                      <span>Telemetry Synced</span>
+                    </span>
+                  )}
                   {liveAnalysis?.adminPromptApplied && liveAnalysis.adminPromptApplied !== 'Autonomous Multi-Dataset Synthesis' && liveAnalysis.adminPromptApplied !== 'Autonomous Analysis' && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 600, padding: '4px 10px', borderRadius: '16px', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
                       <Sparkles size={12} />
@@ -790,9 +874,17 @@ export default function HrIntelligence() {
                 <ArrowLeft size={14} />
                 <span>Back to list</span>
               </button>
-              <span className="hr-status-badge-outline" style={{ padding: '3px 12px' }}>
-                {selectedItem.status || 'Needs investigation'}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {isAiAnalyzing && (
+                  <span className="hr-detail-ai-analyzing-pill">
+                    <Loader2 size={11} className="hr-spin-animation" />
+                    <span>Claude AI Synthesizing...</span>
+                  </span>
+                )}
+                <span className="hr-status-badge-outline" style={{ padding: '3px 12px' }}>
+                  {selectedItem.status || 'Needs investigation'}
+                </span>
+              </div>
             </div>
 
             {/* Title & Metadata */}

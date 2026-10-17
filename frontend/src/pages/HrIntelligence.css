@@ -1597,4 +1597,178 @@
   background: #cbd5e1;
   cursor: not-allowed;
   transform: none;
+}
+
+/* =========================================================================
+   Live Claude AI Synthesis Banner & Polling Feedback
+========================================================================= */
+.hr-ai-analyzing-live-banner {
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.98) 0%, rgba(209, 250, 229, 0.95) 100%);
+  border: 1px solid #10b981;
+  border-left: 4px solid #059669;
+  border-radius: 12px;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+  animation: bannerFadeIn 0.3s ease;
+}
+
+@keyframes bannerFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hr-ai-analyzing-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.hr-ai-analyzing-pulse-orb {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #059669;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.6);
+  animation: pulseOrb 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+@keyframes pulseOrb {
+  to {
+    box-shadow: 0 0 0 12px rgba(5, 150, 105, 0);
+  }
+}
+
+.hr-ai-orb-icon {
+  animation: spinSlow 8s linear infinite;
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hr-ai-analyzing-headline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #064e3b;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+}
+
+.hr-ai-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #047857;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.hr-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  display: inline-block;
+  animation: liveBlink 1.2s infinite ease-in-out;
+}
+
+@keyframes liveBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.85); }
+}
+
+.hr-ai-analyzing-sub {
+  margin: 3px 0 0 0;
+  font-size: 12px;
+  color: #065f46;
+  line-height: 1.4;
+}
+
+.hr-ai-analyzing-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #a7f3d0;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #065f46;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.hr-spin-animation {
+  animation: spin 1s linear infinite;
+  color: #059669;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hr-brain-pill-analyzing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 16px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #6ee7b7;
+  animation: pulseBorder 2s infinite ease-in-out;
+}
+
+@keyframes pulseBorder {
+  0%, 100% { border-color: #6ee7b7; }
+  50% { border-color: #059669; }
+}
+
+.hr-brain-pill-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 16px;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.hr-detail-ai-analyzing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 3px 8px;
 }
