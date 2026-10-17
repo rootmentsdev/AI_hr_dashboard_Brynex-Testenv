@@ -246,6 +246,7 @@ button {
   min-width: 0;
   background-color: #f8fafc;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .top-navbar {
@@ -407,8 +408,11 @@ button {
 }
 
 .content-container {
-  padding: 24px 28px;
+  padding: 20px 24px;
   flex: 1;
+  min-width: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* Page Placeholder Styles */

@@ -3,6 +3,7 @@ import fs from 'fs';
 import { parseUploadedFile } from '../services/fileParserService.js';
 import { analyzeMultiFileHrData, identifyFileScope } from '../services/multiFileCorrelatorService.js';
 import { runClaudeDocumentAnalysis } from '../services/aiDocumentAnalyzerService.js';
+import { aggregateHrIntelligence } from '../services/hrIntelligenceAggregator.js';
 
 // In-memory stores (strictly populated by actual file uploads)
 let uploadedFilesStore = [];
@@ -124,162 +125,27 @@ export const filterEmployeesByPrompt = (employees = [], prompt = '', customRules
 };
 
 /**
- * Recompute employee profiles and enterprise analytics dynamically from uploaded files
+ * Recompute employee profiles and enterprise analytics dynamically (Dual-State Aggregation)
  */
-const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = activeCustomRules) => {
+export const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = activeCustomRules) => {
   activeAdminPrompt = prompt || '';
   activeCustomRules = rules || null;
 
-  if (uploadedFilesStore.length === 0) {
-    latestAnalysis = null;
-    allSyncedEmployees = [];
-    cachedSyncedEmployees = [];
-    cachedEnterpriseAnalytics = null;
-    return;
-  }
-
-  const empFile = uploadedFilesStore.find((f) => 
-    f.name.toLowerCase().includes('employee') || 
-    f.name.toLowerCase().includes('staff') ||
-    f.holds?.includes('People')
-  );
-
-  const attFile = uploadedFilesStore.find((f) => 
-    f.name.toLowerCase().includes('attend') || 
-    f.name.toLowerCase().includes('roster') || 
-    f.name.toLowerCase().includes('shift') ||
-    f.holds?.includes('Attendance')
-  );
-
-  const salesFile = uploadedFilesStore.find((f) => 
-    f.name.toLowerCase().includes('sale') || 
-    f.name.toLowerCase().includes('revenue') || 
-    f.name.toLowerCase().includes('business') ||
-    f.holds?.includes('Revenue')
-  );
-
-  // 1. Correlate Employees with Attendance if available
-  if (empFile) {
-    const attMap = {};
-    if (attFile && attFile.parsedRows) {
-      attFile.parsedRows.forEach((r) => {
-        const id = r.employee_id || r.id || r.emp_id;
-        if (!id) return;
-        if (!attMap[id]) {
-          attMap[id] = { totalHours: 0, otHours: 0, records: 0, restIntervals: [] };
-        }
-        const ot = parseFloat(r.overtime_hours || r.ot) || 0;
-        const prod = parseFloat(r.actual_productive_hours || r.hours) || 0;
-        const rest = parseFloat(r.rest_interval_hours || r.rest) || 0;
-        attMap[id].otHours += ot;
-        attMap[id].totalHours += prod;
-        attMap[id].records += 1;
-        if (rest > 0) attMap[id].restIntervals.push(rest);
-      });
-    }
-
-    allSyncedEmployees = (empFile.parsedRows || []).map((e) => {
-      const id = e.employee_id || e.id || e.emp_id || 'EMP';
-      const stat = attMap[id] || { otHours: 0, totalHours: 0, records: 0, restIntervals: [] };
-      const avgRest = stat.restIntervals.length ? (stat.restIntervals.reduce((a, b) => a + b, 0) / stat.restIntervals.length) : 12;
-      const baseSal = parseFloat(e.base_salary_monthly || e.salary || e.pay) || 0;
-      const hourlyRate = baseSal > 0 ? (baseSal / 160) : 0;
-      const otCost = Math.round(stat.otHours * hourlyRate * 1.5);
-      const attPct = stat.records > 0 ? Math.min(100, Math.round((stat.records / 30) * 100)) : 100;
-
-      let risk = 'Low (Stable)';
-      const statusLower = (e.status || '').toLowerCase();
-      if (statusLower.includes('notice') || statusLower.includes('exit') || statusLower.includes('resigned')) {
-        risk = 'Critical (Exiting / Notice)';
-      } else if (stat.otHours > 15 && avgRest < 10) {
-        risk = 'High (Scheduling Fatigue)';
-      } else if (attPct < 85) {
-        risk = 'Medium (Attendance Variance)';
-      }
-
-      return {
-        id,
-        name: e.full_name || e.name || 'Unnamed Employee',
-        role: (e.role_id || e.role || e.designation || 'Staff').replace('ROLE-', '').replace(/-/g, ' '),
-        branch: e.branch || e.location || 'HQ',
-        dept: e.department || e.dept || 'Operations',
-        salary: baseSal > 0 ? `$${baseSal.toLocaleString()}` : 'N/A',
-        ot: stat.otHours > 0 ? `${stat.otHours.toFixed(1)} hrs ($${otCost.toLocaleString()})` : '0 hrs',
-        att: `${attPct}%`,
-        risk
-      };
+  try {
+    const aggregated = await aggregateHrIntelligence({
+      uploadedFiles: uploadedFilesStore,
+      customRules: activeCustomRules,
+      adminPrompt: activeAdminPrompt
     });
 
-    // Apply prompt & rule filtering to cached synced employees
+    latestAnalysis = aggregated;
+    allSyncedEmployees = aggregated.employeesSummary?.employees || [];
     cachedSyncedEmployees = filterEmployeesByPrompt(allSyncedEmployees, activeAdminPrompt, activeCustomRules);
-  } else {
-    allSyncedEmployees = [];
-    cachedSyncedEmployees = [];
-  }
+    cachedEnterpriseAnalytics = aggregated.enterpriseAnalytics;
 
-  // 2. Correlate Business Sales
-  if (salesFile && salesFile.parsedRows) {
-    let totalRev = 0;
-    let totalTx = 0;
-    let totalFootfall = 0;
-    let totalComplaints = 0;
-    const branchRev = {};
-    const branchTx = {};
-
-    salesFile.parsedRows.forEach((r) => {
-      const rev = parseFloat(r.daily_revenue || r.revenue || r.amount) || 0;
-      const tx = parseInt(r.transactions_count || r.transactions) || 0;
-      const ff = parseInt(r.footfall_or_leads || r.footfall || r.leads) || 0;
-      const comp = parseInt(r.customer_complaints_count || r.complaints) || 0;
-      const b = r.branch || 'Main Branch';
-
-      totalRev += rev;
-      totalTx += tx;
-      totalFootfall += ff;
-      totalComplaints += comp;
-      branchRev[b] = (branchRev[b] || 0) + rev;
-      branchTx[b] = (branchTx[b] || 0) + tx;
-    });
-
-    const activeEmpList = cachedSyncedEmployees.length > 0 ? cachedSyncedEmployees : allSyncedEmployees;
-    const totalPayroll = activeEmpList.reduce((sum, e) => {
-      const num = parseFloat(String(e.salary).replace(/[$,]/g, '')) || 0;
-      return sum + num;
-    }, 0);
-
-    const payrollRatio = totalRev > 0 && totalPayroll > 0 ? ((totalPayroll / totalRev) * 100).toFixed(1) : null;
-    const sortedBranches = Object.entries(branchRev).sort((a, b) => b[1] - a[1]);
-
-    cachedEnterpriseAnalytics = {
-      sales: {
-        totalRevenue: Math.round(totalRev),
-        formattedRevenue: totalRev >= 1000000 ? `$${(totalRev / 1000000).toFixed(2)}M` : `$${Math.round(totalRev).toLocaleString()}`,
-        totalTransactions: totalTx,
-        conversionRate: totalFootfall > 0 ? ((totalTx / totalFootfall) * 100).toFixed(1) + '%' : null,
-        branchBreakdown: branchRev,
-        topBranch: sortedBranches[0]?.[0] || 'Main'
-      },
-      finance: {
-        totalMonthlyPayroll: totalPayroll,
-        formattedPayroll: totalPayroll >= 1000000 ? `$${(totalPayroll / 1000000).toFixed(2)}M` : `$${Math.round(totalPayroll).toLocaleString()}`,
-        grossRevenue: Math.round(totalRev),
-        payrollRatio: payrollRatio ? `${payrollRatio}%` : 'N/A',
-        targetPayrollRatio: '12.0%'
-      },
-      operations: {
-        activeHeadcount: cachedSyncedEmployees.length,
-        totalHeadcount: allSyncedEmployees.length,
-        totalOvertimeHours: attFile ? (attFile.parsedRows || []).reduce((sum, r) => sum + (parseFloat(r.overtime_hours || r.ot) || 0), 0).toFixed(1) : '0'
-      },
-      marketing: {
-        totalFootfallAndLeads: totalFootfall,
-        closedTransactions: totalTx,
-        customerConversionPct: totalFootfall > 0 ? ((totalTx / totalFootfall) * 100).toFixed(1) + '%' : null,
-        customerComplaints: totalComplaints
-      }
-    };
-  } else {
-    cachedEnterpriseAnalytics = null;
+    return aggregated;
+  } catch (err) {
+    console.warn('Error in aggregateHrIntelligence:', err.message);
   }
 };
 
@@ -308,18 +174,15 @@ const hydrateFilesFromDisk = async () => {
 
         if (restored.length > 0) {
           uploadedFilesStore = restored;
-          await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
-          latestAnalysis = await analyzeMultiFileHrData({
-            files: uploadedFilesStore,
-            customRules: activeCustomRules,
-            adminPrompt: activeAdminPrompt
-          });
-          console.log(`[Hydration] Successfully hydrated ${restored.length} connected files and computed initial analysis.`);
+          console.log(`[Hydration] Successfully hydrated ${restored.length} connected files from disk.`);
         }
       }
     }
   } catch (err) {
     console.warn('Failed to hydrate files from disk:', err.message);
+  } finally {
+    // ALWAYS initialize baseline/dual-layer intelligence so state is never null/empty
+    await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
   }
 };
 
@@ -542,16 +405,13 @@ export const deleteHrFile = async (req, res) => {
       return;
     } else {
       isAiAnalyzingGlobal = false;
-      latestAnalysis = null;
-      allSyncedEmployees = [];
-      cachedSyncedEmployees = [];
-      cachedEnterpriseAnalytics = null;
+      await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
 
       return res.json({
         status: 'success',
-        message: `File "${removedFile.name}" deleted successfully. All datasets cleared.`,
+        message: `File "${removedFile.name}" deleted. Restored live retail API baseline telemetry.`,
         remainingFilesCount: 0,
-        analysis: null
+        analysis: latestAnalysis
       });
     }
   } catch (error) {
@@ -559,7 +419,10 @@ export const deleteHrFile = async (req, res) => {
   }
 };
 
-export const getLatestHrAnalysis = (req, res) => {
+export const getLatestHrAnalysis = async (req, res) => {
+  if (!latestAnalysis) {
+    await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
+  }
   res.json({
     status: 'success',
     data: latestAnalysis,
@@ -577,21 +440,7 @@ export const runCustomAiAnalysis = async (req, res) => {
     activeAdminPrompt = adminPrompt;
     activeCustomRules = customRules;
 
-    if (uploadedFilesStore.length === 0) {
-      return res.json({
-        status: 'success',
-        data: null,
-        message: 'No uploaded datasets available to analyze.'
-      });
-    }
-
     await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
-
-    latestAnalysis = await analyzeMultiFileHrData({
-      files: uploadedFilesStore,
-      customRules: activeCustomRules,
-      adminPrompt: activeAdminPrompt
-    });
 
     isAiAnalyzingGlobal = true;
 
@@ -605,25 +454,30 @@ export const runCustomAiAnalysis = async (req, res) => {
       totalEmployeesCount: allSyncedEmployees.length
     });
 
-    runClaudeDocumentAnalysis({
-      files: uploadedFilesStore,
-      customRules: activeCustomRules,
-      adminPrompt: activeAdminPrompt
-    }).then((dynamicAnalysis) => {
-      if (dynamicAnalysis && dynamicAnalysis.attentionItems) {
-        latestAnalysis = dynamicAnalysis;
-      }
-    }).catch((aiErr) => {
-      console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
-    }).finally(() => {
+    if (uploadedFilesStore.length > 0) {
+      runClaudeDocumentAnalysis({
+        files: uploadedFilesStore,
+        customRules: activeCustomRules,
+        adminPrompt: activeAdminPrompt
+      }).then((dynamicAnalysis) => {
+        if (dynamicAnalysis && dynamicAnalysis.attentionItems) {
+          latestAnalysis = dynamicAnalysis;
+        }
+      }).catch((aiErr) => {
+        console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
+      }).finally(() => {
+        isAiAnalyzingGlobal = false;
+      });
+    } else {
       isAiAnalyzingGlobal = false;
-    });
+    }
 
     return;
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
 
 export const getSyncedEmployees = (req, res) => {
   const { all, prompt } = req.query;

@@ -24,6 +24,15 @@ export default function Integrations() {
       highlight: true
     },
     {
+      id: 'external-lms',
+      name: 'External Retail LMS & Store 360',
+      category: 'Store & Staff Telemetry',
+      status: 'Live Ingestion Active',
+      desc: 'Dual-layer live ingestion consuming /api/external/store-overview & /api/external/employee-overview (Store Perinthalmanna, Suitor Guy Edappally, Niyas 360).',
+      active: true,
+      highlight: true
+    },
+    {
       id: 'hrms',
       name: 'Workforce HRMS Core',
       category: 'Human Resources',

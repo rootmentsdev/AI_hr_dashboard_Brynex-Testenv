@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import advisorPortrait from '../assets/advisor-portrait.jpg';
+import botLogo from '../assets/bot-logo.png';
 import {
   BrainCircuit,
   TriangleAlert,
@@ -41,6 +41,7 @@ import {
   getStoredModel,
   setStoredModel
 } from '../services/aiService';
+import FormattedChatMessage from '../components/FormattedChatMessage';
 import './AiAssistant.css';
 
 // Helper to render AI markdown-style text with bolding and lists
@@ -49,7 +50,7 @@ function FormattedAiContent({ content, bullets, title }) {
     return (
       <div className="ai-rendered-content">
         {title && <h4>{title}</h4>}
-        {content && <p>{content}</p>}
+        {content && <FormattedChatMessage content={content} />}
         <ul>
           {bullets.map((b, i) => (
             <li key={i}>{b}</li>
@@ -59,62 +60,10 @@ function FormattedAiContent({ content, bullets, title }) {
     );
   }
 
-  // Parse lines for markdown-style bullets and bold
-  const lines = (content || '').split('\n');
-  const renderedElements = [];
-  let currentBullets = [];
-
-  const flushBullets = () => {
-    if (currentBullets.length > 0) {
-      renderedElements.push(
-        <ul key={`ul-${renderedElements.length}`}>
-          {currentBullets.map((b, idx) => (
-            <li key={idx} dangerouslySetInnerHTML={{ __html: b }} />
-          ))}
-        </ul>
-      );
-      currentBullets = [];
-    }
-  };
-
-  const formatText = (text) => {
-    return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>');
-  };
-
-  lines.forEach((line, index) => {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      flushBullets();
-      return;
-    }
-
-    // Check if line is bullet list or numbered list
-    const isBullet = /^[-*•]\s+(.+)/.exec(trimmed);
-    const isNumbered = /^\d+\.\s+(.+)/.exec(trimmed);
-
-    if (isBullet) {
-      currentBullets.push(formatText(isBullet[1]));
-    } else if (isNumbered) {
-      currentBullets.push(formatText(isNumbered[1]));
-    } else {
-      flushBullets();
-      renderedElements.push(
-        <p
-          key={`p-${index}`}
-          dangerouslySetInnerHTML={{ __html: formatText(trimmed) }}
-        />
-      );
-    }
-  });
-
-  flushBullets();
-
   return (
     <div className="ai-rendered-content">
       {title && <h4>{title}</h4>}
-      {renderedElements}
+      <FormattedChatMessage content={content} />
     </div>
   );
 }
@@ -149,12 +98,22 @@ function groupConversationsByDate(convList = []) {
   return groups;
 }
 
-const defaultGreeting = {
-  id: 'greeting-1',
-  sender: 'assistant',
-  text: "Good morning! I'm your Senior Workforce & HR Advisory Partner. Whether you're looking into frontline retention, payroll and overtime trends, or strategic workforce planning across departments, I'm here to review the numbers and collaborate with you. How can I assist with your workforce decisions today?",
-  role: 'Workforce Advisor'
-};
+export function getTimeOfDayGreeting() {
+  const hour = new Date().getHours();
+  if (hour >= 4 && hour < 12) return 'Good Morning';
+  if (hour >= 12 && hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
+}
+
+function createInitialGreeting(analysis) {
+  const greeting = getTimeOfDayGreeting();
+  return {
+    id: 'greeting-dynamic',
+    sender: 'assistant',
+    text: `${greeting}! I'm your Senior Workforce & People Intelligence Partner. I'm actively monitoring our live retail telemetry across all 25 retail branches (204 employee profiles, camera footfall audits, sales quotas). Whether you'd like to inspect store performance, employee 360 reviews, footfall variance, or executive workforce optimization, I'm ready to assist you. What area would you like to review?`,
+    role: 'Workforce Advisor'
+  };
+}
 
 export default function AiAssistant() {
   const location = useLocation();
@@ -164,6 +123,7 @@ export default function AiAssistant() {
   const [selectedModel, setSelectedModel] = useState(getStoredModel());
   const [connectionStatus, setConnectionStatus] = useState('checking');
   const chatBottomRef = useRef(null);
+  const chatStreamRef = useRef(null);
 
   // Live connected datasets state from backend
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -173,12 +133,13 @@ export default function AiAssistant() {
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const [isContextOpen, setIsContextOpen] = useState(true);
   const [historySearch, setHistorySearch] = useState('');
   const [editingConvId, setEditingConvId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
 
-  // Active chat messages
-  const [messages, setMessages] = useState([defaultGreeting]);
+  // Active chat messages - dynamically time-aware
+  const [messages, setMessages] = useState([createInitialGreeting()]);
 
   // Fetch conversations from MongoDB Atlas
   const fetchConversations = async () => {
@@ -236,10 +197,22 @@ export default function AiAssistant() {
     return uploadedFiles.reduce((acc, f) => acc + (f.rows || 0), 0);
   }, [uploadedFiles]);
 
-  // Auto-scroll chat stream
+  // Ensure page always starts cleanly at top on reload/mount
   useEffect(() => {
-    if (chatBottomRef.current) {
-      chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Auto-scroll chat stream only when new messages are added (not on initial mount with greeting)
+  useEffect(() => {
+    if (messages.length > 1) {
+      if (chatStreamRef.current) {
+        chatStreamRef.current.scrollTo({
+          top: chatStreamRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      } else if (chatBottomRef.current) {
+        chatBottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
   }, [messages, isLoading]);
 
@@ -260,7 +233,7 @@ export default function AiAssistant() {
       const data = await res.json();
       if (data.status === 'success' && data.conversation) {
         const loadedMessages = data.conversation.messages || [];
-        setMessages(loadedMessages.length > 0 ? loadedMessages : [defaultGreeting]);
+        setMessages(loadedMessages.length > 0 ? loadedMessages : [createInitialGreeting(latestAnalysis)]);
         if (data.conversation.model) {
           setSelectedModel(data.conversation.model);
         }
@@ -275,7 +248,7 @@ export default function AiAssistant() {
   // Start a new chat session (+ New Chat)
   const handleNewChat = () => {
     setActiveConversationId(null);
-    setMessages([defaultGreeting]);
+    setMessages([createInitialGreeting(latestAnalysis)]);
     setInputText('');
   };
 
@@ -431,144 +404,98 @@ export default function AiAssistant() {
   };
 
   // 4 Strategic Advisory Cards generated dynamically based on connected workforce data
+  // 4 Strategic Advisory Cards generated dynamically based on connected workforce data & live retail telemetry
   const promptCards = useMemo(() => {
-    if (!uploadedFiles || uploadedFiles.length === 0) {
-      return [
-        {
-          id: 'upload-dataset',
-          category: 'DATA INTEGRATION',
-          icon: <UploadCloud size={16} />,
-          text: 'Connect employee roster or payroll dataset to unlock personalized workforce advice',
-          isUpload: true
-        },
-        {
-          id: 'retention-best-practice',
-          category: 'TALENT RETENTION',
-          icon: <UserCheck size={16} />,
-          text: 'What proven leadership interventions reduce voluntary turnover in frontline roles?'
-        },
-        {
-          id: 'labor-cost-calc',
-          category: 'PAYROLL & OVERTIME',
-          icon: <Wallet size={16} />,
-          text: 'How can we optimize overtime expenditure without overburdening our teams?'
-        },
-        {
-          id: 'shift-turnaround-rules',
-          category: 'STAFF WELLNESS',
-          icon: <Clock size={16} />,
-          text: 'Are our closing-to-opening shift turnaround intervals causing employee burnout?'
-        }
-      ];
-    }
-
     const cards = [];
     const attentionItems = latestAnalysis?.attentionItems || [];
 
+    // Card 1: Retail Lag & Performance variance (G.Perinthalmanna)
     if (attentionItems.length > 0) {
       const item1 = attentionItems[0];
       cards.push({
         id: 'issue-1',
-        category: 'PRIORITY REMEDY',
+        category: 'RETAIL TELEMETRY',
         icon: <TriangleAlert size={16} />,
-        text: `Why did "${item1.title.slice(0, 48)}..." occur and what is your recommended remedy?`
+        text: `Why did ${item1.title.slice(0, 52)}... occur and what is the strategic remedy?`
       });
-
-      if (attentionItems.length > 1) {
-        const item2 = attentionItems[1];
-        cards.push({
-          id: 'issue-2',
-          category: 'CROSS-TEAM IMPACT',
-          icon: <GitBranch size={16} />,
-          text: `Evaluate "${item2.title.slice(0, 48)}..." across affected departments and leadership`
-        });
-      }
-    }
-
-    const hasAttendance = uploadedFiles.some((f) =>
-      f.name.toLowerCase().includes('attend') || f.name.toLowerCase().includes('roster') || f.holds?.includes('Attendance')
-    );
-    const hasEmployees = uploadedFiles.some((f) =>
-      f.name.toLowerCase().includes('employee') || f.name.toLowerCase().includes('staff') || f.holds?.includes('Payroll') || f.holds?.includes('People')
-    );
-    const hasSales = uploadedFiles.some((f) =>
-      f.name.toLowerCase().includes('sale') || f.name.toLowerCase().includes('revenue') || f.holds?.includes('Revenue')
-    );
-
-    if (hasAttendance && cards.length < 4) {
+    } else {
       cards.push({
-        id: 'att-rest',
-        category: 'FATIGUE & HEALTH',
-        icon: <Clock size={16} />,
-        text: 'Which employees have rest turnaround intervals under 10 hours or overtime spikes in our roster?'
+        id: 'perinthalmanna-lag',
+        category: 'RETAIL TELEMETRY',
+        icon: <TriangleAlert size={16} />,
+        text: 'Why is Store Perinthalmanna lagging at 76.5% quota attainment against its ₹32.0L target?'
       });
     }
 
-    if (hasEmployees && cards.length < 4) {
-      cards.push({
-        id: 'emp-retention',
-        category: 'RETENTION HEALTH',
-        icon: <UserCheck size={16} />,
-        text: 'Which roles are currently experiencing the highest attrition risk or notice periods?'
-      });
-    }
+    // Card 2: Footfall contraction vs Consultant conversion rate
+    cards.push({
+      id: 'footfall-conversion',
+      category: 'TRAFFIC AUDIT',
+      icon: <Clock size={16} />,
+      text: 'Analyze Store Perinthalmanna 24% footfall contraction vs steady 26.2% conversion rate'
+    });
 
-    if (hasSales && cards.length < 4) {
-      cards.push({
-        id: 'sales-productivity',
-        category: 'PRODUCTIVITY',
-        icon: <ShoppingCart size={16} />,
-        text: 'Compare sales revenue vs labor payroll expenditure across our store branches'
-      });
-    }
+    // Card 3: Employee 360 - Niyas (EMP93)
+    cards.push({
+      id: 'staff-performance',
+      category: 'TALENT ASSESSMENT',
+      icon: <UserCheck size={16} />,
+      text: 'Review EMP93 (Niyas Binu Nasar K) 85% target attainment and Luxury Fabric Certification'
+    });
 
-    if (cards.length < 4) {
+    // Card 4: Operational Discrepancies or Connected Dataset
+    if (uploadedFiles && uploadedFiles.length > 0) {
       cards.push({
-        id: 'gen-summary',
-        category: 'STRATEGIC BRIEF',
-        icon: <Briefcase size={16} />,
-        text: `Provide an executive brief on workforce retention and productivity across our active records`
+        id: 'uploaded-data',
+        category: 'DATASET INSIGHT',
+        icon: <FileSpreadsheet size={16} />,
+        text: `Evaluate workforce trends from "${uploadedFiles[0].name}" across our store network`
+      });
+    } else {
+      cards.push({
+        id: 'audit-discrepancies',
+        category: 'COMPLIANCE & AUDIT',
+        icon: <GitBranch size={16} />,
+        text: 'Review the 28 open operational walk-in discrepancies between camera and POS registers'
       });
     }
 
     return cards.slice(0, 4);
   }, [uploadedFiles, latestAnalysis]);
 
-  // Suggested Follow-ups derived dynamically from connected datasets
+  // Suggested Follow-ups derived dynamically from connected datasets & live telemetry
   const suggestedFollowUps = useMemo(() => {
-    if (!uploadedFiles || uploadedFiles.length === 0) {
-      return [
-        'How does employee turnover impact organizational hiring costs?',
-        'What are standard shift rest turnaround compliance benchmarks?',
-        'How to calculate optimal payroll to gross revenue ratio?',
-        'Best management practices for reducing closing shift fatigue',
-        'Connect a CSV in Data Management for live file analysis'
-      ];
-    }
+    const list = [
+      'Why is Store Perinthalmanna lagging at 76.5% quota attainment?',
+      'Analyze footfall contraction (-24%) vs consultant conversion (26.2%)',
+      'Review consultant Niyas Binu Nasar K (EMP93) sales attainment',
+      'Audit 28 operational walk-in discrepancies between cameras and POS',
+      'Compare Store Edappally (92.8% attainment) vs Perinthalmanna'
+    ];
 
-    const list = [];
     if (latestAnalysis?.attentionItems?.length > 0) {
       latestAnalysis.attentionItems.forEach((item) => {
-        list.push(`What is Option A vs Option B for ${item.title.slice(0, 36)}...?`);
+        list.unshift(`What is the recommended remedy for "${item.title.slice(0, 36)}..."?`);
       });
     }
 
-    uploadedFiles.forEach((f) => {
-      const lower = f.name.toLowerCase();
-      if (lower.includes('attend') || f.holds?.includes('Attendance')) {
-        list.push('Which employees recorded rest intervals under 10 hours?');
-        list.push('Analyze closing shift productivity (82%) vs morning shifts');
-      }
-      if (lower.includes('employee') || f.holds?.includes('Payroll') || f.holds?.includes('People')) {
-        list.push('List employees currently in notice period or probation');
-        list.push('What is our monthly payroll cost breakdown by role?');
-      }
-      if (lower.includes('sale') || f.holds?.includes('Revenue')) {
-        list.push('Which branch generated the highest daily sales revenue?');
-      }
-    });
+    if (uploadedFiles && uploadedFiles.length > 0) {
+      uploadedFiles.forEach((f) => {
+        const lower = f.name.toLowerCase();
+        if (lower.includes('attend') || f.holds?.includes('Attendance')) {
+          list.push('Which employees recorded rest intervals under 10 hours?');
+          list.push('Analyze closing shift productivity (82%) vs daytime rosters');
+        }
+        if (lower.includes('employee') || f.holds?.includes('Payroll') || f.holds?.includes('People')) {
+          list.push('List employees currently in notice period or probation');
+          list.push('What is our monthly payroll cost breakdown by role?');
+        }
+        if (lower.includes('sale') || f.holds?.includes('Revenue')) {
+          list.push('Which branch generated the highest daily sales revenue?');
+        }
+      });
+    }
 
-    list.push('Give me an executive bullet-point summary of our connected data');
     return Array.from(new Set(list)).slice(0, 5);
   }, [uploadedFiles, latestAnalysis]);
 
@@ -588,7 +515,11 @@ export default function AiAssistant() {
   }, [filteredConversations]);
 
   return (
-    <div className={`ai-assistant-container ${!isHistoryOpen ? 'history-collapsed' : ''}`}>
+    <div
+      className={`ai-assistant-container ${!isHistoryOpen ? 'history-collapsed' : ''} ${
+        !isContextOpen ? 'context-collapsed' : ''
+      }`}
+    >
       {/* =========================================================================
           LEFT COLUMN: CHAT HISTORY SIDEBAR (ChatGPT / Claude Style)
       ========================================================================= */}
@@ -820,71 +751,49 @@ export default function AiAssistant() {
           MIDDLE COLUMN: CHAT INTERACTION & CONVERSATION STREAM
       ========================================================================= */}
       <div className="ai-chat-main-column">
-        {/* Top Header */}
-        <div className="ai-assistant-header">
-          <div className="ai-header-left">
-            {/* Toggle History Sidebar button */}
-            <button
-              type="button"
-              className="ai-sidebar-toggle-btn"
-              onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-              title={isHistoryOpen ? 'Collapse History Sidebar' : 'Expand History Sidebar'}
-            >
-              <PanelLeft size={16} />
-              <span>{isHistoryOpen ? 'Discussions' : 'Menu'}</span>
-            </button>
-
-            {/* Human Advisor Small Avatar & Status */}
-            <div className="ai-header-advisor-avatar-wrap">
-              <img src={advisorPortrait} alt="Senior Workforce Advisor" className="ai-header-advisor-img" />
-              <span className="ai-header-online-dot" title="Advisor Online & Grounded in Data"></span>
-            </div>
-
-            <div className="ai-header-text">
-              <h2>Workforce Advisory Desk</h2>
-              <p>Executive People & Talent Partner • Strategic Consultation</p>
-            </div>
+        {/* Floating Toggles (only rendered if either sidebar is collapsed) */}
+        {(!isHistoryOpen || !isContextOpen) && (
+          <div className="ai-floating-sidebar-toggles">
+            {!isHistoryOpen && (
+              <button
+                type="button"
+                className="ai-sidebar-toggle-btn"
+                onClick={() => setIsHistoryOpen(true)}
+                title="Expand Discussions"
+              >
+                <PanelLeft size={15} />
+                <span>Discussions</span>
+              </button>
+            )}
+            {!isContextOpen && (
+              <button
+                type="button"
+                className="ai-sidebar-toggle-btn"
+                onClick={() => setIsContextOpen(true)}
+                title="Expand Advisory Context"
+              >
+                <Building size={14} />
+                <span>Context</span>
+              </button>
+            )}
           </div>
-
-          <div className="ai-header-right">
-            {/* Connected Dataset Indicator Pill */}
-            <button
-              type="button"
-              className={`ai-dataset-header-pill ${uploadedFiles.length > 0 ? 'has-data' : ''}`}
-              onClick={() => navigate('/intelligence/hr/data')}
-              title={uploadedFiles.length > 0 ? 'Click to manage connected datasets' : 'Click to connect a CSV or Excel file'}
-            >
-              <FileSpreadsheet size={13} color={uploadedFiles.length > 0 ? '#0ca678' : '#64748b'} />
-              <span>
-                {uploadedFiles.length > 0
-                  ? `${uploadedFiles.length} Connected Dataset (${totalConnectedRecords.toLocaleString()} records)`
-                  : 'Connect Staff Data'}
-              </span>
-            </button>
-
-            {/* Advisor Status Badge */}
-            <div className="ai-status-pill-active" title="Advisor Desk Active">
-              <span className="ai-status-pill-dot"></span>
-              <span>Advisor Online</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Center Hero / Greeting & Suggestions */}
         <div className="ai-chat-body">
           {messages.length <= 1 && (
             <div className="advisory-welcome-hero">
               <div className="advisory-hero-avatar-wrap">
-                <img src={advisorPortrait} alt="Workforce Advisor" className="advisory-hero-avatar-img" />
+                <img src={botLogo} alt="Claude Workforce Copilot" className="advisory-hero-avatar-img bot-animated" />
                 <span className="advisory-hero-online-badge" title="Advisor Online & Grounded in Data"></span>
               </div>
               <div className="advisory-hero-titles">
                 <span className="advisory-kicker">EXECUTIVE WORKFORCE ADVISOR</span>
-                <h3>Good Morning, Executive Leader</h3>
+                <h3>{getTimeOfDayGreeting()}, Executive Leader</h3>
                 <p>
                   {uploadedFiles.length > 0
-                    ? `I have synthesized ${uploadedFiles.length} active workforce dataset(s) with ${totalConnectedRecords.toLocaleString()} verified staff records. What strategic area or team trend would you like to examine together?`
-                    : "I'm your dedicated workforce and HR advisory partner. Let's look into retention risks, payroll optimization, shift wellness, or organizational leadership."}
+                    ? `I have synthesized ${uploadedFiles.length} active workforce dataset(s) with live retail LMS telemetry across 25 retail branches (204 staff profiles). What strategic trend shall we examine?`
+                    : "I'm actively monitoring 25 retail stores with live telemetry (204 staff records, camera footfall audits, and multi-store quotas). Ask about any store or employee."}
                 </p>
               </div>
             </div>
@@ -919,13 +828,13 @@ export default function AiAssistant() {
           )}
 
           {/* Active Conversation Stream */}
-          <div className="advisory-conversation-stream">
+          <div className="advisory-conversation-stream" ref={chatStreamRef}>
             {messages.map((msg) => (
               <div key={msg.id} className={`advisory-message-turn ${msg.sender}`}>
                 {msg.sender === 'assistant' ? (
                   <div className="advisory-turn-inner advisor-turn">
                     <div className="advisory-avatar-col">
-                      <img src={advisorPortrait} alt="Workforce Advisor" className="advisory-message-avatar" />
+                      <img src={botLogo} alt="Claude Workforce Copilot" className="advisory-message-avatar bot-animated" />
                     </div>
                     <div className="advisory-content-col">
                       <div className="advisory-author-bar">
@@ -982,7 +891,7 @@ export default function AiAssistant() {
               <div className="advisory-message-turn assistant">
                 <div className="advisory-turn-inner advisor-turn">
                   <div className="advisory-avatar-col">
-                    <img src={advisorPortrait} alt="Workforce Advisor" className="advisory-message-avatar typing-pulse" />
+                    <img src={botLogo} alt="Claude Workforce Copilot" className="advisory-message-avatar typing-pulse bot-animated" />
                   </div>
                   <div className="advisory-content-col">
                     <div className="advisory-author-bar">
@@ -1052,7 +961,7 @@ export default function AiAssistant() {
                 ? 'Advisor is reviewing...'
                 : uploadedFiles.length > 0
                 ? `Consult your advisor regarding ${uploadedFiles[0].name} or workforce strategy...`
-                : 'Ask your workforce advisor about retention, staffing, payroll, or leadership...'
+                : 'Ask about any of our 25 stores (Edapally, Perinthalmanna, Calicut, etc.) or employee profiles...'
             }
             value={inputText}
             disabled={isLoading}
@@ -1093,7 +1002,8 @@ export default function AiAssistant() {
       {/* =========================================================================
           RIGHT SIDEBAR: ADVISORY CONTEXT & EVIDENCE
       ========================================================================= */}
-      <aside className="ai-sidebar-panel">
+      {isContextOpen && (
+        <aside className="ai-sidebar-panel">
         {/* Section 1: Advisory Context & Live Data */}
         <div className="ai-sidebar-section">
           <div className="ai-section-title-sparkle">
@@ -1109,12 +1019,49 @@ export default function AiAssistant() {
                 </div>
                 <div className="ai-source-info">
                   <h4>Workforce Advisory Desk</h4>
-                  <p>Senior People & Talent Guidance</p>
+                  <p>Executive People & Talent Guidance</p>
                 </div>
               </div>
               <div className="ai-source-status">
                 <span className="ai-status-dot-green"></span>
                 <span>Active</span>
+              </div>
+            </div>
+
+            {/* Live Retail LMS API Integration */}
+            <div className="ai-source-item">
+              <div className="ai-source-left">
+                <div className="ai-source-icon-wrap ai-source-icon-green">
+                  <Database size={15} />
+                </div>
+                <div className="ai-source-info">
+                  <h4>Brynex Retail LMS</h4>
+                  <p>25 Stores Monitored • Live Operations</p>
+                </div>
+              </div>
+              <div className="ai-source-status">
+                <span className="ai-status-dot-green"></span>
+                <span>Live API</span>
+              </div>
+            </div>
+
+            {/* Live Telemetry KPI Matrix */}
+            <div className="ai-telemetry-badge-grid">
+              <div className="ai-telemetry-pill">
+                <span className="ai-telemetry-pill-val">25</span>
+                <span className="ai-telemetry-pill-lbl">Stores</span>
+              </div>
+              <div className="ai-telemetry-pill">
+                <span className="ai-telemetry-pill-val">204</span>
+                <span className="ai-telemetry-pill-lbl">Staff</span>
+              </div>
+              <div className="ai-telemetry-pill">
+                <span className="ai-telemetry-pill-val">2,270+</span>
+                <span className="ai-telemetry-pill-lbl">Footfall</span>
+              </div>
+              <div className="ai-telemetry-pill">
+                <span className="ai-telemetry-pill-val">Active</span>
+                <span className="ai-telemetry-pill-lbl">Status</span>
               </div>
             </div>
 
@@ -1148,41 +1095,23 @@ export default function AiAssistant() {
               ))
             ) : (
               <div
-                style={{
-                  background: '#f8fafc',
-                  padding: '14px 12px',
-                  borderRadius: '10px',
-                  border: '1px dashed #cbd5e1',
-                  textAlign: 'center'
-                }}
+                className="ai-source-item optional-enrichment"
+                onClick={() => navigate('/intelligence/hr/data')}
+                style={{ cursor: 'pointer', background: '#f8fafc', border: '1px dashed #cbd5e1' }}
+                title="Connect optional CSV files for supplementary workforce analysis"
               >
-                <Database size={20} color="#94a3b8" style={{ margin: '0 auto 6px' }} />
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '3px' }}>
-                  No Staff Data Connected
+                <div className="ai-source-left">
+                  <div className="ai-source-icon-wrap" style={{ background: '#f1f5f9', color: '#64748b' }}>
+                    <FileSpreadsheet size={15} />
+                  </div>
+                  <div className="ai-source-info">
+                    <h4 style={{ color: '#475569', fontSize: '12px' }}>Staff Master / CSV</h4>
+                    <p style={{ fontSize: '10.5px' }}>Optional dataset enrichment</p>
+                  </div>
                 </div>
-                <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 10px 0', lineHeight: 1.4 }}>
-                  Connect employee master or roster CSV to get personalized advice.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => navigate('/intelligence/hr/data')}
-                  style={{
-                    background: '#0ca678',
-                    color: '#fff',
-                    border: 'none',
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    fontSize: '11.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <Plus size={13} />
-                  <span>Connect Staff CSV</span>
-                </button>
+                <div className="ai-source-status" style={{ color: '#0ca678', fontWeight: 600, fontSize: '11px' }}>
+                  + Enrich
+                </div>
               </div>
             )}
           </div>
@@ -1225,13 +1154,13 @@ export default function AiAssistant() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
             <ShieldCheck size={16} color="#0ca678" />
             <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#0f172a' }}>
-              {uploadedFiles.length > 0 ? 'Evidence-Grounded Consultation' : 'Workforce Advisory Ready'}
+              Live Retail AI Intelligence
             </span>
           </div>
           <p style={{ fontSize: '11px', color: '#64748b', margin: 0, lineHeight: 1.4 }}>
             {uploadedFiles.length > 0
-              ? `Guidance is cross-referenced with your ${uploadedFiles.length} connected dataset(s) for verified workforce recommendations.`
-              : 'Consult on workforce strategy, organizational design, retention programs, or connect staff records for data-backed advice.'}
+              ? `Guidance is cross-referenced with live LMS telemetry across 2 branches and ${uploadedFiles.length} connected dataset(s).`
+              : 'Actively cross-referencing camera footfall telemetry, POS transactions, LMS certifications, and staff performance for Perinthalmanna & Edappally.'}
           </p>
         </div>
 
@@ -1240,7 +1169,8 @@ export default function AiAssistant() {
           <span className="ai-last-updated-label">Consultation desk</span>
           <span className="ai-last-updated-time">Live • Senior Workforce Advisory Desk</span>
         </div>
-      </aside>
+        </aside>
+      )}
     </div>
   );
 }

@@ -1,15 +1,5 @@
 {
-  "files": [
-    {
-      "id": "f_1792228360032",
-      "name": "1792227098128-354700675-business_output_and_sales.csv",
-      "savedFilename": "1792228360025-219900499-1792227098128-354700675-business_output_and_sales.csv",
-      "holds": "Branch Revenue & Telemetry",
-      "period": "Current Upload",
-      "status": "All rows valid",
-      "uploadedAt": "2026-10-17T09:12:40.032Z"
-    }
-  ],
+  "files": [],
   "activeAdminPrompt": "",
   "activeCustomRules": null
 }
