@@ -90,7 +90,8 @@ export const analyzeHrData = async ({ rows, fileName, customRules = null, adminP
     : '100%';
 
   // Department most affected
-  let mostAffectedDept = Object.keys(deptExits)[0] || Object.keys(deptTotal)[0] || 'Operations';
+  // Department most affected
+  let mostAffectedDept = Object.keys(deptExits)[0] || Object.keys(deptTotal)[0] || null;
   let maxExits = -1;
   for (const dept of Object.keys(deptExits)) {
     if (deptExits[dept] > maxExits) {
@@ -101,65 +102,56 @@ export const analyzeHrData = async ({ rows, fileName, customRules = null, adminP
 
   // Health Score Formula
   const diffFromTarget = Math.max(0, parseFloat(attritionRate) - targetAttrition);
-  const healthScore = Math.max(50, Math.min(100, Math.round(100 - (diffFromTarget * 4))));
+  const healthScore = totalEmployees > 0 ? Math.max(0, Math.min(100, Math.round(100 - (diffFromTarget * 4)))) : 100;
 
-  // Generate Attention Items dynamically based on actual anomalies found
+  // Generate Attention Items dynamically based on actual anomalies found — raw structured data only
   const attentionItems = [];
   if (exitedCount > 0) {
     attentionItems.push({
-      id: 1,
-      category: parseFloat(attritionRate) > targetAttrition ? 'Critical' : 'Need investigation',
-      priority: 'High Priority',
-      status: 'Needs investigation',
-      title: `Attrition rate at ${attritionRate}% (${exitedCount} Exits Detected)`,
-      description: `Analysis of ${fileName} identifies ${exitedCount} employee exits, primary cluster in ${mostAffectedDept}.`,
-      branch: 'All branches',
-      topic: 'Attrition Risk & Retention',
-      dateRange: 'Current Period',
-      confidence: '90%',
-      detailTitle: `Workforce attrition tracking at ${attritionRate}%`,
-      department: mostAffectedDept,
-      whatsHappening: `Telemetry scan across ${totalEmployees} records identified ${exitedCount} departures.`,
-      metrics: [
-        { label: 'Current attrition', val: `${attritionRate}%`, note: `Target: ${targetAttrition}%`, hasDownArrow: parseFloat(attritionRate) > targetAttrition },
-        { label: 'Exited staff', val: `${exitedCount} Staff`, note: 'Recorded departures' },
-        { label: 'Total Headcount', val: `${totalEmployees}`, note: 'Ingested records' },
-        { label: 'Primary Department', val: mostAffectedDept, note: 'Focus cluster' }
-      ]
+      id: 'att-attrition-anomaly',
+      flagType: 'attrition_anomaly',
+      source: fileName,
+      data: {
+        totalEmployees,
+        exitedCount,
+        attritionRatePct: parseFloat(attritionRate),
+        targetAttritionPct: targetAttrition,
+        mostAffectedDept
+      }
     });
   }
 
-  // Top KPI Metrics
+  // Top KPI Metrics calculated strictly from real data
   const kpiMetrics = [
     {
       id: 'issues',
       title: 'Issues Detected',
-      value: String(attentionItems.filter((i) => i.category === 'Critical').length || 2),
-      trend: 'Auto-detected by AI',
-      trendPositive: true,
+      value: String(attentionItems.length),
+      trend: `${attentionItems.length} active flags detected`,
+      trendPositive: attentionItems.length === 0,
       colorClass: 'hr-kpi-icon-purple'
     },
     {
       id: 'decisions',
       title: 'Awaited Decisions',
       value: String(attentionItems.length),
-      trend: 'Requires HR Review',
-      trendPositive: true,
+      trend: `${attentionItems.length} items for review`,
+      trendPositive: attentionItems.length === 0,
       colorClass: 'hr-kpi-icon-red'
     },
     {
       id: 'monitored',
-      title: 'Being Monitored',
-      value: '1',
-      trend: 'Live Tracking',
+      title: 'Staff Monitored',
+      value: String(totalEmployees),
+      trend: `${totalEmployees} ingested records`,
       trendPositive: true,
       colorClass: 'hr-kpi-icon-green'
     },
     {
       id: 'opportunities',
       title: 'Opportunities',
-      value: '1',
-      trend: 'Cost & Efficiency',
+      value: '0',
+      trend: 'Optimization levers',
       trendPositive: true,
       colorClass: 'hr-kpi-icon-orange'
     },
@@ -167,37 +159,22 @@ export const analyzeHrData = async ({ rows, fileName, customRules = null, adminP
       id: 'productivity',
       title: 'Avg. Productivity',
       value: productivityRate,
-      trend: '+2.4% vs benchmark',
+      trend: `${productivityRate} attendance rate`,
       trendPositive: true,
       colorClass: 'hr-kpi-icon-blue'
     }
   ];
-
-  // If GEMINI_API_KEY is configured in backend/.env, enhance narrative via AI
-  let aiInsights = null;
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      // Future-ready AI endpoint hook
-      aiInsights = {
-        mode: 'gemini_enhanced',
-        summary: `AI analyzed ${totalEmployees} records with custom parameters.`
-      };
-    } catch (e) {
-      console.warn('Gemini inference skipped:', e.message);
-    }
-  }
 
   return {
     status: 'success',
     fileName,
     totalRecords: totalEmployees,
     analyzedAt: new Date().toISOString(),
-    adminPromptApplied: adminPrompt || 'Autonomous AI Parameter Extraction',
+    adminPromptApplied: adminPrompt || null,
     healthScore: `${healthScore}%`,
     healthStatus: healthScore >= 80 ? 'Healthy' : healthScore >= 60 ? 'Needs Attention' : 'Critical',
     kpiMetrics,
     attentionItems,
-    departmentBreakdown: deptTotal,
-    aiInsights
+    departmentBreakdown: deptTotal
   };
 };

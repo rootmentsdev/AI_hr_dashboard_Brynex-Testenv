@@ -412,11 +412,12 @@ export default function AiAssistant() {
     // Card 1: Retail Lag & Performance variance (G.Perinthalmanna)
     if (attentionItems.length > 0) {
       const item1 = attentionItems[0];
+      const titleStr = item1.title || item1.flagType || 'workforce telemetry pattern';
       cards.push({
         id: 'issue-1',
         category: 'RETAIL TELEMETRY',
         icon: <TriangleAlert size={16} />,
-        text: `Why did ${item1.title.slice(0, 52)}... occur and what is the strategic remedy?`
+        text: `Why did ${titleStr.slice(0, 52)}... occur and what is the strategic remedy?`
       });
     } else {
       cards.push({
@@ -475,7 +476,10 @@ export default function AiAssistant() {
 
     if (latestAnalysis?.attentionItems?.length > 0) {
       latestAnalysis.attentionItems.forEach((item) => {
-        list.unshift(`What is the recommended remedy for "${item.title.slice(0, 36)}..."?`);
+        const itemTitle = item.title || item.flagType || null;
+        if (itemTitle) {
+          list.unshift(`What is the recommended remedy for "${itemTitle.slice(0, 36)}..."?`);
+        }
       });
     }
 

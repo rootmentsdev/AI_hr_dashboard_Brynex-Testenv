@@ -1,5 +1,31 @@
 {
-  "files": [],
+  "files": [
+    {
+      "id": "f_1792330753706",
+      "name": "attendance_and_roster (2).csv",
+      "savedFilename": "1792330753661-651970110-attendance_and_roster (2).csv",
+      "holds": "Attendance & Shifts",
+      "period": "Current Upload",
+      "status": "All rows valid",
+      "uploadedAt": "2026-10-18T13:39:13.706Z"
+    },
+    {
+      "id": "f_1792330627536",
+      "name": "employees_master (2).csv",
+      "savedFilename": "1792330627472-461560477-employees_master (2).csv",
+      "holds": "Payroll & Compensation",
+      "period": "Current Upload",
+      "status": "All rows valid",
+      "uploadedAt": "2026-10-18T13:37:07.536Z"
+    }
+  ],
   "activeAdminPrompt": "",
-  "activeCustomRules": null
+  "activeCustomRules": {
+    "targetAttrition": 5,
+    "targetProductivity": 90,
+    "targetDepartment": "All",
+    "focusPriority": "All",
+    "calculationMode": "hybrid",
+    "timeHorizon": "01-30 Sep 2026"
+  }
 }

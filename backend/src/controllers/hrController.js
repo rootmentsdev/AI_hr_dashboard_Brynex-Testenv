@@ -201,8 +201,7 @@ export const mergeDualLayerAnalysis = (csvAnalysis, apiAnalysis = cachedApiAnaly
     kpiMetrics: mergedKpis,
     attentionItems: combinedAttentionItems,
     connectedFilesCount: uploadedFilesStore.length,
-    fileNames: uploadedFilesStore.map((f) => f.name),
-    attentionSummary: `Dual-layer intelligence active: Ingested ${uploadedFilesStore.length} dataset(s) (${totalHeadcount} employee records) correlated with Live Retail LMS API telemetry (Perinthalmanna, Edappally & 25 stores). ${combinedAttentionItems.length} total attention issues active.`,
+    attentionSummary: `Dual-layer intelligence active: Ingested ${uploadedFilesStore.length} dataset(s) (${totalHeadcount} employee records) correlated with Live Retail LMS API telemetry. ${combinedAttentionItems.length} total attention issues active.`,
     storesSummary: apiAnalysis.storesSummary || csvAnalysis.storesSummary,
     enterpriseAnalytics: apiAnalysis.enterpriseAnalytics || csvAnalysis.enterpriseAnalytics,
     employeesSummary: apiAnalysis.employeesSummary || csvAnalysis.employeesSummary

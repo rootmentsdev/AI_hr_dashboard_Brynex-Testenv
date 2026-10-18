@@ -60,7 +60,7 @@ export const parseUploadedFile = async (filePath, originalName) => {
         extractedRows.push({
           id: `EMP-${1000 + extractedRows.length + 1}`,
           name: staffName,
-          department: 'Frontline Staff',
+          department: null,
           presentDays: present,
           absentDays: absent,
           attendance: `${attendancePct}%`,
