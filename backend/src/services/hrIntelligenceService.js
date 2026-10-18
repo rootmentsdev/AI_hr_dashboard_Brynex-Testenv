@@ -130,27 +130,29 @@ export const analyzeHrData = async ({ rows, fileName, customRules = null, adminP
   }
 
   // Top KPI Metrics
+  const criticalCount = attentionItems.filter((i) => i.category === 'Critical').length;
+  const opportunityCount = attentionItems.filter((i) => i.category === 'Opportunity').length;
   const kpiMetrics = [
     {
       id: 'issues',
       title: 'Issues Detected',
-      value: String(attentionItems.filter((i) => i.category === 'Critical').length || 2),
-      trend: 'Auto-detected by AI',
-      trendPositive: true,
+      value: String(criticalCount),
+      trend: criticalCount > 0 ? `${criticalCount} critical issues` : 'No critical issues',
+      trendPositive: criticalCount === 0,
       colorClass: 'hr-kpi-icon-purple'
     },
     {
       id: 'decisions',
       title: 'Awaited Decisions',
       value: String(attentionItems.length),
-      trend: 'Requires HR Review',
-      trendPositive: true,
+      trend: attentionItems.length > 0 ? 'Requires HR Review' : 'All clear',
+      trendPositive: attentionItems.length === 0,
       colorClass: 'hr-kpi-icon-red'
     },
     {
       id: 'monitored',
       title: 'Being Monitored',
-      value: '1',
+      value: String(totalEmployees),
       trend: 'Live Tracking',
       trendPositive: true,
       colorClass: 'hr-kpi-icon-green'
@@ -158,7 +160,7 @@ export const analyzeHrData = async ({ rows, fileName, customRules = null, adminP
     {
       id: 'opportunities',
       title: 'Opportunities',
-      value: '1',
+      value: String(opportunityCount),
       trend: 'Cost & Efficiency',
       trendPositive: true,
       colorClass: 'hr-kpi-icon-orange'
@@ -167,7 +169,7 @@ export const analyzeHrData = async ({ rows, fileName, customRules = null, adminP
       id: 'productivity',
       title: 'Avg. Productivity',
       value: productivityRate,
-      trend: '+2.4% vs benchmark',
+      trend: `${productivityRate} recorded`,
       trendPositive: true,
       colorClass: 'hr-kpi-icon-blue'
     }

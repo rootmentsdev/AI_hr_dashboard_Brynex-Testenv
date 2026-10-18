@@ -79,7 +79,7 @@ export default function OperationsIntelligence() {
 
   const activeWorkforce = data?.activeWorkforce || 0;
   const overtimeHours = data?.overtimeHoursTotal || '0';
-  const compliance = data?.scheduleCompliance || '100%';
+  const compliance = data?.scheduleCompliance || 'N/A';
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>

@@ -25,7 +25,9 @@ import {
   fetchAllStoresOverview,
   fetchAllEmployeesOverview,
   syncStoresAndEmployees,
-  getLiveSyncedStatus
+  getLiveSyncedStatus,
+  fetchStaffPerformanceReport,
+  getAllStaffPerformanceRecords
 } from '../services/externalIntegrationService.js';
 import {
   getPrompts,
@@ -140,6 +142,83 @@ router.get('/external/stores', async (req, res) => {
   }
 });
 
+// Rootments Live Rental API: Staff Performance & Store Achieved Sales Report
+router.get('/external/staff-performance', async (req, res) => {
+  try {
+    const { refresh, empCode, store } = req.query;
+    const records = await fetchStaffPerformanceReport({ forceRefresh: refresh === 'true' });
+
+    let filtered = records;
+    if (empCode) {
+      const q = String(empCode).trim().toLowerCase();
+      filtered = filtered.filter(r => (r.empCode || '').toLowerCase().includes(q));
+    }
+    if (store) {
+      const q = String(store).trim().toLowerCase();
+      filtered = filtered.filter(r => (r.bookingBy || '').toLowerCase().includes(q));
+    }
+
+    // Compute Executive Performance Analytics
+    const totalAchievedSales = records.reduce((sum, r) => sum + (Number(r.totalValue) || 0), 0);
+    const totalGrossCreatedValue = records.reduce((sum, r) => sum + (Number(r.createdValue) || 0), 0);
+    const totalFulfilledBills = records.reduce((sum, r) => sum + (Number(r.total_Number_Of_Bill) || 0), 0);
+    const totalCanceledBills = records.reduce((sum, r) => sum + (Number(r.canceled_Number_Of_Bill) || 0), 0);
+    const totalCanceledValue = records.reduce((sum, r) => sum + (Number(r.canceledValue) || 0), 0);
+    const networkCancellationRate = totalGrossCreatedValue > 0
+      ? ((totalCanceledValue / totalGrossCreatedValue) * 100).toFixed(1) + '%'
+      : '0%';
+
+    // Top 5 Staff Revenue Generators
+    const topStaff = records
+      .filter(r => r.empCode && !r.empCode.startsWith('ZR') && !r.empCode.startsWith('DS'))
+      .sort((a, b) => (b.totalValue || 0) - (a.totalValue || 0))
+      .slice(0, 5)
+      .map(s => ({
+        name: s.bookingBy?.trim(),
+        empCode: s.empCode?.trim(),
+        achievedSales: s.totalValue,
+        formattedSales: s.totalValue >= 100000 ? `₹${(s.totalValue / 100000).toFixed(2)}L` : `₹${s.totalValue.toLocaleString()}`,
+        billsCount: s.total_Number_Of_Bill,
+        cancellationRate: s.createdValue > 0 ? ((s.canceledValue / s.createdValue) * 100).toFixed(1) + '%' : '0%'
+      }));
+
+    // Store Achieved Sales Breakdown
+    const storeBreakdown = records
+      .filter(r => !r.empCode || r.empCode.startsWith('ZR') || r.empCode.startsWith('DS') || r.bookingBy?.toUpperCase().includes('SG') || r.bookingBy?.toUpperCase().includes('ZORUCCI'))
+      .map(st => ({
+        storeName: st.bookingBy?.trim(),
+        code: st.empCode,
+        achievedSales: st.totalValue,
+        formattedSales: st.totalValue >= 100000 ? `₹${(st.totalValue / 100000).toFixed(2)}L` : `₹${st.totalValue.toLocaleString()}`,
+        fulfilledBills: st.total_Number_Of_Bill,
+        canceledBills: st.canceled_Number_Of_Bill,
+        cancellationRate: st.createdValue > 0 ? ((st.canceledValue / st.createdValue) * 100).toFixed(1) + '%' : '0%'
+      }))
+      .sort((a, b) => b.achievedSales - a.achievedSales);
+
+    res.json({
+      success: true,
+      source: 'https://rentalapi.rootments.live/api/Reports/GetPerformanceStaffReportWithCancel',
+      count: filtered.length,
+      totalRecords: records.length,
+      summary: {
+        totalAchievedSales,
+        formattedTotalSales: totalAchievedSales >= 10000000 ? `₹${(totalAchievedSales / 10000000).toFixed(2)} Cr` : `₹${(totalAchievedSales / 100000).toFixed(2)}L`,
+        totalFulfilledBills,
+        totalCanceledBills,
+        totalCanceledValue,
+        formattedCanceledValue: totalCanceledValue >= 10000000 ? `₹${(totalCanceledValue / 10000000).toFixed(2)} Cr` : `₹${(totalCanceledValue / 100000).toFixed(2)}L`,
+        networkCancellationRate,
+        topStaff,
+        storeBreakdown
+      },
+      data: filtered
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.post('/external/sync-stores', async (req, res) => {
   try {
     const { storeCodes } = req.body;
@@ -215,8 +294,8 @@ router.get('/finance', async (req, res) => {
     formattedPayroll: '₹0.00L',
     payrollRatio: '0.0%',
     targetPayrollRatio: '12.0%',
-    runwayMonths: 18,
-    grossMargin: '68%'
+    runwayMonths: null,
+    grossMargin: null
   };
 
   res.json({
@@ -228,8 +307,8 @@ router.get('/finance', async (req, res) => {
       formattedPayroll: f.formattedPayroll || '₹0.00L',
       payrollRatio: f.payrollRatio || '0.0%',
       targetRatio: f.targetPayrollRatio || '12.0%',
-      runwayMonths: f.runwayMonths || 18,
-      grossMargin: f.grossMargin || '68%'
+      runwayMonths: f.runwayMonths ?? null,
+      grossMargin: f.grossMargin ?? null
     }
   });
 });
@@ -249,7 +328,7 @@ router.get('/operations', async (req, res) => {
     data: {
       activeWorkforce: employees.length || 0,
       overtimeHoursTotal: analytics?.operations?.totalOvertimeHours || '0.0',
-      scheduleCompliance: '98%',
+      scheduleCompliance: analytics?.operations?.scheduleCompliance ?? null,
       openDiscrepancies: analytics?.operations?.openAuditDiscrepancies || 0,
       inProgressTasks: analytics?.operations?.inProgressTasks || 0
     }
@@ -293,18 +372,21 @@ router.get('/business-health', async (req, res) => {
   }
 
   const latestAnalysis = getCachedLatestAnalysis();
-  const score = parseInt(latestAnalysis?.healthScore) || 85;
+  const rawScore = parseInt(latestAnalysis?.healthScore);
+  const score = isNaN(rawScore) ? (analytics?.healthScore ?? null) : rawScore;
+  const status = score === null ? 'Awaiting Telemetry' : (latestAnalysis?.healthStatus || (score >= 80 ? 'Optimal (Synchronized)' : 'Needs Attention'));
+
   res.json({
     module: 'Business Health',
     status: 'active',
     data: {
       overallScore: score,
-      status: latestAnalysis?.healthStatus || 'Optimal (Synchronized)',
+      status,
       engineBreakdown: [
-        { id: 'hr', name: 'HR Intelligence', score: score, status: 'Active', detail: `${employees.length} employees synced` },
-        { id: 'sales', name: 'Sales Intelligence', score: 88, status: 'Active', detail: `${analytics?.sales?.formattedRevenue || '₹0.00L'} Revenue` },
-        { id: 'finance', name: 'Finance Intelligence', score: 84, status: 'Active', detail: `${analytics?.finance?.payrollRatio || '0.0%'} Payroll Ratio` },
-        { id: 'operations', name: 'Operations Intelligence', score: 86, status: 'Active', detail: `${analytics?.operations?.openAuditDiscrepancies || 0} Audit Discrepancies Monitored` }
+        { id: 'hr', name: 'HR Intelligence', score: score, status: score !== null ? 'Active' : 'Awaiting Data', detail: `${employees.length} employees synced` },
+        { id: 'sales', name: 'Sales Intelligence', score: analytics?.sales ? score : null, status: analytics?.sales ? 'Active' : 'Awaiting Data', detail: `${analytics?.sales?.formattedRevenue || '₹0.00L'} Revenue` },
+        { id: 'finance', name: 'Finance Intelligence', score: analytics?.finance ? score : null, status: analytics?.finance ? 'Active' : 'Awaiting Data', detail: `${analytics?.finance?.payrollRatio || '0.0%'} Payroll Ratio` },
+        { id: 'operations', name: 'Operations Intelligence', score: analytics?.operations ? score : null, status: analytics?.operations ? 'Active' : 'Awaiting Data', detail: `${analytics?.operations?.openAuditDiscrepancies || 0} Audit Discrepancies Monitored` }
       ]
     }
   });

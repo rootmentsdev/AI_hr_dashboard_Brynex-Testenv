@@ -150,6 +150,8 @@ const UPLOADS_DIR = fs.existsSync(path.join(process.cwd(), 'uploads'))
   ? path.join(process.cwd(), 'uploads')
   : path.join(process.cwd(), 'backend', 'uploads');
 const LMS_CACHE_FILE = path.join(UPLOADS_DIR, 'lms_synced_data.json');
+const RENTAL_PERFORMANCE_CACHE_FILE = path.join(UPLOADS_DIR, 'rental_performance_cache.json');
+let LIVE_PERFORMANCE_REPORT_CACHE = [];
 
 const persistLmsCache = () => {
   try {
@@ -161,6 +163,21 @@ const persistLmsCache = () => {
     fs.writeFileSync(LMS_CACHE_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
     console.warn('[LMS Ingestion] Failed to persist LMS cache to disk:', err.message);
+  }
+};
+
+const hydratePerformanceCache = () => {
+  try {
+    if (fs.existsSync(RENTAL_PERFORMANCE_CACHE_FILE)) {
+      const raw = fs.readFileSync(RENTAL_PERFORMANCE_CACHE_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        LIVE_PERFORMANCE_REPORT_CACHE = parsed;
+        console.log(`[Rental Ingestion] Hydrated ${parsed.length} staff & store performance records from disk cache.`);
+      }
+    }
+  } catch (err) {
+    console.warn('[Rental Ingestion] Failed to hydrate performance cache:', err.message);
   }
 };
 
@@ -183,6 +200,7 @@ const hydrateLmsCache = () => {
 };
 
 // Initialize cache hydration on module load
+hydratePerformanceCache();
 hydrateLmsCache();
 
 /**
@@ -314,5 +332,151 @@ export function getLiveSyncedStatus() {
     employeesCount: LIVE_EMPLOYEES_CACHE.size,
     storeCodes: Array.from(LIVE_STORES_CACHE.keys())
   };
+}
+
+/**
+ * Fetch Staff & Store Performance Report from Rootments Live Rental API
+ * URL: https://rentalapi.rootments.live/api/Reports/GetPerformanceStaffReportWithCancel
+ */
+export async function fetchStaffPerformanceReport({ forceRefresh = false } = {}) {
+  if (!forceRefresh && LIVE_PERFORMANCE_REPORT_CACHE.length > 0) {
+    return LIVE_PERFORMANCE_REPORT_CACHE;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const res = await fetch('https://rentalapi.rootments.live/api/Reports/GetPerformanceStaffReportWithCancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.dataSet && Array.isArray(json.dataSet.data)) {
+        LIVE_PERFORMANCE_REPORT_CACHE = json.dataSet.data;
+        try {
+          fs.writeFileSync(RENTAL_PERFORMANCE_CACHE_FILE, JSON.stringify(json.dataSet.data, null, 2), 'utf-8');
+        } catch (e) {
+          console.warn('[Rental Ingestion] Could not write cache to disk:', e.message);
+        }
+        console.log(`[Rental Ingestion] Successfully fetched ${LIVE_PERFORMANCE_REPORT_CACHE.length} records from live API.`);
+        return LIVE_PERFORMANCE_REPORT_CACHE;
+      }
+    }
+  } catch (err) {
+    console.warn('[Rental Ingestion] Live fetch failed or timed out:', err.message);
+  }
+
+  return LIVE_PERFORMANCE_REPORT_CACHE;
+}
+
+export function getAllStaffPerformanceRecords() {
+  return LIVE_PERFORMANCE_REPORT_CACHE;
+}
+
+/**
+ * Match Store Achieved Sales & Performance from Report by Store locCode or workingBranch name
+ */
+export function getStorePerformanceMetrics(locCode, storeName = '') {
+  if (!LIVE_PERFORMANCE_REPORT_CACHE || LIVE_PERFORMANCE_REPORT_CACHE.length === 0) {
+    return null;
+  }
+  const cleanCode = String(locCode || '').trim();
+  const dsCode = `DS${cleanCode}`.toUpperCase();
+  const sgCode = `SG${cleanCode}`.toUpperCase();
+  
+  const zrMap = {
+    '100': 'ZR01',
+    '122': 'ZR02',
+    '133': 'ZR03',
+    '144': 'ZR04'
+  };
+  const zrCode = (zrMap[cleanCode] || '').toUpperCase();
+  const isZorucci = cleanCode === '100' || cleanCode === '122' || cleanCode === '133' || cleanCode === '144' ||
+                    String(storeName || '').toUpperCase().startsWith('Z');
+
+  const cleanName = String(storeName || '')
+    .toUpperCase()
+    .replace(/^[ZG][\s.-]*/i, '')
+    .replace(/[0-9]/g, '')
+    .trim();
+
+  const matchingRecords = LIVE_PERFORMANCE_REPORT_CACHE.filter(item => {
+    const itemCode = String(item.empCode || '').toUpperCase().trim();
+    const itemBooking = String(item.bookingBy || '').toUpperCase().trim();
+
+    // 1. Specific Zorucci showroom mappings
+    if (cleanCode === '144' && (itemCode === 'ZR04' || itemBooking.includes('ZORUCCI EDAPPALLY'))) return true;
+    if (cleanCode === '100' && (itemCode === 'ZR01' || (itemBooking.includes('ZORUCCI EDAPPAL') && !itemBooking.includes('EDAPPALLY')))) return true;
+    if (cleanCode === '133' && (itemCode === 'ZR03' || itemBooking.includes('ZORUCCI PERINTHALMANNA'))) return true;
+    if (cleanCode === '122' && (itemCode === 'ZR02' || itemBooking.includes('ZORUCCI KOTTAKKAL'))) return true;
+
+    // If this store is a Zorucci store, don't match Suitor Guy branches
+    if (isZorucci) return false;
+
+    // 2. Exact branch code match for Suitor Guy (DS700-DS718, SG700-SG718)
+    if (dsCode.length > 2 && itemCode === dsCode) return true;
+    if (sgCode.length > 2 && itemCode === sgCode) return true;
+
+    // 3. Fallback name matching with town disambiguation
+    if (cleanName.length >= 4) {
+      if (cleanName === 'EDAPPAL' && itemBooking.includes('EDAPPALLY')) return false;
+      if (cleanName === 'EDAPPALLY' && !itemBooking.includes('EDAPPALLY')) return false;
+      if (itemBooking.includes('ZORUCCI')) return false;
+      if (itemBooking.includes(cleanName) || cleanName.includes(itemBooking)) return true;
+    }
+    return false;
+  });
+
+  if (matchingRecords.length === 0) {
+    return null;
+  }
+
+  const totalValue = matchingRecords.reduce((sum, r) => sum + (Number(r.totalValue) || 0), 0);
+  const createdValue = matchingRecords.reduce((sum, r) => sum + (Number(r.createdValue) || 0), 0);
+  const canceledValue = matchingRecords.reduce((sum, r) => sum + (Number(r.canceledValue) || 0), 0);
+  const totalBills = matchingRecords.reduce((sum, r) => sum + (Number(r.total_Number_Of_Bill) || 0), 0);
+  const canceledBills = matchingRecords.reduce((sum, r) => sum + (Number(r.canceled_Number_Of_Bill) || 0), 0);
+  const createdBills = matchingRecords.reduce((sum, r) => sum + (Number(r.created_Number_Of_Bill) || 0), 0);
+  const cancellationRate = createdValue > 0 ? ((canceledValue / createdValue) * 100).toFixed(1) + '%' : '0.0%';
+
+  return {
+    bookingBy: matchingRecords[0].bookingBy,
+    empCode: matchingRecords[0].empCode || zrCode || dsCode,
+    totalValue,
+    createdValue,
+    canceledValue,
+    total_Number_Of_Bill: totalBills,
+    canceled_Number_Of_Bill: canceledBills,
+    created_Number_Of_Bill: createdBills,
+    cancellationRate,
+    recordsCount: matchingRecords.length,
+    matchingRecords
+  };
+}
+
+/**
+ * Match Employee Performance by empId (e.g. Emp84) or Name
+ */
+export function getEmployeePerformanceMetrics(empId, empName = '') {
+  if (!LIVE_PERFORMANCE_REPORT_CACHE || LIVE_PERFORMANCE_REPORT_CACHE.length === 0) {
+    return null;
+  }
+  const eIdClean = String(empId || '').trim().toLowerCase();
+  const eNameClean = String(empName || '').trim().toLowerCase();
+
+  const match = LIVE_PERFORMANCE_REPORT_CACHE.find(item => {
+    if (item.empCode && item.empCode.trim().toLowerCase() === eIdClean) return true;
+    if (eNameClean && item.bookingBy && item.bookingBy.trim().toLowerCase() === eNameClean) return true;
+    return false;
+  });
+
+  return match || null;
 }
 

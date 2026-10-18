@@ -1,8 +1,5 @@
 import { ChatSession } from '../models/ChatSession.js';
 
-// In-memory fallback if MongoDB connection is temporarily offline
-let inMemorySessions = [];
-
 // Helper to generate a clean title from the user query
 const generateTitle = (text = '') => {
   const clean = text.replace(/^[#\-*•>\s]+/, '').trim();
@@ -41,19 +38,10 @@ export const getConversations = async (req, res) => {
       conversations: formatted
     });
   } catch (err) {
-    console.warn('MongoDB getConversations fallback to memory:', err.message);
-    return res.json({
-      status: 'success',
-      conversations: inMemorySessions.map((s) => ({
-        id: s._id,
-        _id: s._id,
-        title: s.title,
-        updatedAt: s.updatedAt,
-        createdAt: s.createdAt,
-        model: s.model,
-        lastMessageSnippet: s.messages?.[s.messages.length - 1]?.text?.substring(0, 60) || ''
-      })),
-      offline: true
+    console.error('MongoDB getConversations error:', err.message);
+    return res.status(500).json({
+      status: 'error',
+      message: err.message
     });
   }
 };
@@ -67,10 +55,6 @@ export const getConversationById = async (req, res) => {
     const session = await ChatSession.findById(id).lean();
 
     if (!session) {
-      const mem = inMemorySessions.find((s) => String(s._id) === String(id));
-      if (mem) {
-        return res.json({ status: 'success', conversation: mem });
-      }
       return res.status(404).json({ status: 'error', message: 'Conversation not found.' });
     }
 
@@ -87,10 +71,7 @@ export const getConversationById = async (req, res) => {
       }
     });
   } catch (err) {
-    const mem = inMemorySessions.find((s) => String(s._id) === String(req.params.id));
-    if (mem) {
-      return res.json({ status: 'success', conversation: mem });
-    }
+    console.error('MongoDB getConversationById error:', err.message);
     return res.status(500).json({ status: 'error', message: err.message });
   }
 };
@@ -128,23 +109,8 @@ export const createConversation = async (req, res) => {
       }
     });
   } catch (err) {
-    console.warn('MongoDB createConversation fallback:', err.message);
-    const firstUserMsg = (req.body.messages || []).find((m) => m.sender === 'user');
-    const fallback = {
-      _id: `mem-${Date.now()}`,
-      id: `mem-${Date.now()}`,
-      title: req.body.title || (firstUserMsg ? generateTitle(firstUserMsg.text) : 'New Conversation'),
-      messages: req.body.messages || [],
-      model: req.body.model || 'Claude 4.5 Haiku',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    inMemorySessions.unshift(fallback);
-    return res.status(201).json({
-      status: 'success',
-      conversation: fallback,
-      offline: true
-    });
+    console.error('MongoDB createConversation error:', err.message);
+    return res.status(500).json({ status: 'error', message: err.message });
   }
 };
 
@@ -192,17 +158,9 @@ export const saveConversationMessages = async (req, res) => {
       });
     }
 
-    // Fallback in-memory
-    const memIdx = inMemorySessions.findIndex((s) => String(s._id) === String(id));
-    if (memIdx !== -1) {
-      inMemorySessions[memIdx].messages = messages;
-      inMemorySessions[memIdx].updatedAt = new Date().toISOString();
-      if (updateFields.title) inMemorySessions[memIdx].title = updateFields.title;
-      return res.json({ status: 'success', conversation: inMemorySessions[memIdx] });
-    }
-
     return res.status(404).json({ status: 'error', message: 'Conversation not found.' });
   } catch (err) {
+    console.error('MongoDB saveConversationMessages error:', err.message);
     return res.status(500).json({ status: 'error', message: err.message });
   }
 };
@@ -229,15 +187,9 @@ export const updateConversationTitle = async (req, res) => {
       return res.json({ status: 'success', conversation: updated });
     }
 
-    const mem = inMemorySessions.find((s) => String(s._id) === String(id));
-    if (mem) {
-      mem.title = title.trim();
-      mem.updatedAt = new Date().toISOString();
-      return res.json({ status: 'success', conversation: mem });
-    }
-
     return res.status(404).json({ status: 'error', message: 'Conversation not found.' });
   } catch (err) {
+    console.error('MongoDB updateConversationTitle error:', err.message);
     return res.status(500).json({ status: 'error', message: err.message });
   }
 };
@@ -248,14 +200,18 @@ export const updateConversationTitle = async (req, res) => {
 export const deleteConversation = async (req, res) => {
   try {
     const { id } = req.params;
-    await ChatSession.findByIdAndDelete(id);
-    inMemorySessions = inMemorySessions.filter((s) => String(s._id) !== String(id));
+    const deleted = await ChatSession.findByIdAndDelete(id);
+
+    if (!deleted) {
+      return res.status(404).json({ status: 'error', message: 'Conversation not found.' });
+    }
 
     return res.json({
       status: 'success',
       message: 'Conversation deleted successfully.'
     });
   } catch (err) {
+    console.error('MongoDB deleteConversation error:', err.message);
     return res.status(500).json({ status: 'error', message: err.message });
   }
 };

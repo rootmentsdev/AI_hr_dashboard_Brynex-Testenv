@@ -230,6 +230,38 @@ export const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = act
 
     if (uploadedFilesStore.length === 0) {
       latestAnalysis = aggregated;
+
+      // Pure Dynamic Claude AI Synthesis (Zero hardcoded causes or decision options)
+      if (process.env.ANTHROPIC_API_KEY) {
+        try {
+          const [stores, employees] = await Promise.all([
+            fetchAllStoresOverview(),
+            fetchAllEmployeesOverview()
+          ]);
+          const aiAnalysis = await runClaudeApiAnalysis({
+            stores,
+            employees,
+            adminPrompt: activeAdminPrompt,
+            customRules: activeCustomRules
+          });
+
+          if (aiAnalysis && Array.isArray(aiAnalysis.attentionItems) && aiAnalysis.attentionItems.length > 0) {
+            latestAnalysis = {
+              ...aggregated,
+              healthScore: aiAnalysis.healthScore ? `${aiAnalysis.healthScore}%` : aggregated.healthScore,
+              healthStatus: aiAnalysis.healthStatus || aggregated.healthStatus,
+              attentionSummary: aiAnalysis.attentionSummary || aggregated.attentionSummary,
+              kpiMetrics: aiAnalysis.kpiMetrics || aggregated.kpiMetrics,
+              attentionItems: aiAnalysis.attentionItems,
+              isPureAiGenerated: true
+            };
+            cachedApiAnalysis = latestAnalysis;
+            console.log(`[Pure AI Engine] Successfully generated ${aiAnalysis.attentionItems.length} dynamic attention items via Claude.`);
+          }
+        } catch (claudeErr) {
+          console.warn('Claude live API analysis fallback notice:', claudeErr.message);
+        }
+      }
     } else {
       const instantCsv = await analyzeMultiFileHrData({
         files: uploadedFilesStore,

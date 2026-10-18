@@ -8,6 +8,7 @@
 
 import { analyzeMultiFileHrData } from './multiFileCorrelatorService.js';
 import { extractStoreMonthlyTarget, extractStoreNetSales, extractStoreFootfallAndWalkins } from './hrIntelligenceAggregator.js';
+import { getAllStaffPerformanceRecords } from './externalIntegrationService.js';
 
 // Helper to extract a statistical profile and representative rows from tabular data
 export const extractDatasetTelemetry = (files = []) => {
@@ -460,7 +461,7 @@ export const runClaudeApiAnalysis = async ({ stores = [], employees = [], adminP
       footfall,
       walkins,
       discrepancies: s.operations?.cameraAudits?.[0]?.discrepancyCount || 0,
-      auditScore: s.operations?.branchAudits?.[0]?.auditScore || 85,
+      auditScore: s.operations?.branchAudits?.[0]?.auditScore ?? null,
       staffCount: s.summary?.totalStaffCount || s.staff?.totalUsers || 0
     };
   });
@@ -474,29 +475,86 @@ export const runClaudeApiAnalysis = async ({ stores = [], employees = [], adminP
     branch: e.summary?.workingBranch,
     target: e.salesAttributions?.targets?.[0]?.targets?.targetAmount || 0,
     sales: e.salesAttributions?.dappr?.[0]?.attribution?.netSales || 0,
-    assessmentScore: e.learning?.assessmentAttempts?.[0]?.percentage || e.learning?.assessmentAttempts?.[0]?.score || 92,
-    trainingStatus: e.learning?.trainingProgress?.[0]?.status || 'Completed'
+    assessmentScore: e.learning?.assessmentAttempts?.[0]?.percentage ?? e.learning?.assessmentAttempts?.[0]?.score ?? null,
+    trainingStatus: e.learning?.trainingProgress?.[0]?.status || 'N/A'
   }));
 
-  const prompt = `You are the Chief AI Retail Workforce & Management Intelligence Brain for Brynex One AI.
-You are evaluating LIVE LMS retail telemetry across 25 store branches and 204 employee profiles.
+  // Extract top performers and cancellation hotspots from live rental performance report
+  const perfRecords = getAllStaffPerformanceRecords() || [];
+  const topPerformersSample = perfRecords
+    .filter(r => r.empCode && !r.empCode.startsWith('ZR') && !r.empCode.startsWith('DS'))
+    .sort((a, b) => (b.totalValue || 0) - (a.totalValue || 0))
+    .slice(0, 10)
+    .map(r => ({
+      staffName: r.bookingBy?.trim(),
+      empCode: r.empCode?.trim(),
+      achievedSales: r.totalValue,
+      fulfilledBills: r.total_Number_Of_Bill,
+      canceledBills: r.canceled_Number_Of_Bill,
+      canceledValue: r.canceledValue,
+      cancellationRatio: r.createdValue > 0 ? ((r.canceledValue / r.createdValue) * 100).toFixed(1) + '%' : '0%'
+    }));
 
-EXTERNAL RETAIL TELEMETRY (25 STORES):
+  const totalAchieved = perfRecords.reduce((s, r) => s + (r.totalValue || 0), 0);
+  const totalCanceled = perfRecords.reduce((s, r) => s + (r.canceledValue || 0), 0);
+  const totalCreated = perfRecords.reduce((s, r) => s + (r.createdValue || 0), 0);
+  const totalBills = perfRecords.reduce((s, r) => s + (r.total_Number_Of_Bill || 0), 0);
+  const totalCanceledBills = perfRecords.reduce((s, r) => s + (r.canceled_Number_Of_Bill || 0), 0);
+
+  const cancellationHotspotsSample = perfRecords.length > 0 ? {
+    networkTotals: {
+      totalAchievedSales: `₹${(totalAchieved / 10000000).toFixed(2)} Cr (${totalBills.toLocaleString()} bills)`,
+      totalCanceledValue: `₹${(totalCanceled / 10000000).toFixed(2)} Cr (${totalCanceledBills.toLocaleString()} bills)`,
+      networkCancellationRate: totalCreated > 0 ? `${((totalCanceled / totalCreated) * 100).toFixed(1)}%` : '0%'
+    },
+    topCancellationStaff: perfRecords
+      .filter(r => r.empCode && !r.empCode.startsWith('ZR') && !r.empCode.startsWith('DS') && (r.canceledValue || 0) > 0)
+      .sort((a, b) => (b.canceledValue || 0) - (a.canceledValue || 0))
+      .slice(0, 5)
+      .map(r => ({
+        name: `${r.bookingBy?.trim()} (${r.empCode?.trim()})`,
+        achieved: `₹${((r.totalValue || 0) / 100000).toFixed(2)}L`,
+        canceled: `₹${((r.canceledValue || 0) / 100000).toFixed(2)}L`,
+        canceledBills: r.canceled_Number_Of_Bill || 0,
+        rate: r.createdValue > 0 ? ((r.canceledValue / r.createdValue) * 100).toFixed(1) + '%' : '0%'
+      })),
+    topCancellationStores: perfRecords
+      .filter(r => (r.empCode?.startsWith('ZR') || r.empCode?.startsWith('DS')) && (r.canceledValue || 0) > 0)
+      .sort((a, b) => (b.canceledValue || 0) - (a.canceledValue || 0))
+      .slice(0, 5)
+      .map(r => ({
+        store: `${r.bookingBy?.trim()} (${r.empCode?.trim()})`,
+        achieved: `₹${((r.totalValue || 0) / 100000).toFixed(2)}L`,
+        canceled: `₹${((r.canceledValue || 0) / 100000).toFixed(2)}L`,
+        canceledBills: r.canceled_Number_Of_Bill || 0,
+        rate: r.createdValue > 0 ? ((r.canceledValue / r.createdValue) * 100).toFixed(1) + '%' : '0%'
+      }))
+  } : null;
+
+  const prompt = `You are the Chief AI Retail Workforce & Management Intelligence Brain for Brynex One AI.
+You are evaluating LIVE LMS retail telemetry across ${storeSummaries.length} store branches, ${staffSample.length} employee profiles, and rental performance data (${perfRecords.length} records).
+
+EXTERNAL RETAIL TELEMETRY (${storeSummaries.length} STORES):
 ${JSON.stringify(storeSummaries, null, 2)}
 
-EMPLOYEE PROFILES TELEMETRY (Sample of 35 frontline consultants & staff):
+ROOTMENTS STAFF PERFORMANCE & CANCELLATION TELEMETRY:
+Top Performers: ${JSON.stringify(topPerformersSample, null, 2)}
+Cancellation Hotspots: ${JSON.stringify(cancellationHotspotsSample, null, 2)}
+
+EMPLOYEE PROFILES TELEMETRY (Sample of ${staffSample.length} frontline consultants & staff):
 ${JSON.stringify(staffSample, null, 2)}
 
 USER CUSTOM PROMPT / INSTRUCTION:
-"${adminPrompt || 'Analyze retail store network performance, target variances, and staff productivity.'}"
+"${adminPrompt || 'Analyze retail store network performance, rental order cancellations, and staff productivity.'}"
 
 TASK & DIRECTIVES:
-1. You MUST tailor your entire analysis strictly to the user's prompt:
-   - If the user specifies a particular store (e.g. Edappally, Kollam, Trivandrum, Perinthalmanna, Kottayam), evaluate that branch's exact targets, net sales, footfall, and conversion in depth.
+1. You MUST tailor your entire analysis strictly to the available external API telemetry:
+   - If the user specifies a particular store, evaluate that branch's exact targets, net sales, footfall, and conversion in depth.
    - If the user asks for "lagging stores", evaluate the lowest quota attainment stores.
-   - If the user asks about "consultants" or "skills" or "accessories", evaluate the assessment pass rates vs sales conversion.
+   - If the user asks about "cancellation", "staff sales", "rental", or default network health, evaluate cancellation revenue leakage and identify top cancellation staff vs high-performing benchmarks dynamically from the telemetry provided.
+   - If the user asks about "consultants" or "skills", evaluate assessment pass rates vs sales conversion.
    - If the user asks about "camera" or "audit" or "discrepancies", evaluate branch camera audits vs register logs.
-2. Generate AT LEAST 2 to 3 distinct, high-impact Management Attention items directly reflecting this focus:
+2. Generate AT LEAST 2 to 4 distinct, high-impact Management Attention items directly reflecting this focus:
    - Every item MUST cite actual numbers, branch names, and staff members from the telemetry above.
    - Every item MUST include:
      * title (concise, professional)
@@ -607,7 +665,23 @@ Respond ONLY with a single valid, parseable JSON object matching this exact sche
     cleanJsonText = cleanJsonText.substring(firstBrace, lastBrace + 1);
   }
 
-  let parsedAnalysis = JSON.parse(cleanJsonText);
+  let parsedAnalysis = null;
+  try {
+    parsedAnalysis = JSON.parse(cleanJsonText);
+  } catch (parseErr) {
+    const lastItemIdx = cleanJsonText.lastIndexOf('},\n    {');
+    if (lastItemIdx !== -1) {
+      try {
+        const repaired = cleanJsonText.substring(0, lastItemIdx + 1) + '\n  ]\n}';
+        parsedAnalysis = JSON.parse(repaired);
+      } catch (_) {
+        throw parseErr;
+      }
+    } else {
+      throw parseErr;
+    }
+  }
+
   parsedAnalysis.analyzedAt = new Date().toISOString();
   parsedAnalysis.adminPromptApplied = adminPrompt || 'Live Retail LMS API Ingestion';
 

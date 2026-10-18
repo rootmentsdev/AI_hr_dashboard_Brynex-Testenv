@@ -358,18 +358,24 @@ export default function HrIntelligence() {
 
   const selectedItem = resolvedAttentionItems.find((item) => String(item.id) === String(selectedIssueId)) || resolvedAttentionItems[0] || null;
 
-  // Only show causes and options after user clicks the respective buttons!
-  const isCausesRevealed = Boolean(selectedItem && revealedCausesByIssue[selectedItem.id] && revealedCausesByIssue[selectedItem.id].length > 0);
-  const displayCauses = isCausesRevealed ? revealedCausesByIssue[selectedItem.id] : [];
+  // Automatically reveal causes and options from live telemetry analysis
+  const displayCauses = (selectedItem && revealedCausesByIssue[selectedItem.id] && revealedCausesByIssue[selectedItem.id].length > 0)
+    ? revealedCausesByIssue[selectedItem.id]
+    : (selectedItem?.possibleCauses || []);
+  const isCausesRevealed = displayCauses.length > 0;
 
-  const isOptionsRevealed = Boolean(selectedItem && revealedOptionsByIssue[selectedItem.id] && revealedOptionsByIssue[selectedItem.id].length > 0);
-  const displayOptions = isOptionsRevealed ? revealedOptionsByIssue[selectedItem.id] : [];
+  const displayOptions = (selectedItem && revealedOptionsByIssue[selectedItem.id] && revealedOptionsByIssue[selectedItem.id].length > 0)
+    ? revealedOptionsByIssue[selectedItem.id]
+    : (selectedItem?.decisionOptions || []);
+  const isOptionsRevealed = displayOptions.length > 0;
   const selectedOption = isOptionsRevealed ? (displayOptions.find((opt) => opt.id === selectedOptionId) || displayOptions[0] || null) : null;
 
   // Synchronize options selection when selected issue or revealed options change
   useEffect(() => {
     if (selectedItem) {
-      const opts = revealedOptionsByIssue[selectedItem.id] || [];
+      const opts = (revealedOptionsByIssue[selectedItem.id] && revealedOptionsByIssue[selectedItem.id].length > 0)
+        ? revealedOptionsByIssue[selectedItem.id]
+        : (selectedItem.decisionOptions || []);
       if (opts.length > 0) {
         setSelectedOptionId(opts[0].id);
       } else {
@@ -379,7 +385,7 @@ export default function HrIntelligence() {
       setBrynexOneSuccess(false);
       setShowDescriptionPreview(false);
     }
-  }, [selectedIssueId]);
+  }, [selectedIssueId, selectedItem]);
 
   const handleExport = () => {
     alert('Exporting verified workforce intelligence report...');
@@ -1026,6 +1032,16 @@ export default function HrIntelligence() {
           >
             📹 Camera Audit Discrepancies
           </button>
+          <button
+            type="button"
+            className={`hr-api-chip ${activeApiPrompt === 'Staff Sales & Cancellation Audit' ? 'active' : ''}`}
+            onClick={() => {
+              setApiPromptInput('Staff Sales & Cancellation Audit');
+              handleApplyApiPrompt('Staff Sales & Cancellation Audit');
+            }}
+          >
+            📊 Staff Sales & Cancellation Audit
+          </button>
           {activeApiPrompt && (
             <button
               type="button"
@@ -1280,7 +1296,7 @@ export default function HrIntelligence() {
                   title={`Source Dataset: ${getIssueSourceFile(selectedItem)}`}
                 >
                   <FileSpreadsheet size={13} color="#0ca678" />
-                  <span>Source CSV: {getIssueSourceFile(selectedItem)}</span>
+                  <span>{getIssueSourceFile(selectedItem)?.includes('API') ? 'Source: ' : 'Source CSV: '}{getIssueSourceFile(selectedItem)}</span>
                 </div>
                 <div className="hr-meta-item">
                   <Building2 size={14} />

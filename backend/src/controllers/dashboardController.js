@@ -23,14 +23,16 @@ export const getDashboardSummary = (req, res) => {
   const salesRev = analytics?.sales?.formattedRevenue || '$0';
   const payrollRatio = analytics?.finance?.payrollRatio || '0%';
   const headcount = employees.length;
-  const healthScore = analytics?.healthScore || 85;
+  const healthScore = analytics?.healthScore ?? null;
   const conversionPct = analytics?.marketing?.customerConversionPct || null;
 
   res.json({
     status: 'success',
     data: {
       healthScore,
-      healthStatus: healthScore >= 80 ? 'Optimal (Synchronized)' : 'Needs Attention',
+      healthStatus: healthScore === null
+        ? 'Awaiting Telemetry'
+        : (healthScore >= 80 ? 'Optimal (Synchronized)' : 'Needs Attention'),
       activeEngines: [
         { name: 'HR Intelligence', status: 'Active', metric: `${headcount} Staff Synced` },
         { name: 'Sales Intelligence', status: analytics?.sales ? 'Active' : 'Awaiting Data', metric: `${salesRev} Revenue` },

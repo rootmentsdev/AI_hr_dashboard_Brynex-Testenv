@@ -28,7 +28,16 @@ export default function Integrations() {
       name: 'External Retail LMS & Store 360',
       category: 'Store & Staff Telemetry',
       status: 'Live Ingestion Active',
-      desc: 'Dual-layer live ingestion consuming /api/external/store-overview & /api/external/employee-overview (Store Perinthalmanna, Suitor Guy Edappally, Niyas 360).',
+      desc: 'Dual-layer live ingestion consuming /api/external/store-overview & /api/external/employee-overview for multi-branch store performance and staff evaluations.',
+      active: true,
+      highlight: true
+    },
+    {
+      id: 'rootments-rental',
+      name: 'Rootments Live Rental & Staff Performance API',
+      category: 'Sales & Cancellation Telemetry',
+      status: 'Live Ingestion Active',
+      desc: 'Real-time telemetry consuming /api/Reports/GetPerformanceStaffReportWithCancel for live rental bookings, bill fulfillment, and cancellation tracking.',
       active: true,
       highlight: true
     },

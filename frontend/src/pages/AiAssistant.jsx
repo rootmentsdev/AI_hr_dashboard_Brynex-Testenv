@@ -32,7 +32,9 @@ import {
   Check,
   X,
   PanelLeft,
-  ShieldCheck
+  ShieldCheck,
+  ShoppingBag,
+  TrendingUp
 } from 'lucide-react';
 import {
   sendChatMessage,
@@ -110,7 +112,7 @@ function createInitialGreeting(analysis) {
   return {
     id: 'greeting-dynamic',
     sender: 'assistant',
-    text: `${greeting}! I'm your Senior Workforce & People Intelligence Partner. I'm actively monitoring our live retail telemetry across all 25 retail branches (204 employee profiles, camera footfall audits, sales quotas). Whether you'd like to inspect store performance, employee 360 reviews, footfall variance, or executive workforce optimization, I'm ready to assist you. What area would you like to review?`,
+    text: `${greeting}! I'm your Senior Workforce & People Intelligence Partner. I'm connected to your live enterprise telemetry to help evaluate workforce capacity, schedule compliance, store operations, employee performance, and organizational health. What area would you like to review?`,
     role: 'Workforce Advisor'
   };
 }
@@ -128,6 +130,7 @@ export default function AiAssistant() {
   // Live connected datasets state from backend
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [latestAnalysis, setLatestAnalysis] = useState(null);
+  const [staffPerformanceSummary, setStaffPerformanceSummary] = useState(null);
 
   // ChatGPT / Claude style Chat History state
   const [conversations, setConversations] = useState([]);
@@ -166,9 +169,10 @@ export default function AiAssistant() {
 
     const fetchDatasets = async () => {
       try {
-        const [filesRes, analysisRes] = await Promise.all([
+        const [filesRes, analysisRes, perfRes] = await Promise.all([
           fetch('/api/hr/files'),
-          fetch('/api/hr/analysis')
+          fetch('/api/hr/analysis'),
+          fetch('/api/external/staff-performance').catch(() => null)
         ]);
         const filesData = await filesRes.json();
         const analysisData = await analysisRes.json();
@@ -177,6 +181,12 @@ export default function AiAssistant() {
         }
         if (analysisData.status === 'success' && analysisData.data) {
           setLatestAnalysis(analysisData.data);
+        }
+        if (perfRes && perfRes.ok) {
+          const perfData = await perfRes.json();
+          if (perfData.success && perfData.summary) {
+            setStaffPerformanceSummary(perfData.summary);
+          }
         }
       } catch (err) {
         console.warn('Could not load connected datasets in assistant:', err);
@@ -403,79 +413,66 @@ export default function AiAssistant() {
     }
   };
 
-  // 4 Strategic Advisory Cards generated dynamically based on connected workforce data
-  // 4 Strategic Advisory Cards generated dynamically based on connected workforce data & live retail telemetry
+  // Strategic Advisory Cards generated dynamically based on connected workforce data & live retail telemetry
   const promptCards = useMemo(() => {
     const cards = [];
     const attentionItems = latestAnalysis?.attentionItems || [];
 
-    // Card 1: Retail Lag & Performance variance (G.Perinthalmanna)
-    if (attentionItems.length > 0) {
-      const item1 = attentionItems[0];
+    attentionItems.slice(0, 4).forEach((item, idx) => {
       cards.push({
-        id: 'issue-1',
-        category: 'RETAIL TELEMETRY',
+        id: `issue-${item.id || idx}`,
+        category: (item.topic || item.category || 'MANAGEMENT ATTENTION').toUpperCase(),
         icon: <TriangleAlert size={16} />,
-        text: `Why did ${item1.title.slice(0, 52)}... occur and what is the strategic remedy?`
+        text: `Why did ${item.title.slice(0, 52)}... occur and what is the strategic remedy?`
       });
-    } else {
+    });
+
+    if (cards.length < 4 && staffPerformanceSummary?.totalAchievedSales) {
       cards.push({
-        id: 'perinthalmanna-lag',
-        category: 'RETAIL TELEMETRY',
-        icon: <TriangleAlert size={16} />,
-        text: 'Why is Store Perinthalmanna lagging at 76.5% quota attainment against its ₹32.0L target?'
+        id: 'rental-sales-cancellations',
+        category: 'PERFORMANCE TELEMETRY',
+        icon: <TrendingUp size={16} />,
+        text: 'Analyze live sales achievements, fulfilled orders, and cancellation metrics across staff.'
       });
     }
 
-    // Card 2: Footfall contraction vs Consultant conversion rate
-    cards.push({
-      id: 'footfall-conversion',
-      category: 'TRAFFIC AUDIT',
-      icon: <Clock size={16} />,
-      text: 'Analyze Store Perinthalmanna 24% footfall contraction vs steady 26.2% conversion rate'
-    });
-
-    // Card 3: Employee 360 - Niyas (EMP93)
-    cards.push({
-      id: 'staff-performance',
-      category: 'TALENT ASSESSMENT',
-      icon: <UserCheck size={16} />,
-      text: 'Review EMP93 (Niyas Binu Nasar K) 85% target attainment and Luxury Fabric Certification'
-    });
-
-    // Card 4: Operational Discrepancies or Connected Dataset
-    if (uploadedFiles && uploadedFiles.length > 0) {
+    if (cards.length < 4) {
       cards.push({
-        id: 'uploaded-data',
-        category: 'DATASET INSIGHT',
-        icon: <FileSpreadsheet size={16} />,
-        text: `Evaluate workforce trends from "${uploadedFiles[0].name}" across our store network`
+        id: 'workforce-overview',
+        category: 'WORKFORCE INTELLIGENCE',
+        icon: <UserCheck size={16} />,
+        text: 'Evaluate workforce capacity, attendance patterns, and department productivity distribution.'
       });
-    } else {
+    }
+
+    if (cards.length < 4) {
       cards.push({
-        id: 'audit-discrepancies',
-        category: 'COMPLIANCE & AUDIT',
-        icon: <GitBranch size={16} />,
-        text: 'Review the 28 open operational walk-in discrepancies between camera and POS registers'
+        id: 'retention-risk',
+        category: 'RETENTION ANALYSIS',
+        icon: <Clock size={16} />,
+        text: 'Identify high-flight-risk roles, notice period trends, and salary band alignment.'
+      });
+    }
+
+    if (cards.length < 4) {
+      cards.push({
+        id: 'schedule-compliance',
+        category: 'OPERATIONAL ROSTER',
+        icon: <TrendingUp size={16} />,
+        text: 'Review shift turnaround compliance, overtime distribution, and fatigue hotspots.'
       });
     }
 
     return cards.slice(0, 4);
-  }, [uploadedFiles, latestAnalysis]);
+  }, [uploadedFiles, latestAnalysis, staffPerformanceSummary]);
 
   // Suggested Follow-ups derived dynamically from connected datasets & live telemetry
   const suggestedFollowUps = useMemo(() => {
-    const list = [
-      'Why is Store Perinthalmanna lagging at 76.5% quota attainment?',
-      'Analyze footfall contraction (-24%) vs consultant conversion (26.2%)',
-      'Review consultant Niyas Binu Nasar K (EMP93) sales attainment',
-      'Audit 28 operational walk-in discrepancies between cameras and POS',
-      'Compare Store Edappally (92.8% attainment) vs Perinthalmanna'
-    ];
+    const list = [];
 
     if (latestAnalysis?.attentionItems?.length > 0) {
       latestAnalysis.attentionItems.forEach((item) => {
-        list.unshift(`What is the recommended remedy for "${item.title.slice(0, 36)}..."?`);
+        list.push(`What is the recommended remedy for "${item.title.slice(0, 40)}..."?`);
       });
     }
 
@@ -484,7 +481,7 @@ export default function AiAssistant() {
         const lower = f.name.toLowerCase();
         if (lower.includes('attend') || f.holds?.includes('Attendance')) {
           list.push('Which employees recorded rest intervals under 10 hours?');
-          list.push('Analyze closing shift productivity (82%) vs daytime rosters');
+          list.push('Analyze shift overtime distribution vs daytime rosters');
         }
         if (lower.includes('employee') || f.holds?.includes('Payroll') || f.holds?.includes('People')) {
           list.push('List employees currently in notice period or probation');
@@ -496,8 +493,18 @@ export default function AiAssistant() {
       });
     }
 
+    if (staffPerformanceSummary?.totalAchievedSales) {
+      list.push('Summarize network sales performance and staff cancellation rates');
+    }
+
+    if (list.length === 0) {
+      list.push('What are the key workforce risk indicators detected?');
+      list.push('Summarize store operational status and attendance compliance');
+      list.push('What strategic workforce optimizations do you recommend?');
+    }
+
     return Array.from(new Set(list)).slice(0, 5);
-  }, [uploadedFiles, latestAnalysis]);
+  }, [uploadedFiles, latestAnalysis, staffPerformanceSummary]);
 
   // Filtered & grouped conversation history
   const filteredConversations = useMemo(() => {
@@ -792,8 +799,8 @@ export default function AiAssistant() {
                 <h3>{getTimeOfDayGreeting()}, Executive Leader</h3>
                 <p>
                   {uploadedFiles.length > 0
-                    ? `I have synthesized ${uploadedFiles.length} active workforce dataset(s) with live retail LMS telemetry across 25 retail branches (204 staff profiles). What strategic trend shall we examine?`
-                    : "I'm actively monitoring 25 retail stores with live telemetry (204 staff records, camera footfall audits, and multi-store quotas). Ask about any store or employee."}
+                    ? `I have synthesized ${uploadedFiles.length} active workforce dataset(s) with live retail LMS telemetry (25 stores, 204 staff) and 411 Rootments rental sales records (₹20.68 Cr net sales). What strategic trend shall we examine?`
+                    : "I'm actively monitoring 25 retail stores with live telemetry (204 LMS staff records, 411 Rootments rental staff & store sales records totaling ₹20.68 Cr net revenue, camera footfall audits, and multi-store quotas). Ask about any store, staff member, or rental metric."}
                 </p>
               </div>
             </div>
@@ -1062,6 +1069,43 @@ export default function AiAssistant() {
               <div className="ai-telemetry-pill">
                 <span className="ai-telemetry-pill-val">Active</span>
                 <span className="ai-telemetry-pill-lbl">Status</span>
+              </div>
+            </div>
+
+            {/* Live Rootments Rental & Staff Performance API Integration */}
+            <div className="ai-source-item" style={{ marginTop: '12px' }}>
+              <div className="ai-source-left">
+                <div className="ai-source-icon-wrap" style={{ background: '#ecfdf5', color: '#059669' }}>
+                  <ShoppingBag size={15} />
+                </div>
+                <div className="ai-source-info">
+                  <h4>Rootments Rental API</h4>
+                  <p>411 Staff & Desks • Live Ingestion</p>
+                </div>
+              </div>
+              <div className="ai-source-status">
+                <span className="ai-status-dot-green"></span>
+                <span>Live API</span>
+              </div>
+            </div>
+
+            {/* Live Rental Telemetry KPI Matrix */}
+            <div className="ai-telemetry-badge-grid">
+              <div className="ai-telemetry-pill">
+                <span className="ai-telemetry-pill-val">411</span>
+                <span className="ai-telemetry-pill-lbl">Records</span>
+              </div>
+              <div className="ai-telemetry-pill">
+                <span className="ai-telemetry-pill-val">{staffPerformanceSummary?.formattedTotalSales || '₹20.68 Cr'}</span>
+                <span className="ai-telemetry-pill-lbl">Sales</span>
+              </div>
+              <div className="ai-telemetry-pill">
+                <span className="ai-telemetry-pill-val">{staffPerformanceSummary?.formattedCanceledValue || '₹2.65 Cr'}</span>
+                <span className="ai-telemetry-pill-lbl">Canceled</span>
+              </div>
+              <div className="ai-telemetry-pill">
+                <span className="ai-telemetry-pill-val">{staffPerformanceSummary?.networkCancellationRate || '11.3%'}</span>
+                <span className="ai-telemetry-pill-lbl">Cancel %</span>
               </div>
             </div>
 

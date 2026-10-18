@@ -83,29 +83,7 @@ export default function BusinessHealth() {
     );
   }
 
-  const priorities = healthData?.strategicPriorities || [
-    {
-      title: 'Workforce Roster & Shift Stabilization',
-      desc: 'Correlate shift logs and active headcount to optimize scheduling and prevent attrition.',
-      bg: '#eff6ff',
-      border: '#bfdbfe',
-      color: '#1e40af'
-    },
-    {
-      title: 'Branch Revenue & Productivity Alignment',
-      desc: 'Align compensation benchmarks with branch deal velocity to drive margin expansion.',
-      bg: '#f0fdf4',
-      border: '#bbf7d0',
-      color: '#166534'
-    },
-    {
-      title: 'Compliance & Rest Interval Monitoring',
-      desc: 'Maintain continuous automated monitoring of shift rest intervals to safeguard staff retention.',
-      bg: '#faf5ff',
-      border: '#e9d5ff',
-      color: '#6b21a8'
-    }
-  ];
+  const priorities = healthData?.strategicPriorities || [];
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -267,11 +245,17 @@ export default function BusinessHealth() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {priorities.map((p, idx) => (
-              <div key={idx} style={{ padding: '12px', borderRadius: '10px', background: p.bg, border: `1px solid ${p.border}`, fontSize: '12.5px', color: p.color, lineHeight: '1.4' }}>
-                <strong>{idx + 1}. {p.title}:</strong> {p.desc}
-              </div>
-            ))}
+            {priorities.length > 0 ? (
+              priorities.map((p, idx) => (
+                <div key={idx} style={{ padding: '12px', borderRadius: '10px', background: p.bg || '#f8fafc', border: `1px solid ${p.border || '#e2e8f0'}`, fontSize: '12.5px', color: p.color || '#334155', lineHeight: '1.4' }}>
+                  <strong>{idx + 1}. {p.title}:</strong> {p.desc}
+                </div>
+              ))
+            ) : (
+              <p style={{ fontSize: '12.5px', color: '#94a3b8', margin: 0 }}>
+                No active strategic priorities pending. System metrics are within normal parameters.
+              </p>
+            )}
           </div>
         </div>
       </div>
