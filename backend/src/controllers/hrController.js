@@ -2,12 +2,14 @@ import path from 'path';
 import fs from 'fs';
 import { parseUploadedFile } from '../services/fileParserService.js';
 import { analyzeMultiFileHrData, identifyFileScope } from '../services/multiFileCorrelatorService.js';
-import { runClaudeDocumentAnalysis } from '../services/aiDocumentAnalyzerService.js';
+import { runClaudeDocumentAnalysis, runClaudeApiAnalysis } from '../services/aiDocumentAnalyzerService.js';
 import { aggregateHrIntelligence } from '../services/hrIntelligenceAggregator.js';
+import { fetchAllStoresOverview, fetchAllEmployeesOverview } from '../services/externalIntegrationService.js';
 
 // In-memory stores (strictly populated by actual file uploads)
 let uploadedFilesStore = [];
 let latestAnalysis = null;
+let cachedApiAnalysis = null;
 let allSyncedEmployees = [];
 let cachedSyncedEmployees = [];
 let cachedEnterpriseAnalytics = null;
@@ -15,7 +17,10 @@ let activeAdminPrompt = '';
 let activeCustomRules = null;
 let isAiAnalyzingGlobal = false;
 
-const REGISTRY_PATH = path.join(process.cwd(), 'uploads', 'files_registry.json');
+const UPLOADS_DIR = fs.existsSync(path.join(process.cwd(), 'uploads'))
+  ? path.join(process.cwd(), 'uploads')
+  : path.join(process.cwd(), 'backend', 'uploads');
+const REGISTRY_PATH = path.join(UPLOADS_DIR, 'files_registry.json');
 
 const persistFilesRegistry = () => {
   try {
@@ -125,6 +130,86 @@ export const filterEmployeesByPrompt = (employees = [], prompt = '', customRules
 };
 
 /**
+ * Merge CSV-derived intelligence with Live External LMS API Telemetry
+ */
+export const mergeDualLayerAnalysis = (csvAnalysis, apiAnalysis = cachedApiAnalysis) => {
+  if (!csvAnalysis && !apiAnalysis) return null;
+  if (!csvAnalysis) return apiAnalysis;
+  if (!apiAnalysis) return csvAnalysis;
+
+  const csvItems = (csvAnalysis && Array.isArray(csvAnalysis.attentionItems)) ? csvAnalysis.attentionItems : [];
+  const apiItems = (apiAnalysis && Array.isArray(apiAnalysis.attentionItems)) ? apiAnalysis.attentionItems : [];
+
+  const seenIds = new Set();
+  const combinedAttentionItems = [];
+
+  // 1. Add CSV-derived intelligence items first
+  for (const item of csvItems) {
+    if (item && item.id && !seenIds.has(String(item.id))) {
+      seenIds.add(String(item.id));
+      combinedAttentionItems.push(item);
+    }
+  }
+
+  // 2. Add Live LMS API Telemetry items (Store 360, Employee 360, Store Operations 360)
+  for (const item of apiItems) {
+    if (item && item.id && !seenIds.has(String(item.id))) {
+      seenIds.add(String(item.id));
+      combinedAttentionItems.push(item);
+    }
+  }
+
+  // Calculate synchronized KPI counters
+  const totalIssues = combinedAttentionItems.length;
+  const awaitedDecisionsCount = combinedAttentionItems.filter(
+    (i) => i.decisionOptions && i.decisionOptions.length > 0
+  ).length || totalIssues;
+  const opportunitiesCount = combinedAttentionItems.filter(
+    (i) => i.category === 'Opportunity'
+  ).length;
+
+  const mergedKpis = (csvAnalysis.kpiMetrics || apiAnalysis.kpiMetrics || []).map((kpi) => {
+    if (kpi.id === 'issues') {
+      return {
+        ...kpi,
+        value: String(totalIssues),
+        trend: `${totalIssues} active risks across datasets`
+      };
+    }
+    if (kpi.id === 'decisions') {
+      return {
+        ...kpi,
+        value: String(awaitedDecisionsCount),
+        trend: `${awaitedDecisionsCount} management options ready for approval`
+      };
+    }
+    if (kpi.id === 'opportunities') {
+      return {
+        ...kpi,
+        value: String(opportunitiesCount),
+        trend: `${opportunitiesCount} optimization areas detected`
+      };
+    }
+    return kpi;
+  });
+
+  const totalHeadcount = (csvAnalysis.totalRecords || allSyncedEmployees.length || 0);
+
+  return {
+    ...apiAnalysis,
+    ...csvAnalysis,
+    kpiMetrics: mergedKpis,
+    attentionItems: combinedAttentionItems,
+    connectedFilesCount: uploadedFilesStore.length,
+    fileNames: uploadedFilesStore.map((f) => f.name),
+    attentionSummary: `Dual-layer intelligence active: Ingested ${uploadedFilesStore.length} dataset(s) (${totalHeadcount} employee records) correlated with Live Retail LMS API telemetry (Perinthalmanna, Edappally & 25 stores). ${combinedAttentionItems.length} total attention issues active.`,
+    storesSummary: apiAnalysis.storesSummary || csvAnalysis.storesSummary,
+    enterpriseAnalytics: apiAnalysis.enterpriseAnalytics || csvAnalysis.enterpriseAnalytics,
+    employeesSummary: apiAnalysis.employeesSummary || csvAnalysis.employeesSummary
+  };
+};
+
+/**
  * Recompute employee profiles and enterprise analytics dynamically (Dual-State Aggregation)
  */
 export const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = activeCustomRules) => {
@@ -138,12 +223,23 @@ export const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = act
       adminPrompt: activeAdminPrompt
     });
 
-    latestAnalysis = aggregated;
+    cachedApiAnalysis = aggregated;
     allSyncedEmployees = aggregated.employeesSummary?.employees || [];
     cachedSyncedEmployees = filterEmployeesByPrompt(allSyncedEmployees, activeAdminPrompt, activeCustomRules);
     cachedEnterpriseAnalytics = aggregated.enterpriseAnalytics;
 
-    return aggregated;
+    if (uploadedFilesStore.length === 0) {
+      latestAnalysis = aggregated;
+    } else {
+      const instantCsv = await analyzeMultiFileHrData({
+        files: uploadedFilesStore,
+        customRules: activeCustomRules,
+        adminPrompt: activeAdminPrompt
+      });
+      latestAnalysis = mergeDualLayerAnalysis(instantCsv, cachedApiAnalysis);
+    }
+
+    return latestAnalysis;
   } catch (err) {
     console.warn('Error in aggregateHrIntelligence:', err.message);
   }
@@ -160,7 +256,7 @@ const hydrateFilesFromDisk = async () => {
 
         const restored = [];
         for (const meta of parsed.files) {
-          const filePath = path.join(process.cwd(), 'uploads', meta.savedFilename);
+          const filePath = path.join(UPLOADS_DIR, meta.savedFilename);
           if (fs.existsSync(filePath)) {
             const parsedRows = await parseUploadedFile(filePath, meta.name);
             restored.push({
@@ -235,11 +331,12 @@ export const uploadHrFile = async (req, res) => {
     await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
 
     // 5. Compute instant mathematical correlation analysis so latestAnalysis is ready immediately (<10ms)
-    latestAnalysis = await analyzeMultiFileHrData({
+    const instantCsv = await analyzeMultiFileHrData({
       files: uploadedFilesStore,
       customRules: activeCustomRules,
       adminPrompt: activeAdminPrompt
     });
+    latestAnalysis = mergeDualLayerAnalysis(instantCsv, cachedApiAnalysis);
 
     isAiAnalyzingGlobal = true;
 
@@ -262,7 +359,7 @@ export const uploadHrFile = async (req, res) => {
       adminPrompt: activeAdminPrompt
     }).then((dynamicAnalysis) => {
       if (dynamicAnalysis && dynamicAnalysis.attentionItems) {
-        latestAnalysis = dynamicAnalysis;
+        latestAnalysis = mergeDualLayerAnalysis(dynamicAnalysis, cachedApiAnalysis);
       }
     }).catch((aiErr) => {
       console.warn('Claude dynamic analysis background fallback:', aiErr.message);
@@ -322,7 +419,7 @@ export const getFilePreview = (req, res) => {
 
 export const downloadRawFile = (req, res) => {
   const { filename } = req.params;
-  const filePath = path.join(process.cwd(), 'uploads', filename);
+  const filePath = path.join(UPLOADS_DIR, filename);
 
   if (fs.existsSync(filePath)) {
     return res.download(filePath);
@@ -355,7 +452,7 @@ export const deleteHrFile = async (req, res) => {
     const removedFile = uploadedFilesStore[fileIndex];
 
     if (removedFile.savedFilename) {
-      const filePath = path.join(process.cwd(), 'uploads', removedFile.savedFilename);
+      const filePath = path.join(UPLOADS_DIR, removedFile.savedFilename);
       if (fs.existsSync(filePath)) {
         try {
           fs.unlinkSync(filePath);
@@ -371,11 +468,12 @@ export const deleteHrFile = async (req, res) => {
     if (uploadedFilesStore.length > 0) {
       await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
       // Immediately purge deleted file data from latestAnalysis using mathematical correlator
-      latestAnalysis = await analyzeMultiFileHrData({
+      const instantCsv = await analyzeMultiFileHrData({
         files: uploadedFilesStore,
         customRules: activeCustomRules,
         adminPrompt: activeAdminPrompt
       });
+      latestAnalysis = mergeDualLayerAnalysis(instantCsv, cachedApiAnalysis);
 
       isAiAnalyzingGlobal = true;
 
@@ -395,7 +493,7 @@ export const deleteHrFile = async (req, res) => {
         adminPrompt: activeAdminPrompt
       }).then((aiResult) => {
         if (aiResult && aiResult.attentionItems) {
-          latestAnalysis = aiResult;
+          latestAnalysis = mergeDualLayerAnalysis(aiResult, cachedApiAnalysis);
         }
       }).catch((aiErr) => {
         console.warn('Claude dynamic analysis background update on delete:', aiErr.message);
@@ -406,6 +504,7 @@ export const deleteHrFile = async (req, res) => {
     } else {
       isAiAnalyzingGlobal = false;
       await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
+      latestAnalysis = cachedApiAnalysis;
 
       return res.json({
         status: 'success',
@@ -461,7 +560,7 @@ export const runCustomAiAnalysis = async (req, res) => {
         adminPrompt: activeAdminPrompt
       }).then((dynamicAnalysis) => {
         if (dynamicAnalysis && dynamicAnalysis.attentionItems) {
-          latestAnalysis = dynamicAnalysis;
+          latestAnalysis = mergeDualLayerAnalysis(dynamicAnalysis, cachedApiAnalysis);
         }
       }).catch((aiErr) => {
         console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
@@ -469,7 +568,36 @@ export const runCustomAiAnalysis = async (req, res) => {
         isAiAnalyzingGlobal = false;
       });
     } else {
-      isAiAnalyzingGlobal = false;
+      // Live Retail LMS API Telemetry synthesis via Claude
+      Promise.all([fetchAllStoresOverview(), fetchAllEmployeesOverview()])
+        .then(([stores, employees]) => {
+          return runClaudeApiAnalysis({
+            stores,
+            employees,
+            adminPrompt: activeAdminPrompt,
+            customRules: activeCustomRules
+          });
+        })
+        .then((apiAiAnalysis) => {
+          if (apiAiAnalysis && apiAiAnalysis.attentionItems && apiAiAnalysis.attentionItems.length > 0) {
+            latestAnalysis = {
+              ...latestAnalysis,
+              healthScore: apiAiAnalysis.healthScore ? `${apiAiAnalysis.healthScore}%` : latestAnalysis.healthScore,
+              healthStatus: apiAiAnalysis.healthStatus || latestAnalysis.healthStatus,
+              attentionSummary: apiAiAnalysis.attentionSummary || latestAnalysis.attentionSummary,
+              kpiMetrics: apiAiAnalysis.kpiMetrics || latestAnalysis.kpiMetrics,
+              attentionItems: apiAiAnalysis.attentionItems,
+              adminPromptApplied: activeAdminPrompt
+            };
+            cachedApiAnalysis = latestAnalysis;
+          }
+        })
+        .catch((aiErr) => {
+          console.warn('Claude API analysis fallback to rule correlator:', aiErr.message);
+        })
+        .finally(() => {
+          isAiAnalyzingGlobal = false;
+        });
     }
 
     return;

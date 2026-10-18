@@ -180,33 +180,24 @@ router.get('/sales', async (req, res) => {
   }
 
   const s = analytics?.sales || {
-    totalRevenue: 6630000,
-    formattedRevenue: '₹66.30L',
-    totalTransactions: 609,
-    conversionRate: '28.5%',
-    topBranch: 'Suitor Guy Edappally',
-    branches: [
-      { name: 'Suitor Guy Edappally', revenue: '₹41.80L', rawRevenue: 4180000 },
-      { name: 'G.Perinthalmanna', revenue: '₹24.50L', rawRevenue: 2450000 }
-    ]
+    totalRevenue: 0,
+    formattedRevenue: '₹0.00L',
+    totalTransactions: 0,
+    conversionRate: '0.0%',
+    topBranch: 'N/A',
+    branches: []
   };
-
-  const branches = s.branches || (s.branchBreakdown ? Object.entries(s.branchBreakdown).map(([name, rev]) => ({
-    name,
-    revenue: rev >= 1000000 ? `₹${(rev / 100000).toFixed(2)}L` : `₹${Math.round(rev).toLocaleString()}`,
-    rawRevenue: rev
-  })) : []);
 
   res.json({
     module: 'Sales Intelligence',
     status: 'active',
     data: {
-      pipelineValue: s.totalRevenue,
-      formattedPipeline: s.formattedRevenue,
-      closedTransactions: s.totalTransactions,
-      conversionRate: s.conversionRate || '28.5%',
-      branchLeader: s.topBranch || 'Suitor Guy Edappally',
-      branches
+      pipelineValue: s.totalRevenue || 0,
+      formattedPipeline: s.formattedRevenue || '₹0.00L',
+      closedTransactions: s.totalTransactions || 0,
+      conversionRate: s.conversionRate || '0.0%',
+      branchLeader: s.topBranch || 'N/A',
+      branches: s.branches || []
     }
   });
 });
@@ -219,10 +210,10 @@ router.get('/finance', async (req, res) => {
   }
 
   const f = analytics?.finance || {
-    grossRevenue: 6630000,
-    totalMonthlyPayroll: 940000,
-    formattedPayroll: '₹9.40L',
-    payrollRatio: '14.2%',
+    grossRevenue: 0,
+    totalMonthlyPayroll: 0,
+    formattedPayroll: '₹0.00L',
+    payrollRatio: '0.0%',
     targetPayrollRatio: '12.0%',
     runwayMonths: 18,
     grossMargin: '68%'
@@ -232,11 +223,11 @@ router.get('/finance', async (req, res) => {
     module: 'Finance Intelligence',
     status: 'active',
     data: {
-      totalMonthlyRevenue: f.grossRevenue,
-      payrollExpenditure: f.totalMonthlyPayroll,
-      formattedPayroll: f.formattedPayroll,
-      payrollRatio: f.payrollRatio,
-      targetRatio: f.targetPayrollRatio,
+      totalMonthlyRevenue: f.grossRevenue || 0,
+      payrollExpenditure: f.totalMonthlyPayroll || 0,
+      formattedPayroll: f.formattedPayroll || '₹0.00L',
+      payrollRatio: f.payrollRatio || '0.0%',
+      targetRatio: f.targetPayrollRatio || '12.0%',
       runwayMonths: f.runwayMonths || 18,
       grossMargin: f.grossMargin || '68%'
     }
@@ -256,11 +247,11 @@ router.get('/operations', async (req, res) => {
     module: 'Operations Intelligence',
     status: 'active',
     data: {
-      activeWorkforce: employees.length || 24,
+      activeWorkforce: employees.length || 0,
       overtimeHoursTotal: analytics?.operations?.totalOvertimeHours || '0.0',
       scheduleCompliance: '98%',
-      openDiscrepancies: analytics?.operations?.openAuditDiscrepancies || 28,
-      inProgressTasks: analytics?.operations?.inProgressTasks || 4
+      openDiscrepancies: analytics?.operations?.openAuditDiscrepancies || 0,
+      inProgressTasks: analytics?.operations?.inProgressTasks || 0
     }
   });
 });
@@ -273,20 +264,20 @@ router.get('/marketing', async (req, res) => {
   }
 
   const m = analytics?.marketing || {
-    totalFootfallAndLeads: 2270,
-    closedTransactions: 609,
-    customerConversionPct: '26.8%',
-    customerComplaints: 2
+    totalFootfallAndLeads: 0,
+    closedTransactions: 0,
+    customerConversionPct: '0.0%',
+    customerComplaints: 0
   };
 
   res.json({
     module: 'Marketing Intelligence',
     status: 'active',
     data: {
-      totalFootfallLeads: m.totalFootfallAndLeads,
-      conversions: m.closedTransactions,
-      conversionRate: m.customerConversionPct || '26.8%',
-      customerComplaints: m.customerComplaints || 2
+      totalFootfallLeads: m.totalFootfallAndLeads || 0,
+      conversions: m.closedTransactions || 0,
+      conversionRate: m.customerConversionPct || '0.0%',
+      customerComplaints: m.customerComplaints || 0
     }
   });
 });
@@ -301,37 +292,56 @@ router.get('/business-health', async (req, res) => {
     employees = getCachedSyncedEmployees();
   }
 
-  const score = 85;
+  const latestAnalysis = getCachedLatestAnalysis();
+  const score = parseInt(latestAnalysis?.healthScore) || 85;
   res.json({
     module: 'Business Health',
     status: 'active',
     data: {
       overallScore: score,
-      status: 'Optimal (Synchronized)',
+      status: latestAnalysis?.healthStatus || 'Optimal (Synchronized)',
       engineBreakdown: [
-        { id: 'hr', name: 'HR Intelligence', score: 85, status: 'Active', detail: `${employees.length || 24} employees synced` },
-        { id: 'sales', name: 'Sales Intelligence', score: 88, status: 'Active', detail: '₹66.30L Revenue' },
-        { id: 'finance', name: 'Finance Intelligence', score: 84, status: 'Active', detail: `${analytics?.finance?.payrollRatio || '14.2%'} Payroll Ratio` },
-        { id: 'operations', name: 'Operations Intelligence', score: 86, status: 'Active', detail: '28 Audit Discrepancies Monitored' }
+        { id: 'hr', name: 'HR Intelligence', score: score, status: 'Active', detail: `${employees.length} employees synced` },
+        { id: 'sales', name: 'Sales Intelligence', score: 88, status: 'Active', detail: `${analytics?.sales?.formattedRevenue || '₹0.00L'} Revenue` },
+        { id: 'finance', name: 'Finance Intelligence', score: 84, status: 'Active', detail: `${analytics?.finance?.payrollRatio || '0.0%'} Payroll Ratio` },
+        { id: 'operations', name: 'Operations Intelligence', score: 86, status: 'Active', detail: `${analytics?.operations?.openAuditDiscrepancies || 0} Audit Discrepancies Monitored` }
       ]
     }
   });
 });
 
-// Tasks endpoint serving live operational store tasks
-let inMemoryTasks = [
-  { id: 'tsk-1', title: 'Implement Festive Luxury Suiting Display', status: 'In Progress', priority: 'High', owner: 'NIYAS BINU NASAR K', deadline: '2026-10-20', branch: 'G.Perinthalmanna' },
-  { id: 'tsk-2', title: 'Weekly POS Discrepancy Log Reconciliation', status: 'Pending Review', priority: 'High', owner: 'Suresh Kumar', deadline: '2026-10-15', branch: 'G.Perinthalmanna' },
-  { id: 'tsk-3', title: 'Premium Italian Fabric Capsule Showcase', status: 'In Progress', priority: 'Medium', owner: 'Arjun Nair', deadline: '2026-10-22', branch: 'Suitor Guy Edappally' },
-  { id: 'tsk-4', title: 'Monthly Branch Operational & Safety Audit', status: 'In Progress', priority: 'Medium', owner: 'Ananya Menon', deadline: '2026-10-25', branch: 'Suitor Guy Edappally' }
-];
+// Tasks endpoint serving live operational store tasks from LMS + user deployed tasks
+let deployedUserTasks = [];
 
-router.get('/tasks', (req, res) => {
-  res.json({ 
-    module: 'AI Tasks', 
-    count: inMemoryTasks.length,
-    tasks: inMemoryTasks
-  });
+router.get('/tasks', async (req, res) => {
+  try {
+    const stores = await fetchAllStoresOverview();
+    const lmsTasks = [];
+    stores.forEach((s) => {
+      const branchName = s.summary?.workingBranch || s.branch?.workingBranch || 'Store Network';
+      (s.operations?.storeTasks || []).forEach((t) => {
+        lmsTasks.push({
+          id: t.taskCode || t._id || `tsk-${Math.random()}`,
+          title: t.description || t.title || t.adminTitle || 'Store Operational Task',
+          status: t.status === 'COMPLETED' ? 'Completed' : (t.status === 'IN PROGRESS' ? 'In Progress' : (t.status || 'In Progress')),
+          priority: t.priority || 'Medium',
+          owner: t.assignedToLabel || t.assignedByName || 'Store Admin',
+          deadline: t.endDate || t.dueDate || 'Ongoing',
+          branch: t.storeName || branchName,
+          category: t.category || 'Operations'
+        });
+      });
+    });
+
+    const combined = [...deployedUserTasks, ...lmsTasks];
+    res.json({ 
+      module: 'AI Tasks', 
+      count: combined.length,
+      tasks: combined
+    });
+  } catch (err) {
+    res.json({ module: 'AI Tasks', count: deployedUserTasks.length, tasks: deployedUserTasks });
+  }
 });
 
 router.post('/tasks', (req, res) => {
@@ -347,7 +357,7 @@ router.post('/tasks', (req, res) => {
     status: 'In Progress',
     createdAt: new Date().toISOString()
   };
-  inMemoryTasks.unshift(newTask);
+  deployedUserTasks.unshift(newTask);
   res.json({ status: 'success', task: newTask });
 });
 
@@ -364,14 +374,6 @@ router.get('/reports', (req, res) => {
     size: `${f.rows} records`,
     downloadUrl: f.downloadUrl || `/api/hr/files/${f.id}/preview`
   }));
-
-  // Add default persistent reports if no files uploaded
-  if (reports.length === 0) {
-    reports.push(
-      { id: 'rep-live-1', name: 'Retail Store 360 Telemetry Report (Perinthalmanna & Edappally)', format: 'Live API Stream', period: 'September 2026', size: '2 Branches Verified', downloadUrl: '#' },
-      { id: 'rep-live-2', name: 'Employee Digital Profile & Attainment Audit', format: 'Live API Stream', period: 'Q3 2026', size: '24 Profiles Synced', downloadUrl: '#' }
-    );
-  }
 
   res.json({
     module: 'Reports',

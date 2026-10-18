@@ -7,6 +7,7 @@
  */
 
 import { analyzeMultiFileHrData } from './multiFileCorrelatorService.js';
+import { extractStoreMonthlyTarget, extractStoreNetSales, extractStoreFootfallAndWalkins } from './hrIntelligenceAggregator.js';
 
 // Helper to extract a statistical profile and representative rows from tabular data
 export const extractDatasetTelemetry = (files = []) => {
@@ -405,6 +406,211 @@ Respond ONLY with a single valid, parseable JSON object matching this exact sche
   }
 
   // Guarantee that kpiMetrics "issues" and "decisions" strictly match parsedAnalysis.attentionItems.length!
+  if (parsedAnalysis.attentionItems && Array.isArray(parsedAnalysis.attentionItems)) {
+    if (parsedAnalysis.kpiMetrics && Array.isArray(parsedAnalysis.kpiMetrics)) {
+      const issuesKpi = parsedAnalysis.kpiMetrics.find((k) => k.id === 'issues');
+      if (issuesKpi) {
+        issuesKpi.value = String(parsedAnalysis.attentionItems.length);
+        issuesKpi.trend = `${parsedAnalysis.attentionItems.length} active risks across datasets`;
+      }
+      const decisionsKpi = parsedAnalysis.kpiMetrics.find((k) => k.id === 'decisions');
+      if (decisionsKpi) {
+        decisionsKpi.value = String(parsedAnalysis.attentionItems.length);
+      }
+    }
+  }
+
+  return parsedAnalysis;
+};
+
+/**
+ * Pure Dynamic AI Live API Telemetry Analyzer:
+ * Ingests external LMS API data (Store 360 & Employee 360),
+ * summarizes real store quota targets, sales attributions, camera audits, and staff metrics,
+ * and calls Anthropic Claude AI to synthesize tailored Management Attention items based on the user's prompt.
+ */
+export const runClaudeApiAnalysis = async ({ stores = [], employees = [], adminPrompt = '', customRules = null } = {}) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.warn('Anthropic API key not configured, skipping Claude API synthesis.');
+    return null;
+  }
+
+  // Extract clean structured summaries from real stores
+  const storeSummaries = stores.map((s) => {
+    const name = (
+      s.summary?.workingBranch?.trim() ||
+      s.branch?.workingBranch?.trim() ||
+      s.staff?.users?.[0]?.workingBranch?.trim() ||
+      s.summary?.storeAliases?.[0]?.trim() ||
+      (s.summary?.locCode === '785' ? 'SG Kollam' : `Store ${s.summary?.locCode || 'N/A'}`)
+    );
+    const monthlyTarget = extractStoreMonthlyTarget(s);
+    const netSales = extractStoreNetSales(s);
+    const { walkins, footfall } = extractStoreFootfallAndWalkins(s);
+    const quotaAttainment = monthlyTarget > 0 ? ((netSales / monthlyTarget) * 100).toFixed(1) + '%' : 'N/A';
+
+    return {
+      name,
+      locCode: s.summary?.locCode || s.branch?.locCode || 'N/A',
+      cluster: s.summary?.cluster || s.branch?.clusterId?.name || 'Retail Network',
+      monthlyTarget,
+      netSales,
+      quotaAttainment,
+      footfall,
+      walkins,
+      discrepancies: s.operations?.cameraAudits?.[0]?.discrepancyCount || 0,
+      auditScore: s.operations?.branchAudits?.[0]?.auditScore || 85,
+      staffCount: s.summary?.totalStaffCount || s.staff?.totalUsers || 0
+    };
+  });
+
+  // Extract representative staff members from real employees
+  const staffSample = employees.slice(0, 35).map((e) => ({
+    name: e.summary?.name,
+    id: e.summary?.empId,
+    role: e.summary?.designation,
+    dept: e.summary?.department,
+    branch: e.summary?.workingBranch,
+    target: e.salesAttributions?.targets?.[0]?.targets?.targetAmount || 0,
+    sales: e.salesAttributions?.dappr?.[0]?.attribution?.netSales || 0,
+    assessmentScore: e.learning?.assessmentAttempts?.[0]?.percentage || e.learning?.assessmentAttempts?.[0]?.score || 92,
+    trainingStatus: e.learning?.trainingProgress?.[0]?.status || 'Completed'
+  }));
+
+  const prompt = `You are the Chief AI Retail Workforce & Management Intelligence Brain for Brynex One AI.
+You are evaluating LIVE LMS retail telemetry across 25 store branches and 204 employee profiles.
+
+EXTERNAL RETAIL TELEMETRY (25 STORES):
+${JSON.stringify(storeSummaries, null, 2)}
+
+EMPLOYEE PROFILES TELEMETRY (Sample of 35 frontline consultants & staff):
+${JSON.stringify(staffSample, null, 2)}
+
+USER CUSTOM PROMPT / INSTRUCTION:
+"${adminPrompt || 'Analyze retail store network performance, target variances, and staff productivity.'}"
+
+TASK & DIRECTIVES:
+1. You MUST tailor your entire analysis strictly to the user's prompt:
+   - If the user specifies a particular store (e.g. Edappally, Kollam, Trivandrum, Perinthalmanna, Kottayam), evaluate that branch's exact targets, net sales, footfall, and conversion in depth.
+   - If the user asks for "lagging stores", evaluate the lowest quota attainment stores.
+   - If the user asks about "consultants" or "skills" or "accessories", evaluate the assessment pass rates vs sales conversion.
+   - If the user asks about "camera" or "audit" or "discrepancies", evaluate branch camera audits vs register logs.
+2. Generate AT LEAST 2 to 3 distinct, high-impact Management Attention items directly reflecting this focus:
+   - Every item MUST cite actual numbers, branch names, and staff members from the telemetry above.
+   - Every item MUST include:
+     * title (concise, professional)
+     * branch (specific store or Store Network)
+     * department (Sales, Retail Operations, etc.)
+     * topic
+     * description (1-2 sentences with actual numbers)
+     * whatsHappening (1-2 sentences explaining telemetry correlation)
+     * metrics array (4 key metrics)
+     * evidence array (2 concrete data points)
+     * possibleCauses array (1-2 Left-Brain root causes)
+     * decisionOptions array (2 actionable options: Option A Recommended & Option B)
+3. Keep all text concise, executive, and punchy. No essays.
+
+OUTPUT REQUIREMENT:
+Respond ONLY with a single valid, parseable JSON object matching this exact schema (no markdown formatting, no commentary before or after):
+{
+  "healthScore": 79,
+  "healthStatus": "Needs Attention",
+  "reportingPeriod": "01-30 Sep 2026",
+  "attentionSummary": "Executive summary of live retail findings matching the prompt focus",
+  "kpiMetrics": [
+    { "id": "issues", "title": "Issues Detected", "value": "3", "trend": "Active risks across datasets", "trendPositive": false, "colorClass": "hr-kpi-icon-purple" },
+    { "id": "decisions", "title": "Awaited Decisions", "value": "3", "trend": "3 management options ready for approval", "trendPositive": true, "colorClass": "hr-kpi-icon-red" },
+    { "id": "monitored", "title": "Being Monitored", "value": "25 Stores", "trend": "554 retail staff across network", "trendPositive": true, "colorClass": "hr-kpi-icon-green" },
+    { "id": "opportunities", "title": "Opportunities", "value": "2", "trend": "Upsell & footfall levers", "trendPositive": true, "colorClass": "hr-kpi-icon-orange" },
+    { "id": "productivity", "title": "Avg. Productivity", "value": "84%", "trend": "+2.4% retail quota benchmark", "trendPositive": true, "colorClass": "hr-kpi-icon-blue" }
+  ],
+  "attentionItems": [
+    {
+      "id": "item-1",
+      "category": "Critical",
+      "priority": "High Priority",
+      "status": "Needs immediate action",
+      "title": "Title with real store and attainment %",
+      "sourceFile": "Store 360 API (Branch Name)",
+      "description": "Executive description with numbers",
+      "branch": "Branch Name",
+      "topic": "Domain Topic",
+      "dateRange": "01-30 Sep 2026",
+      "confidence": "93%",
+      "department": "Retail Operations",
+      "whatsHappening": "Root explanation of telemetry",
+      "metrics": [
+        { "label": "Target Attainment", "val": "76.5%", "note": "Target Note", "hasDownArrow": true },
+        { "label": "Verified Footfall", "val": "820 Visits", "note": "Footfall note" },
+        { "label": "Walk-in Conversion", "val": "26.2%", "note": "Conversion note" },
+        { "label": "Discrepancies", "val": "16 Items", "note": "Audit note" }
+      ],
+      "evidence": [
+        { "title": "Evidence Title", "desc": "Evidence description", "record": "Pill text" }
+      ],
+      "possibleCauses": [
+        {
+          "title": "Root cause title",
+          "confidence": "High Confidence (91%)",
+          "description": "Why this happened",
+          "evidence": "Data evidence"
+        }
+      ],
+      "decisionOptions": [
+        {
+          "id": "opt-1",
+          "badge": "Option A (Recommended)",
+          "title": "Action title",
+          "description": "Action description",
+          "impact": "Quantifiable impact"
+        },
+        {
+          "id": "opt-2",
+          "badge": "Option B",
+          "title": "Alternative action title",
+          "description": "Alternative description",
+          "impact": "Alternative impact"
+        }
+      ]
+    }
+  ]
+}`;
+
+  const model = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8192,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2
+    })
+  });
+
+  const rawJson = await response.json();
+  if (!response.ok) {
+    throw new Error(rawJson.error?.message || `Claude API error: ${response.status}`);
+  }
+
+  const rawText = rawJson.content?.[0]?.text || '';
+  let cleanJsonText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const firstBrace = cleanJsonText.indexOf('{');
+  const lastBrace = cleanJsonText.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleanJsonText = cleanJsonText.substring(firstBrace, lastBrace + 1);
+  }
+
+  let parsedAnalysis = JSON.parse(cleanJsonText);
+  parsedAnalysis.analyzedAt = new Date().toISOString();
+  parsedAnalysis.adminPromptApplied = adminPrompt || 'Live Retail LMS API Ingestion';
+
   if (parsedAnalysis.attentionItems && Array.isArray(parsedAnalysis.attentionItems)) {
     if (parsedAnalysis.kpiMetrics && Array.isArray(parsedAnalysis.kpiMetrics)) {
       const issuesKpi = parsedAnalysis.kpiMetrics.find((k) => k.id === 'issues');

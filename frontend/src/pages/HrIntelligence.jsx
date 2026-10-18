@@ -41,7 +41,9 @@ import {
   Check,
   UploadCloud,
   FileSpreadsheet,
-  Loader2
+  Loader2,
+  ExternalLink,
+  Copy
 } from 'lucide-react';
 import {
   diagnoseHrIssue,
@@ -51,94 +53,9 @@ import {
 import FormattedChatMessage from '../components/FormattedChatMessage';
 import './HrIntelligence.css';
 
-const BASELINE_FALLBACK_ANALYSIS = {
-  reportingPeriod: '01-30 Sep 2026',
-  healthScore: '82%',
-  healthStatus: 'Healthy',
-  totalRecords: 24,
-  attentionSummary: 'Persistent live ingestion active: Monitoring 2 retail branches (18 staff, ₹66.3L Net Sales, 2,270 footfall, 28 discrepancies). Zero empty state.',
-  kpiMetrics: [
-    { id: 'issues', title: 'Issues Detected', value: '3', trend: '28 telemetry variances logged across stores', trendPositive: false, colorClass: 'hr-kpi-icon-purple' },
-    { id: 'decisions', title: 'Awaited Decisions', value: '3', trend: '3 management options ready for approval', trendPositive: true, colorClass: 'hr-kpi-icon-red' },
-    { id: 'monitored', title: 'Being Monitored', value: '4', trend: 'Active action items and floor audits', trendPositive: true, colorClass: 'hr-kpi-icon-green' },
-    { id: 'opportunities', title: 'Opportunities', value: '2', trend: 'Upsell & local footfall retargeting', trendPositive: true, colorClass: 'hr-kpi-icon-orange' },
-    { id: 'productivity', title: 'Avg. Productivity', value: '86.1%', trend: '+2.4% vs retail quota benchmark', trendPositive: true, colorClass: 'hr-kpi-icon-blue' }
-  ],
-  attentionItems: [
-    {
-      id: 'att-store-perinthalmanna-variance',
-      category: 'Critical',
-      priority: 'High Priority',
-      status: 'Needs immediate action',
-      title: 'Sales Target Variance in Store Perinthalmanna: 76.5% Attainment (Traffic Deficit)',
-      sourceFile: 'External API: /api/external/store-overview (locCode: 102)',
-      description: 'Store Perinthalmanna achieved ₹24,50,000 against monthly quota target of ₹32,00,000 (76.5% attainment). Camera audit confirms a 24% footfall contraction due to municipal road widening works outside showroom.',
-      branch: 'G.Perinthalmanna',
-      topic: 'Retail Store Sales Performance & Traffic Deficit',
-      dateRange: '01-30 Sep 2026',
-      confidence: '94%',
-      department: 'Retail Operations & Sales',
-      whatsHappening: 'Store G.Perinthalmanna closed September with ₹24.50L in net sales against its ₹32.00L quota (76.5% attainment). Camera audit shows footfall fell from 1,080 to 820 visits (-24%) due to external road construction on Main Road, while staff conversion held steady at 26.2%.',
-      metrics: [
-        { label: 'Monthly Quota Target', val: '₹32,00,000', note: 'Store baseline quota' },
-        { label: 'Actual Net Sales', val: '₹24,50,000', note: '76.5% Attainment', hasDownArrow: true },
-        { label: 'Store Footfall (Camera)', val: '820 Visits', note: '-24% MoM (Road Construction)', hasDownArrow: true },
-        { label: 'Walk-in Conversion Rate', val: '26.2%', note: 'Stable staff conversion' }
-      ],
-      evidence: [
-        {
-          title: 'Footfall Contraction via Entrance Camera Telemetry',
-          desc: 'Monthly footfall count dropped to 820 visits from 1,080 in August (-24.1% reduction) coinciding with municipal road widening outside store.',
-          record: '820 Camera Entrants (-24%)'
-        },
-        {
-          title: 'Staff Conversion Rate Stability',
-          desc: 'Walk-in leads logged totaled 640 with 168 customer transactions completed (26.2% conversion rate), proving consultant effort is intact.',
-          record: '26.2% Conversion Rate'
-        },
-        {
-          title: 'Operational Audit Discrepancies',
-          desc: '16 discrepancies flagged between entrance sensor counts and register POS entries during peak evening footfall.',
-          record: '16 POS Discrepancies'
-        }
-      ],
-      possibleCauses: [
-        {
-          title: 'External Municipal Road Infrastructure Construction',
-          confidence: 'High Confidence (94%)',
-          description: 'Road works and pavement tearing on Perinthalmanna Main Road obstructed pedestrian and vehicle access, reducing footfall by 24% without reducing consultant skill.',
-          evidence: 'Verified via camera audit timestamps and store manager incident log.'
-        },
-        {
-          title: 'Weekend Evening Footfall Parking Friction',
-          confidence: 'Medium Confidence (78%)',
-          description: 'Loss of 6 front parking bays during utility trenching redirected prospective wedding shoppers to regional shopping complexes.',
-          evidence: 'Saturday evening customer visits dropped 31% compared to Q2 averages.'
-        }
-      ],
-      decisionOptions: [
-        {
-          id: 'opt-peri-1',
-          badge: 'Option A (Recommended)',
-          title: 'Launch Localized Wedding VIP Outreach & Complimentary Bespoke Fitting Trial',
-          description: 'Initiate targeted WhatsApp and phone consultation drive to 450 past wedding suit inquiries and grooms in Malappuram district with complimentary pocket square and bespoke tailoring voucher.',
-          impact: 'Projected revenue lift of +₹3.5L to ₹4.2L within 21 days, closing attainment gap to 88% without waiting for road works completion.'
-        },
-        {
-          id: 'opt-peri-2',
-          badge: 'Option B',
-          title: 'Temporary Quota Rebalancing to Reflect 24% Footfall Contraction',
-          description: 'Adjust Q3 monthly target baseline from ₹32.0L to ₹27.5L for Store Perinthalmanna to protect consultant commission structures and prevent staff demoralization during construction.',
-          impact: 'Raises target attainment to 89.1% immediately, protects consultant retention, neutralizes unfair penalty on sales staff.'
-        }
-      ]
-    }
-  ]
-};
-
 export default function HrIntelligence() {
   const navigate = useNavigate();
-  const [selectedIssueId, setSelectedIssueId] = useState('att-store-perinthalmanna-variance');
+  const [selectedIssueId, setSelectedIssueId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
   const [activeTab, setActiveTab] = useState('Overview');
   const [dateRange, setDateRange] = useState('01-30 Sep 2026');
@@ -155,34 +72,52 @@ export default function HrIntelligence() {
   ]);
   const [isTyping, setIsTyping] = useState(false);
 
-  // Live dynamic analysis state from uploaded dataset (initialized with zero-empty-state baseline)
-  const [liveAnalysis, setLiveAnalysis] = useState(BASELINE_FALLBACK_ANALYSIS);
-  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+  // Live dynamic analysis state from uploaded dataset (null if no data or API error)
+  const [liveAnalysis, setLiveAnalysis] = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(true);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+
+  // Live API Telemetry Prompt Controls
+  const [apiPromptInput, setApiPromptInput] = useState('');
+  const [activeApiPrompt, setActiveApiPrompt] = useState('');
+  const [isSubmittingPrompt, setIsSubmittingPrompt] = useState(false);
 
   // Left-Brain AI Diagnosis State
   const [isDiagnosing, setIsDiagnosing] = useState(false);
-  const [rootCauses, setRootCauses] = useState([]);
+  const [revealedCausesByIssue, setRevealedCausesByIssue] = useState({});
 
   // Layer 6 Decision Engine Options State
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false);
   const [selectedOptionId, setSelectedOptionId] = useState(null);
-  const [decisionOptions, setDecisionOptions] = useState([]);
+  const [revealedOptionsByIssue, setRevealedOptionsByIssue] = useState({});
 
   // Layer 7 Action Execution State
   const [actionOwner, setActionOwner] = useState('HR Director');
   const [actionDeadline, setActionDeadline] = useState('14 Days (Recommended)');
   const [actionKpi, setActionKpi] = useState('Optimize Schedule & Retention');
   const [deploymentSuccess, setDeploymentSuccess] = useState(false);
+  const [brynexOneSuccess, setBrynexOneSuccess] = useState(false);
+  const [copiedDescription, setCopiedDescription] = useState(false);
+  const [showDescriptionPreview, setShowDescriptionPreview] = useState(false);
 
   const fetchAnalysis = async (isBackgroundPoll = false) => {
     try {
       if (!isBackgroundPoll) setIsLoadingAnalysis(true);
+      setAnalysisError(null);
       const res = await fetch('/api/hr/analysis');
+      if (!res.ok) {
+        throw new Error(`API Error ${res.status}: ${res.statusText}`);
+      }
       const json = await res.json();
       if (json.status === 'success') {
         setLiveAnalysis(json.data || null);
         setIsAiAnalyzing(Boolean(json.isAiAnalyzing));
+        if (json.activePrompt) {
+          setActiveApiPrompt(json.activePrompt);
+        } else if (json.data?.adminPromptApplied && json.data.adminPromptApplied !== 'Live External Retail LMS API Telemetry' && json.data.adminPromptApplied !== 'File Ingestion Synthesis') {
+          setActiveApiPrompt(json.data.adminPromptApplied);
+        }
         if (json.data?.reportingPeriod) {
           setDateRange(json.data.reportingPeriod);
         }
@@ -196,11 +131,70 @@ export default function HrIntelligence() {
         } else {
           setSelectedIssueId(null);
         }
+      } else {
+        throw new Error(json.message || 'API Error: Failed to fetch live HR intelligence');
       }
     } catch (err) {
-      console.warn('Could not load live HR analysis:', err);
+      console.error('Could not load live HR analysis:', err);
+      setAnalysisError(err.message || 'API Connection Error');
+      setLiveAnalysis(null);
+      setSelectedIssueId(null);
     } finally {
       if (!isBackgroundPoll) setIsLoadingAnalysis(false);
+    }
+  };
+
+  // Submit custom AI prompt on live API telemetry
+  const handleApplyApiPrompt = async (promptToApply = apiPromptInput) => {
+    const p = (promptToApply || '').trim();
+    setIsSubmittingPrompt(true);
+    try {
+      const res = await fetch('/api/hr/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminPrompt: p })
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        setActiveApiPrompt(p);
+        setApiPromptInput(p);
+        setLiveAnalysis(json.data || null);
+        setIsAiAnalyzing(Boolean(json.isAiAnalyzing));
+        if (json.data?.attentionItems && json.data.attentionItems.length > 0) {
+          setSelectedIssueId(json.data.attentionItems[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to analyze API telemetry with prompt:', err);
+      alert('Error analyzing API telemetry with prompt.');
+    } finally {
+      setIsSubmittingPrompt(false);
+    }
+  };
+
+  // Reset to default unprompted API baseline
+  const handleResetApiPrompt = async () => {
+    setIsSubmittingPrompt(true);
+    try {
+      const res = await fetch('/api/hr/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminPrompt: '' })
+      });
+      const json = await res.json();
+      if (json.status === 'success') {
+        setActiveApiPrompt('');
+        setApiPromptInput('');
+        setLiveAnalysis(json.data || null);
+        setIsAiAnalyzing(Boolean(json.isAiAnalyzing));
+        if (json.data?.attentionItems && json.data.attentionItems.length > 0) {
+          setSelectedIssueId(json.data.attentionItems[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to reset prompt filter:', err);
+    } finally {
+      setIsSubmittingPrompt(false);
     }
   };
 
@@ -346,11 +340,11 @@ export default function HrIntelligence() {
         };
       })
     : [
-        { id: 'issues', title: 'Issues Detected', value: '3', trend: '28 telemetry variances logged across stores', trendPositive: false, colorClass: 'hr-kpi-icon-purple', icon: <Network size={14} /> },
-        { id: 'decisions', title: 'Awaited Decisions', value: '3', trend: '3 management options ready for approval', trendPositive: true, colorClass: 'hr-kpi-icon-red', icon: <FileText size={14} /> },
-        { id: 'monitored', title: 'Being Monitored', value: '4', trend: 'Active action items and floor audits', trendPositive: true, colorClass: 'hr-kpi-icon-green', icon: <AppWindow size={14} /> },
-        { id: 'opportunities', title: 'Opportunities', value: '2', trend: 'Upsell & local footfall retargeting', trendPositive: true, colorClass: 'hr-kpi-icon-orange', icon: <UserCheck size={14} /> },
-        { id: 'productivity', title: 'Avg. Productivity', value: '86.1%', trend: '+2.4% vs retail quota benchmark', trendPositive: true, colorClass: 'hr-kpi-icon-blue', icon: <Activity size={14} /> }
+        { id: 'issues', title: 'Issues Detected', value: '0', trend: 'No issues logged', trendPositive: true, colorClass: 'hr-kpi-icon-purple', icon: <Network size={14} /> },
+        { id: 'decisions', title: 'Awaited Decisions', value: '0', trend: 'No pending decisions', trendPositive: true, colorClass: 'hr-kpi-icon-red', icon: <FileText size={14} /> },
+        { id: 'monitored', title: 'Being Monitored', value: '0', trend: 'No active monitoring tasks', trendPositive: true, colorClass: 'hr-kpi-icon-green', icon: <AppWindow size={14} /> },
+        { id: 'opportunities', title: 'Opportunities', value: '0', trend: 'No opportunities detected', trendPositive: true, colorClass: 'hr-kpi-icon-orange', icon: <UserCheck size={14} /> },
+        { id: 'productivity', title: 'Avg. Productivity', value: '0%', trend: 'No benchmark data available', trendPositive: true, colorClass: 'hr-kpi-icon-blue', icon: <Activity size={14} /> }
       ];
 
   // Filter list
@@ -364,26 +358,28 @@ export default function HrIntelligence() {
 
   const selectedItem = resolvedAttentionItems.find((item) => String(item.id) === String(selectedIssueId)) || resolvedAttentionItems[0] || null;
 
-  // Synchronize causes and options when selected issue changes
+  // Only show causes and options after user clicks the respective buttons!
+  const isCausesRevealed = Boolean(selectedItem && revealedCausesByIssue[selectedItem.id] && revealedCausesByIssue[selectedItem.id].length > 0);
+  const displayCauses = isCausesRevealed ? revealedCausesByIssue[selectedItem.id] : [];
+
+  const isOptionsRevealed = Boolean(selectedItem && revealedOptionsByIssue[selectedItem.id] && revealedOptionsByIssue[selectedItem.id].length > 0);
+  const displayOptions = isOptionsRevealed ? revealedOptionsByIssue[selectedItem.id] : [];
+  const selectedOption = isOptionsRevealed ? (displayOptions.find((opt) => opt.id === selectedOptionId) || displayOptions[0] || null) : null;
+
+  // Synchronize options selection when selected issue or revealed options change
   useEffect(() => {
     if (selectedItem) {
-      if (selectedItem.possibleCauses && selectedItem.possibleCauses.length > 0) {
-        setRootCauses(selectedItem.possibleCauses);
+      const opts = revealedOptionsByIssue[selectedItem.id] || [];
+      if (opts.length > 0) {
+        setSelectedOptionId(opts[0].id);
       } else {
-        setRootCauses([]);
-      }
-      if (selectedItem.decisionOptions && selectedItem.decisionOptions.length > 0) {
-        setDecisionOptions(selectedItem.decisionOptions);
-        setSelectedOptionId(selectedItem.decisionOptions[0].id);
-      } else {
-        setDecisionOptions([]);
         setSelectedOptionId(null);
       }
       setDeploymentSuccess(false);
+      setBrynexOneSuccess(false);
+      setShowDescriptionPreview(false);
     }
-  }, [selectedIssueId, liveAnalysis]);
-
-  const selectedOption = decisionOptions.find((opt) => opt.id === selectedOptionId) || decisionOptions[0] || null;
+  }, [selectedIssueId]);
 
   const handleExport = () => {
     alert('Exporting verified workforce intelligence report...');
@@ -424,36 +420,164 @@ export default function HrIntelligence() {
     }
   };
 
-  // Trigger Left-Brain AI Diagnosis with Claude
+  // Trigger Left-Brain AI Diagnosis with Claude (reveals causes ONLY after clicking button)
   const handleRunAiDiagnosis = async () => {
     if (!selectedItem) return;
     setIsDiagnosing(true);
     try {
       const result = await diagnoseHrIssue(selectedItem);
-      if (result && result.rootCauses) {
-        setRootCauses(result.rootCauses);
+      let causes = [];
+      if (result && result.rootCauses && result.rootCauses.length > 0) {
+        causes = result.rootCauses;
+      } else if (selectedItem.possibleCauses && selectedItem.possibleCauses.length > 0) {
+        causes = selectedItem.possibleCauses;
       }
+      setRevealedCausesByIssue((prev) => ({ ...prev, [selectedItem.id]: causes }));
     } catch (err) {
-      alert(`Diagnosis error: ${err.message}`);
+      console.warn(`Diagnosis error: ${err.message}`);
+      if (selectedItem.possibleCauses && selectedItem.possibleCauses.length > 0) {
+        setRevealedCausesByIssue((prev) => ({ ...prev, [selectedItem.id]: selectedItem.possibleCauses }));
+      }
     } finally {
       setIsDiagnosing(false);
     }
   };
 
-  // Trigger Decision Engine Options Generation with Claude
+  // Trigger Decision Engine Options Generation with Claude (reveals options ONLY after clicking button)
   const handleRegenerateOptions = async () => {
     if (!selectedItem) return;
     setIsGeneratingOptions(true);
     try {
       const options = await generateDecisionOptions(selectedItem);
+      let opts = [];
       if (options && options.length > 0) {
-        setDecisionOptions(options);
-        setSelectedOptionId(options[0].id);
+        opts = options;
+      } else if (selectedItem.decisionOptions && selectedItem.decisionOptions.length > 0) {
+        opts = selectedItem.decisionOptions;
+      }
+      setRevealedOptionsByIssue((prev) => ({ ...prev, [selectedItem.id]: opts }));
+      if (opts.length > 0) {
+        setSelectedOptionId(opts[0].id);
       }
     } catch (err) {
-      alert(`Options generator error: ${err.message}`);
+      console.warn(`Options generator error: ${err.message}`);
+      if (selectedItem.decisionOptions && selectedItem.decisionOptions.length > 0) {
+        setRevealedOptionsByIssue((prev) => ({ ...prev, [selectedItem.id]: selectedItem.decisionOptions }));
+        setSelectedOptionId(selectedItem.decisionOptions[0].id);
+      }
     } finally {
       setIsGeneratingOptions(false);
+    }
+  };
+
+  // Generate complete, structured description for BrynexOne task creation
+  const generateBrynexOneDescription = (option = selectedOption) => {
+    if (!option || !selectedItem) return '';
+
+    return [
+      `🎯 MANAGEMENT ACTION PLAN: ${option.badge || 'Action'} - ${option.title || ''}`,
+      `--------------------------------------------------`,
+      `📌 ISSUE CONTEXT:`,
+      `• Title: ${selectedItem.title || 'Workforce Issue'}`,
+      `• Department: ${selectedItem.department || 'Retail Operations'}`,
+      `• Store / Branch: ${selectedItem.branch || 'All Branches'}`,
+      `• Priority: ${selectedItem.priority || 'High Priority'}`,
+      `• Topic: ${selectedItem.topic || 'Workforce & Operational Risk'}`,
+      selectedItem.confidence ? `• AI Confidence: ${selectedItem.confidence}` : '',
+      ``,
+      `💡 SELECTED DECISION DETAILS:`,
+      `• Action: ${option.title || ''}`,
+      `• Description: ${option.description || ''}`,
+      option.impact ? `• Expected Impact: ${option.impact}` : '',
+      ``,
+      `📋 EXECUTION PARAMETERS:`,
+      `• Action Owner: ${actionOwner || 'HR Director'}`,
+      `• Target Deadline: ${actionDeadline || '14 Days (Recommended)'}`,
+      `• KPI Alignment: ${actionKpi || 'Workforce Quota Attainment & Retention'}`,
+      ``,
+      `🔍 TELEMETRY & ROOT CAUSES:`,
+      selectedItem.whatsHappening ? `• What's Happening: ${selectedItem.whatsHappening}` : '',
+      selectedItem.evidence && selectedItem.evidence[0] ? `• Key Evidence: ${selectedItem.evidence[0].title} - ${selectedItem.evidence[0].desc}` : '',
+      `--------------------------------------------------`,
+      `Generated via AI HR Intelligence Dashboard • Brynex Business Brain`
+    ].filter(Boolean).join('\n');
+  };
+
+  // Redirect to BrynexOne (/task/create) with all selected option data under description & fields
+  const handleAssignBrynexOneTask = (option = selectedOption) => {
+    if (!option || !selectedItem) return;
+
+    const taskTitle = `[HR Intelligence] ${option.badge || 'Action'}: ${option.title || selectedItem.title}`;
+    const descriptionText = generateBrynexOneDescription(option);
+
+    const baseUrl = 'https://brynexone.brynex.com/task/create';
+    const url = new URL(baseUrl);
+
+    // Pass description under common keys so BrynexOne form picks it up in description section
+    url.searchParams.set('description', descriptionText);
+    url.searchParams.set('desc', descriptionText);
+    url.searchParams.set('task_description', descriptionText);
+    url.searchParams.set('taskDescription', descriptionText);
+    url.searchParams.set('details', descriptionText);
+
+    // Title / task name
+    url.searchParams.set('title', taskTitle);
+    url.searchParams.set('name', taskTitle);
+    url.searchParams.set('task_name', taskTitle);
+    url.searchParams.set('taskTitle', taskTitle);
+
+    // Assignee / Action Owner
+    url.searchParams.set('assignee', actionOwner || 'HR Director');
+    url.searchParams.set('assignedTo', actionOwner || 'HR Director');
+    url.searchParams.set('assigned_to', actionOwner || 'HR Director');
+    url.searchParams.set('owner', actionOwner || 'HR Director');
+
+    // Priority & Deadline
+    const prio = selectedItem.priority?.includes('Low') ? 'Low' : (selectedItem.priority?.includes('Medium') ? 'Medium' : 'High');
+    url.searchParams.set('priority', prio);
+    url.searchParams.set('deadline', actionDeadline || '14 Days');
+    url.searchParams.set('dueDate', actionDeadline || '14 Days');
+    url.searchParams.set('due_date', actionDeadline || '14 Days');
+
+    // Store & Department tags
+    url.searchParams.set('branch', selectedItem.branch || '');
+    url.searchParams.set('department', selectedItem.department || '');
+    url.searchParams.set('source', 'HR_Intelligence');
+
+    // Automatically copy description to clipboard for seamless fallback
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(descriptionText).catch((err) => console.warn('Clipboard write error:', err));
+    }
+
+    // Save to local storage as well for cross-app synchronization
+    try {
+      localStorage.setItem('brynexone_pending_task', JSON.stringify({
+        title: taskTitle,
+        description: descriptionText,
+        assignee: actionOwner,
+        deadline: actionDeadline,
+        priority: prio,
+        source: 'HR_Intelligence',
+        createdAt: new Date().toISOString()
+      }));
+    } catch (e) {
+      console.warn('Storage sync error:', e);
+    }
+
+    // Open BrynexOne in a new tab
+    window.open(url.toString(), '_blank', 'noopener,noreferrer');
+
+    setBrynexOneSuccess(true);
+    setTimeout(() => setBrynexOneSuccess(false), 8000);
+  };
+
+  const handleCopyDescription = () => {
+    const text = generateBrynexOneDescription();
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopiedDescription(true);
+      setTimeout(() => setCopiedDescription(false), 2500);
     }
   };
 
@@ -494,6 +618,48 @@ export default function HrIntelligence() {
           </button>
         </div>
       </div>
+
+      {/* API Error Notification Banner */}
+      {analysisError && (
+        <div style={{
+          background: '#fef2f2',
+          border: '1.5px solid #f87171',
+          borderRadius: '12px',
+          padding: '14px 18px',
+          margin: '0 0 20px 0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <AlertTriangle size={22} color="#dc2626" />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '14px', color: '#991b1b' }}>API Connection Error</div>
+              <div style={{ fontSize: '13px', color: '#b91c1c' }}>{analysisError} — Backend connection failed. No hardcoded or fallback data is being displayed.</div>
+            </div>
+          </div>
+          <button
+            onClick={() => fetchAnalysis()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              background: '#dc2626',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <RotateCw size={13} />
+            <span>Retry API</span>
+          </button>
+        </div>
+      )}
 
       {/* Live Claude AI Background Synthesis Progress Banner */}
       {isAiAnalyzing && (
@@ -715,23 +881,160 @@ export default function HrIntelligence() {
             <div className="hr-health-header">
               <span className="hr-health-title">HR Health Score</span>
               <span className="hr-health-badge">
-                {liveAnalysis?.healthStatus || 'Healthy'}
+                {liveAnalysis?.healthStatus || (analysisError ? 'API Error' : 'No Data')}
               </span>
             </div>
             <div className="hr-health-value">
               {liveAnalysis?.healthScore
                 ? (String(liveAnalysis.healthScore).includes('%') ? liveAnalysis.healthScore : `${liveAnalysis.healthScore}%`)
-                : '82%'}
+                : (analysisError ? 'ERR' : '-')}
             </div>
             <div className="hr-health-footer">
               <TrendingUp size={14} />
               <span>
-                {resolvedAttentionItems.length > 0
-                  ? `${resolvedAttentionItems.length} area${resolvedAttentionItems.length === 1 ? '' : 's'} need attention`
-                  : 'Live retail telemetry nominal'}
+                {analysisError
+                  ? 'API connection failure'
+                  : resolvedAttentionItems.length > 0
+                    ? `${resolvedAttentionItems.length} area${resolvedAttentionItems.length === 1 ? '' : 's'} need attention`
+                    : 'No active issues detected'}
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Executive AI Live API Telemetry Prompt Bar */}
+      <div className="hr-api-prompt-bar-container">
+        <div className="hr-api-prompt-bar-header">
+          <div className="hr-api-prompt-title-wrap">
+            <div className="hr-api-prompt-sparkle-pill">
+              <Sparkles size={15} color="#7c3aed" className="hr-sparkle-animated" />
+            </div>
+            <div>
+              <div className="hr-api-prompt-title">Live API Intelligence Prompt Engine</div>
+              <div className="hr-api-prompt-subtitle">
+                Prompt or filter live retail LMS telemetry across 25 stores and 204 staff profiles (e.g., target deficits, specific stores, consultant skills)
+              </div>
+            </div>
+          </div>
+          {activeApiPrompt && (
+            <div className="hr-api-active-badge-wrap">
+              <span className="hr-api-active-badge">
+                <span className="hr-live-dot" />
+                Active Focus: "{activeApiPrompt}"
+              </span>
+              <button
+                type="button"
+                className="hr-api-reset-prompt-btn"
+                onClick={handleResetApiPrompt}
+                title="Reset to default unprompted telemetry"
+                disabled={isSubmittingPrompt}
+              >
+                <RotateCw size={11} />
+                <span>Reset View</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <form
+          className="hr-api-prompt-input-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleApplyApiPrompt(apiPromptInput);
+          }}
+        >
+          <div className="hr-api-prompt-input-wrapper">
+            <Search size={15} color="#94a3b8" />
+            <input
+              type="text"
+              className="hr-api-prompt-input"
+              placeholder="Prompt AI on live API data (e.g. 'Show stores lagging on quota < 80%', 'Analyze Suitor Guy Edappally', 'Focus on accessories conversion vs training')..."
+              value={apiPromptInput}
+              onChange={(e) => setApiPromptInput(e.target.value)}
+            />
+            {apiPromptInput && (
+              <button
+                type="button"
+                className="hr-api-clear-input-btn"
+                onClick={() => setApiPromptInput('')}
+                title="Clear input"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          <button
+            type="submit"
+            className="hr-api-prompt-submit-btn"
+            disabled={isSubmittingPrompt || (!apiPromptInput.trim() && !activeApiPrompt)}
+          >
+            {isSubmittingPrompt ? (
+              <>
+                <Loader2 size={14} className="hr-spin-animation" />
+                <span>Analyzing API...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} />
+                <span>Analyze API</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* 1-Click Suggestion Chips */}
+        <div className="hr-api-prompt-chips">
+          <span className="hr-api-chips-label">Quick Inquiries:</span>
+          <button
+            type="button"
+            className={`hr-api-chip ${activeApiPrompt === 'Top Lagging Stores' ? 'active' : ''}`}
+            onClick={() => {
+              setApiPromptInput('Top Lagging Stores');
+              handleApplyApiPrompt('Top Lagging Stores');
+            }}
+          >
+            🎯 Top Lagging Stores
+          </button>
+          <button
+            type="button"
+            className={`hr-api-chip ${activeApiPrompt === 'Suitor Guy Edappally' ? 'active' : ''}`}
+            onClick={() => {
+              setApiPromptInput('Suitor Guy Edappally');
+              handleApplyApiPrompt('Suitor Guy Edappally');
+            }}
+          >
+            🏬 Suitor Guy Edappally
+          </button>
+          <button
+            type="button"
+            className={`hr-api-chip ${activeApiPrompt === 'Accessories Basket Gap' ? 'active' : ''}`}
+            onClick={() => {
+              setApiPromptInput('Accessories Basket Gap');
+              handleApplyApiPrompt('Accessories Basket Gap');
+            }}
+          >
+            👔 Accessories Basket Gap
+          </button>
+          <button
+            type="button"
+            className={`hr-api-chip ${activeApiPrompt === 'Camera Audit Discrepancies' ? 'active' : ''}`}
+            onClick={() => {
+              setApiPromptInput('Camera Audit Discrepancies');
+              handleApplyApiPrompt('Camera Audit Discrepancies');
+            }}
+          >
+            📹 Camera Audit Discrepancies
+          </button>
+          {activeApiPrompt && (
+            <button
+              type="button"
+              className="hr-api-chip hr-api-chip-reset"
+              onClick={handleResetApiPrompt}
+            >
+              🔄 Reset to Default
+            </button>
+          )}
         </div>
       </div>
 
@@ -749,10 +1052,16 @@ export default function HrIntelligence() {
               </button>
             </div>
             <p className="hr-attention-desc">
-              {liveAnalysis?.attentionSummary || (
-                isLoadingAnalysis
-                  ? 'Checking for live workforce telemetry...'
-                  : 'No workforce datasets currently synced. Upload employee and attendance records in Data Management to detect live management issues.'
+              {analysisError ? (
+                <span style={{ color: '#dc2626', fontWeight: 500 }}>
+                  API Error: {analysisError}. Please verify backend connection.
+                </span>
+              ) : (
+                liveAnalysis?.attentionSummary || (
+                  isLoadingAnalysis
+                    ? 'Checking for live workforce telemetry...'
+                    : 'No workforce datasets currently synced. Upload employee and attendance records in Data Management to detect live management issues.'
+                )
               )}
             </p>
 
@@ -1129,13 +1438,62 @@ export default function HrIntelligence() {
                     </button>
                   </div>
 
-                  <div className="hr-causes-list">
-                    {rootCauses.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px' }}>
-                        Click "Run Live AI Diagnosis" to analyze this issue with Claude.
+                  {!isCausesRevealed ? (
+                    <div
+                      style={{
+                        textAlign: 'center',
+                        padding: '44px 20px',
+                        background: '#ffffff',
+                        borderRadius: '12px',
+                        border: '1.5px dashed #cbd5e1',
+                        marginTop: '12px'
+                      }}
+                    >
+                      <div style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '50%',
+                        background: '#f0fdf4',
+                        color: '#0ca678',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 12px'
+                      }}>
+                        <BrainCircuit size={22} />
                       </div>
-                    ) : (
-                      rootCauses.map((cause, idx) => (
+                      <h4 style={{ margin: '0 0 6px', fontSize: '15px', color: '#0f172a', fontWeight: 600 }}>
+                        Root Cause Diagnosis On Standby
+                      </h4>
+                      <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#64748b', maxWidth: '440px', marginInline: 'auto', lineHeight: 1.5 }}>
+                        Click below to run live Left-Brain diagnostic evaluation with Claude AI and reveal correlated root causes for this issue.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleRunAiDiagnosis}
+                        disabled={isDiagnosing}
+                        style={{
+                          background: '#0f172a',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '9px 18px',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '7px',
+                          cursor: isDiagnosing ? 'wait' : 'pointer',
+                          boxShadow: '0 2px 5px rgba(15, 23, 42, 0.12)'
+                        }}
+                      >
+                        <Sparkles size={13} color="#0ca678" />
+                        <span>{isDiagnosing ? 'Diagnosing with Claude...' : 'Run Live AI Diagnosis'}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="hr-causes-list">
+                      {displayCauses.map((cause, idx) => (
                         <div key={idx} className="hr-cause-item">
                           <div className="hr-cause-icon-wrapper">
                             <AlertCircle size={18} />
@@ -1159,9 +1517,9 @@ export default function HrIntelligence() {
                             )}
                           </div>
                         </div>
-                      ))
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1200,13 +1558,63 @@ export default function HrIntelligence() {
                     </button>
                   </div>
 
-                  <div className="hr-options-grid">
-                    {decisionOptions.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', width: '100%' }}>
-                        Click "Generate AI Options" to compute 3 architectural decision paths with Claude.
+                  {!isOptionsRevealed ? (
+                    <div
+                      style={{
+                        textAlign: 'center',
+                        padding: '44px 20px',
+                        background: '#ffffff',
+                        borderRadius: '12px',
+                        border: '1.5px dashed #cbd5e1',
+                        marginTop: '12px',
+                        width: '100%'
+                      }}
+                    >
+                      <div style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '50%',
+                        background: '#ecfdf5',
+                        color: '#0ca678',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 12px'
+                      }}>
+                        <Target size={22} />
                       </div>
-                    ) : (
-                      decisionOptions.map((opt) => (
+                      <h4 style={{ margin: '0 0 6px', fontSize: '15px', color: '#0f172a', fontWeight: 600 }}>
+                        Decision Engine On Standby
+                      </h4>
+                      <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#64748b', maxWidth: '440px', marginInline: 'auto', lineHeight: 1.5 }}>
+                        Click below to synthesize 3 strategic management decision paths (Option A / B / C) with projected operational ROI.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleRegenerateOptions}
+                        disabled={isGeneratingOptions}
+                        style={{
+                          background: '#0f172a',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '9px 18px',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '7px',
+                          cursor: isGeneratingOptions ? 'wait' : 'pointer',
+                          boxShadow: '0 2px 5px rgba(15, 23, 42, 0.12)'
+                        }}
+                      >
+                        <Sparkles size={13} color="#0ca678" />
+                        <span>{isGeneratingOptions ? 'Synthesizing with Claude...' : 'Generate AI Options'}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="hr-options-grid">
+                      {displayOptions.map((opt) => (
                         <div
                           key={opt.id}
                           className={`hr-option-card ${selectedOptionId === opt.id ? 'active' : ''}`}
@@ -1225,10 +1633,38 @@ export default function HrIntelligence() {
                               Impact: {opt.impact}
                             </div>
                           )}
+                          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOptionId(opt.id);
+                                handleAssignBrynexOneTask(opt);
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '5px 11px',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
+                                background: '#ecfdf5',
+                                color: '#047857',
+                                border: '1px solid #a7f3d0',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                              title="Assign this decision option directly in BrynexOne"
+                            >
+                              <span>Assign in BrynexOne</span>
+                              <ExternalLink size={11} />
+                            </button>
+                          </div>
                         </div>
-                      ))
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1276,29 +1712,185 @@ export default function HrIntelligence() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={handleDeployAction}
-                        style={{
-                          background: '#0ca678',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '10px 18px',
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleAssignBrynexOneTask(selectedOption)}
+                          style={{
+                            background: 'linear-gradient(135deg, #0ca678 0%, #059669 100%)',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '10px 18px',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '7px',
+                            boxShadow: '0 2px 6px rgba(12, 166, 120, 0.25)',
+                            transition: 'all 0.15s ease'
+                          }}
+                          title="Redirect to BrynexOne with selected option prefilled in description"
+                        >
+                          <ExternalLink size={15} />
+                          <span>Assign Task in BrynexOne</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleDeployAction}
+                          style={{
+                            background: '#0f172a',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '10px 18px',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <CheckCircle2 size={15} />
+                          <span>Deploy to AI Tasks</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowDescriptionPreview((prev) => !prev)}
+                          style={{
+                            background: '#ffffff',
+                            color: '#475569',
+                            border: '1px solid #cbd5e1',
+                            padding: '9px 14px',
+                            borderRadius: '8px',
+                            fontWeight: 500,
+                            fontSize: '12.5px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <FileText size={13} color="#64748b" />
+                          <span>{showDescriptionPreview ? 'Hide Description Payload' : 'Preview Task Description'}</span>
+                          <ChevronDown size={13} style={{ transform: showDescriptionPreview ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                        </button>
+                      </div>
+
+                      {/* BrynexOne Success Notification */}
+                      {brynexOneSuccess && (
+                        <div style={{
+                          marginTop: '12px',
+                          padding: '12px 16px',
+                          background: '#ecfdf5',
+                          border: '1.5px solid #a7f3d0',
                           borderRadius: '8px',
-                          fontWeight: 600,
-                          fontSize: '13px',
-                          cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <CheckCircle2 size={15} />
-                        <span>Deploy to AI Tasks</span>
-                      </button>
+                          justifyContent: 'space-between',
+                          gap: '12px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <CheckCircle2 size={16} color="#059669" />
+                            <div>
+                              <div style={{ fontSize: '13px', color: '#065f46', fontWeight: 600 }}>
+                                Redirected to BrynexOne (`task/create`)!
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#047857' }}>
+                                Selected option data has been prefilled via URL parameters & copied to your clipboard.
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleCopyDescription}
+                            style={{
+                              fontSize: '12px',
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              background: '#ffffff',
+                              border: '1px solid #059669',
+                              color: '#059669',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            {copiedDescription ? <Check size={12} /> : <Copy size={12} />}
+                            <span>{copiedDescription ? 'Copied!' : 'Copy Again'}</span>
+                          </button>
+                        </div>
+                      )}
 
+                      {/* Local Deployment Success */}
                       {deploymentSuccess && (
-                        <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#0ca678', fontWeight: 600 }}>
-                          ✓ Action plan deployed successfully to AI Tasks!
+                        <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#0ca678', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <CheckCircle2 size={14} />
+                          <span>Action plan deployed successfully to local AI Tasks!</span>
+                        </div>
+                      )}
+
+                      {/* Expandable BrynexOne Task Description Payload Preview */}
+                      {showDescriptionPreview && (
+                        <div style={{
+                          marginTop: '14px',
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            background: '#f1f5f9',
+                            padding: '8px 14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            borderBottom: '1px solid #e2e8f0'
+                          }}>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>
+                              Description Payload sent to BrynexOne:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleCopyDescription}
+                              style={{
+                                background: '#ffffff',
+                                border: '1px solid #cbd5e1',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
+                                color: '#0f172a',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {copiedDescription ? <Check size={12} color="#059669" /> : <Copy size={12} />}
+                              <span>{copiedDescription ? 'Copied!' : 'Copy Description'}</span>
+                            </button>
+                          </div>
+                          <pre style={{
+                            margin: 0,
+                            padding: '12px 14px',
+                            fontSize: '12px',
+                            color: '#1e293b',
+                            background: '#f8fafc',
+                            whiteSpace: 'pre-wrap',
+                            lineHeight: 1.55,
+                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                            maxHeight: '260px',
+                            overflowY: 'auto'
+                          }}>
+                            {generateBrynexOneDescription()}
+                          </pre>
                         </div>
                       )}
                     </div>

@@ -237,103 +237,47 @@ Details: ${issue.description || issue.subtitle || 'Workforce metric anomaly'}`;
  * Left-Brain AI Diagnosis: Evaluates root causes with confidence ratings
  */
 export const diagnoseHrIssue = async (issue) => {
-  try {
-    const res = await fetch('/api/ai/hr/diagnose', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: issue.title || issue.titleDetail,
-        description: issue.description || issue.desc,
-        category: issue.category
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.data) return data.data;
-    }
-  } catch (err) {
-    console.warn('Backend diagnosis error, using client fallback:', err.message);
+  const res = await fetch('/api/ai/hr/diagnose', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: issue.title || issue.titleDetail,
+      description: issue.description || issue.desc,
+      category: issue.category
+    })
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `AI Diagnosis API Error (${res.status}: ${res.statusText})`);
   }
-
-  // Fallback defaults
-  return {
-    summary: "Workforce variance driven by concentrated shift overtime and payroll ratio divergence.",
-    rootCauses: [
-      {
-        title: "Overtime & Shift Overlap Spike",
-        description: "Inefficient handover overlaps added 28% unbudgeted overtime hours in retail branches.",
-        confidence: "High Confidence",
-        evidence: "Payroll telemetry: $42.6k increase in overtime replacement costs."
-      },
-      {
-        title: "Frontline Compensation Disparity",
-        description: "Salaries are 8.4% lower than regional retail benchmark, accelerating frontline attrition.",
-        confidence: "High Confidence",
-        evidence: "Exit interview records: 68% cite compensation gaps."
-      },
-      {
-        title: "Manager Supervision & Scheduling Fatigue",
-        description: "Back-to-back closing and opening shifts lead to fatigue and absenteeism.",
-        confidence: "Medium Confidence",
-        evidence: "Shift roster attendance records in West and Central branches."
-      }
-    ]
-  };
+  const data = await res.json();
+  if (!data.success || !data.data) {
+    throw new Error(data.error || 'Failed to generate AI diagnosis from server');
+  }
+  return data.data;
 };
 
 /**
  * Layer 6 Decision Engine: Generates Option A, Option B, Option C
  */
 export const generateDecisionOptions = async (issue) => {
-  try {
-    const res = await fetch('/api/ai/hr/options', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: issue.title || issue.titleDetail,
-        description: issue.description || issue.desc
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.data?.options) return data.data.options;
-    }
-  } catch (err) {
-    console.warn('Backend options error, using client fallback:', err.message);
+  const res = await fetch('/api/ai/hr/options', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: issue.title || issue.titleDetail,
+      description: issue.description || issue.desc
+    })
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `AI Decision Options API Error (${res.status}: ${res.statusText})`);
   }
-
-  return [
-    {
-      id: "opt-a",
-      badge: "Option A - Revenue Growth",
-      title: "Targeted Staffing & Sales Productivity Coaching",
-      description: "Introduce performance-based incentive tiers ($1,200/mo) and retail sales coaching.",
-      impact: "Potential +$24k/mo revenue uplift",
-      effort: "Medium",
-      risk: "Medium Risk",
-      cost: "Moderate"
-    },
-    {
-      id: "opt-b",
-      badge: "Option B - Cost Optimisation",
-      title: "Roster Efficiency & Overtime Reduction",
-      description: "Restructure roster to eliminate 15-minute overlap and enforce overtime pre-approval.",
-      impact: "Save $14.2k/month in payroll cost",
-      effort: "Low",
-      risk: "Low Risk",
-      cost: "Minimal"
-    },
-    {
-      id: "opt-c",
-      badge: "Option C - Combined Turnaround",
-      title: "Cross-Branch Capacity Rebalance & Rest Rotation",
-      description: "Redeploy 2 staff from low-traffic branches and mandate 10-hour rest between shifts.",
-      impact: "EBITDA improvement +$18.5k/month",
-      effort: "High",
-      risk: "Medium Risk",
-      cost: "Low"
-    }
-  ];
+  const data = await res.json();
+  if (!data.success || !data.data?.options) {
+    throw new Error(data.error || 'Failed to generate decision options from server');
+  }
+  return data.data.options;
 };
 
 /**

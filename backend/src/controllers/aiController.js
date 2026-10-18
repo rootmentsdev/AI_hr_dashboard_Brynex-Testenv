@@ -5,6 +5,7 @@ import {
   getCachedEnterpriseAnalytics
 } from './hrController.js';
 import { extractDatasetTelemetry } from '../services/aiDocumentAnalyzerService.js';
+import { fetchEmployeeOverview, fetchStoreOverview } from '../services/externalIntegrationService.js';
 
 // AI Controller - Human Executive Workforce & HR Advisory Partner Persona
 const DEFAULT_SYSTEM_PROMPT = `You are the Senior Workforce Advisor & Chief People Intelligence Partner at Brynex.
@@ -170,6 +171,95 @@ export const chatWithAi = async (req, res) => {
       const syncedEmployees = getCachedSyncedEmployees();
       const enterpriseAnalytics = getCachedEnterpriseAnalytics();
 
+      // 1. Deep Uploaded Dataset Telemetry (statistical distributions, departments, notices, overtime)
+      let filesTelemetryContext = '';
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        try {
+          const telemetryProfiles = extractDatasetTelemetry(uploadedFiles);
+          if (telemetryProfiles && telemetryProfiles.length > 0) {
+            filesTelemetryContext = telemetryProfiles.map((p) => `
+• DATASET "${p.fileName}" TELEMETRY PROFILE (${p.totalRows} records):
+  - Columns: ${(p.columns || []).join(', ')}
+  - Categorical Distributions: ${JSON.stringify(p.categoricalSummary || {})}
+  - Numeric Stats (Averages, Min/Max): ${JSON.stringify(p.numericSummary || {})}
+  - Key Anomaly/Exit Records:
+${(p.anomalyRows || []).slice(0, 6).map((r) => `    * ${JSON.stringify(r)}`).join('\n')}`).join('\n');
+          }
+        } catch (telemetryErr) {
+          console.warn('Dataset telemetry extraction notice:', telemetryErr.message);
+        }
+      }
+
+      // 2. Query Entity Matcher (Deep lookups for any mentioned employee or store)
+      const userText = normalizedMessages.map((m) => m.content || '').join(' ').toLowerCase();
+      let matchedEntitiesContext = '';
+
+      // Check if user mentioned specific employees (e.g. EMP93, Niyas, Akhila, Emp390, etc.)
+      if (syncedEmployees && syncedEmployees.length > 0) {
+        const matchedEmps = syncedEmployees.filter((e) => {
+          const id = (e.empId || e.EmpId || e.id || '').toLowerCase();
+          const name = (e.name || '').toLowerCase();
+          if (id && userText.includes(id)) return true;
+          if (name && name.length > 3) {
+            const parts = name.split(' ').filter((p) => p.length > 3);
+            return parts.some((p) => userText.includes(p));
+          }
+          return false;
+        }).slice(0, 3);
+
+        for (const me of matchedEmps) {
+          try {
+            const empDetail = await fetchEmployeeOverview({ empId: me.empId || me.id });
+            if (empDetail && empDetail.data) {
+              const d = empDetail.data;
+              matchedEntitiesContext += `
+SPECIFIC EMPLOYEE 360 PROFILE FOR "${d.summary?.name || me.name}" (${d.summary?.empId || me.empId}):
+- Designation: ${d.summary?.designation || me.designation || 'Staff'}, Department: ${d.summary?.department || me.department || 'Sales'}
+- Working Branch: ${d.summary?.workingBranch || me.workingBranch || 'Store Network'} (locCode: ${d.summary?.locCode || 'N/A'})
+- Email: ${d.summary?.email || 'N/A'}, Phone: ${d.profile?.user?.phoneNumber || 'N/A'}
+- Learning & Certifications: ${JSON.stringify(d.learning?.assessmentAttempts || d.learning?.trainingProgress || [])}
+- Walk-ins & Consultations Handled: ${d.operations?.walkinsHandledCount || 0}
+- Recent Walk-in Customer Interactions: ${(d.operations?.walkinsHandled || []).slice(0, 4).map((w) => `${w.customerName || 'Customer'} (${w.status || 'Resolved'}: ${w.remarks || w.lossReason || w.outcome || 'Handled'})`).join('; ')}
+- Assigned Store Tasks: ${(d.tasks?.assignedTasks || []).map((t) => `${t.title} [${t.status}, Priority: ${t.priority}]`).join('; ')}
+- Sales Targets: ${JSON.stringify(d.salesAttributions?.targets || [])}
+`;
+            }
+          } catch (empErr) {
+            console.warn('Employee 360 lookup notice:', empErr.message);
+          }
+        }
+      }
+
+      // Check if user mentioned specific store (e.g. Perinthalmanna, Edappally, Kottayam, 102, 709, etc.)
+      const branches = latestAnalysis?.storesSummary?.branches || [];
+      const matchedBranch = branches.find((b) => {
+        const code = String(b.locCode || '').toLowerCase();
+        const name = String(b.name || '').toLowerCase();
+        if (code && userText.includes(code)) return true;
+        if (name && name.length > 3 && userText.includes(name)) return true;
+        return false;
+      });
+
+      if (matchedBranch) {
+        try {
+          const storeDetail = await fetchStoreOverview({ locCode: matchedBranch.locCode });
+          if (storeDetail && storeDetail.data) {
+            const sd = storeDetail.data;
+            matchedEntitiesContext += `
+DEEP STORE 360 OPERATIONAL TELEMETRY FOR "${matchedBranch.name}" (locCode: ${matchedBranch.locCode}):
+- Location: ${sd.summary?.location || 'N/A'}, Manager: ${sd.summary?.manager || 'N/A'}
+- Total Staff Count: ${sd.summary?.totalStaffCount || matchedBranch.staffCount || 0}, Active Walk-ins Logged: ${sd.summary?.totalWalkinsLogged || matchedBranch.walkinsCount || 0}
+- Camera Audits: ${(sd.operations?.cameraAudits || []).map((ca) => `Date: ${ca.date}, Footfall: ${ca.footfallCount}, Discrepancies: ${ca.discrepancyCount}, Notes: "${ca.notes}"`).join('; ')}
+- Branch Quality Audits: ${(sd.operations?.branchAudits || []).map((ba) => `Score: ${ba.auditScore}%, Auditor: ${ba.auditor}, Observations: "${ba.observations}"`).join('; ')}
+- Active Store Tasks: ${(sd.operations?.storeTasks || []).map((st) => `Task: ${st.title} (Status: ${st.status}, Assigned: ${st.assignedTo || st.owner}, Priority: ${st.priority}, Due: ${st.dueDate || st.deadline})`).join('; ')}
+- Staff Roster at this branch: ${(sd.staff?.users || []).slice(0, 8).map((u) => `${u.username || u.name} (${u.empID || u.EmpId || 'N/A'} - ${u.designation || 'Staff'})`).join(', ')}
+`;
+          }
+        } catch (stErr) {
+          console.warn('Store 360 lookup notice:', stErr.message);
+        }
+      }
+
       dynamicDataContext = `
 --- BRYNEX ONE AI PERSISTENT RETAIL & WORKFORCE TELEMETRY (LIVE INGESTION ACTIVE) ---
 OPERATIONAL PHILOSOPHY:
@@ -178,64 +268,36 @@ OPERATIONAL PHILOSOPHY:
 • Ground every answer in specific facts, figures, and verified telemetry from the connected APIs and datasets.
 
 CURRENT AGGREGATED ENTERPRISE STATUS:
-- HR Health Score: ${latestAnalysis?.healthScore || '82%'} (${latestAnalysis?.healthStatus || 'Healthy'})
-- Total Active Employees Monitored: ${syncedEmployees?.length || 24}
-- Enterprise Sales Pipeline: ${enterpriseAnalytics?.sales?.formattedRevenue || '₹66.30L'}
-- Payroll to Revenue Ratio: ${enterpriseAnalytics?.finance?.payrollRatio || '14.2%'}
-- Total Logged Walk-in Leads: 1,920 across retail network
-- Open Operational Discrepancies: 28 audit items
+- HR Health Score: ${latestAnalysis?.healthScore || 'N/A'} (${latestAnalysis?.healthStatus || 'No Data'})
+- Total Active Employees Monitored: ${syncedEmployees?.length || 0} across retail stores & operational units
+- Enterprise Sales Pipeline: ${enterpriseAnalytics?.sales?.formattedRevenue || 'N/A'}
+- Payroll to Revenue Ratio: ${enterpriseAnalytics?.finance?.payrollRatio || 'N/A'} (Target: ${enterpriseAnalytics?.finance?.targetRatio || '12.0%'})
+- Open Audit Discrepancies: ${enterpriseAnalytics?.operations?.openDiscrepancies || 0}
+- In-Progress Operations Tasks: ${enterpriseAnalytics?.operations?.inProgressTasks || 0}
 
-RETAIL STORES 360 OVERVIEW:
-1. STORE G.PERINTHALMANNA (Location: Perinthalmanna, Malappuram | Cluster: Malabar Retail Cluster | Manager: Suresh Kumar):
-   - Monthly Quota Target: ₹32,00,000 (₹32.0L)
-   - Actual Net Sales: ₹24,50,000 (₹24.5L) -> 76.5% Target Attainment (SALES TARGET LAGGING)
-   - Camera Audit Footfall: 820 visits (Down 24% from 1,080 visits in prior month due to municipal road construction on Main Road)
-   - Walk-in Leads: 640 logged walk-ins
-   - Walk-in Conversion Rate: 26.2% (Resilient & healthy staff conversion; proving the lag is an EXTERNAL FOOTFALL DEFICIT, NOT poor frontline staff effort!)
-   - Operational Discrepancies: 16 camera vs register audit discrepancies
-   - Overdue Compliance Task: "Weekly POS Discrepancy Log Reconciliation" (Overdue by 5 days, assigned to Suresh Kumar)
-   - In-Progress Task: "Implement Festive Luxury Suiting Display" (Assigned to Niyas Binu Nasar K)
-   - Google Review Average: 4.2/5 ("Excellent wedding suits, Niyas assisted us patiently")
-   - Recommended Strategic Action: Launch targeted WhatsApp/SMS footfall outreach to past 450 wedding clients in Malappuram (+₹3.5L projected lift) or rebalance target to ₹27.5L to protect consultant morale.
+CONNECTED RETAIL NETWORK STORES (${latestAnalysis?.storesSummary?.branches?.length || 0} active locations):
+${(latestAnalysis?.storesSummary?.branches || []).map((b, idx) => `
+${idx + 1}. ${b.name || 'Store'} (locCode: ${b.locCode || 'N/A'}):
+   - Monthly Target: ₹${(b.monthlyTarget || 0).toLocaleString()}
+   - Actual Net Sales: ₹${(b.netSales || 0).toLocaleString()} (${b.quotaAttainment || 'N/A'})
+   - Staff Count: ${b.staffCount || 0}
+   - Logged Footfall: ${b.footfall || 0}
+   - Walk-ins Count: ${b.walkinsCount || 0}
+   - Audit Score: ${b.auditScore || 85}%
+`).join('')}
 
-2. STORE SUITOR GUY EDAPPALLY (Location: Edappally, Kochi | Cluster: Central Kerala Cluster | Manager: Ananya Menon):
-   - Monthly Quota Target: ₹45,00,000 (₹45.0L)
-   - Actual Net Sales: ₹41,80,000 (₹41.8L) -> 92.8% Target Attainment (Optimal)
-   - Camera Footfall: 1,450 visits | Walk-ins: 1,280 | Conversion: 30.7%
-   - Audit Score: 92% | Discrepancies: 6
-   - Top Consultants: Arjun Nair (Net Sales ₹5.88L, 94.8% attainment), Meera Thomas
+ACTIVE MANAGEMENT ATTENTION ITEMS (${latestAnalysis?.attentionItems?.length || 0} detected):
+${(latestAnalysis?.attentionItems || []).map((it, idx) => `
+${idx + 1}. [${it.category}] ${it.title}:
+   - Source: ${it.sourceFile || 'Connected Dataset'}
+   - Description: ${it.description || 'N/A'}
+   - Confidence: ${it.confidence || 'N/A'}
+`).join('')}
 
-KEY INDIVIDUAL EMPLOYEE 360 TELEMETRY:
-• NIYAS BINU NASAR K (EMP93):
-   - Role: Fashion Consultant, Sales Department
-   - Store: G.Perinthalmanna (locCode: 102)
-   - Sales Performance: Net Sales ₹3,82,500 vs ₹4,50,000 monthly quota (85.0% Target Attainment)
-   - Custom Tailoring: 9 custom orders (₹1,45,000 custom order revenue)
-   - Capacity: 94 walk-in customer leads handled
-   - Learning & Assessment: Completed "Luxury Suiting & Fabric Masterclass" (100%); In Progress for "Objection Handling & Closing Techniques" (85%). Passed "Luxury Fabric Consultation Certification" with 92% score.
-   - Manager Performance Review: 4.3 / 5.0 (Reviewer: Suresh Kumar - "Exceptional fabric knowledge and client rapport; opportunity to close on high-margin accessories").
-   - Assigned Tasks: "VIP Client Styling & Fitting Follow-up" (In Progress), "Review Q3 Tailoring Alteration Logs" (Completed).
-   - Engagement: Active daily on Store POS terminal (login time: 2026-10-17 09:30).
+CONNECTED INGESTED DATASETS (${uploadedFiles && uploadedFiles.length > 0 ? uploadedFiles.length : 0} file(s)):
+${filesTelemetryContext || (uploadedFiles && uploadedFiles.length > 0 ? uploadedFiles.map((f) => `• "${f.name}" (${f.rows} rows, holds: ${f.holds})`).join('\n') : 'No uploaded files. Operating on live synced store data.')}
 
-• ANANYA MENON (EMP101):
-   - Role: Store Manager / Admin, Retail Operations at Suitor Guy Edappally
-   - Leadership Review: 4.8 / 5.0 | Manages 24 staff members.
-
-• ARJUN NAIR (EMP102):
-   - Role: Senior Fashion Consultant, Sales at Suitor Guy Edappally
-   - Performance: Net Sales ₹5,88,000 vs ₹6,20,000 target (94.8% attainment), Master Tailoring Exam 88%.
-
-PRIMARY ISSUES REQUIRING MANAGEMENT ATTENTION RIGHT NOW:
-1. Sales Target Variance at Store Perinthalmanna: 76.5% attainment. Root cause: External Footfall Deficit (-24% traffic due to road works), NOT staff effort (26.2% conversion held steady). Solution: VIP customer retargeting (+₹3.5L) or quota rebalancing.
-2. Skill-to-Revenue Basket Mismatch: High fabric assessment pass rate (92%) vs low accessories attachment (14.2%). Solution: Introduce pre-bundled groom accessory packages at checkout.
-3. Operational Audit Discrepancies: 22-28 camera vs register walk-in discrepancies during peak evening hours (17:00-20:00). Solution: Deploy digital entrance QR self-check-in tablet.
-${uploadedFiles && uploadedFiles.length > 0 ? `
-CONNECTED ENRICHMENT DATASETS (${uploadedFiles.length} file(s) active):
-${uploadedFiles.map(f => `• "${f.name}" (${f.rows} rows, scope: ${f.holds})`).join('\n')}
-${latestAnalysis?.attentionItems?.find(i => i.id === 'att-csv-attrition-enrichment') ? `
-• Attrition Alert: ${latestAnalysis.attentionItems.find(i => i.id === 'att-csv-attrition-enrichment').title}
-` : ''}
-` : ''}
+${matchedEntitiesContext ? `--- REAL-TIME DEEP ENTITY 360 TELEMETRY ---\n${matchedEntitiesContext}` : ''}
 ---------------------------------------------------------------------------------
 BEHAVIOR & REASONING RULES:
 1. DATA-GROUNDED EXECUTIVE ADVICE: When asked questions about workforce numbers, shifts, employees, attendance, rest turnaround intervals, overtime, payroll, or specific branches/roles, analyze the actual records and metrics above.
@@ -618,29 +680,8 @@ Return ONLY valid JSON. No surrounding markdown backticks or commentary.`;
       const clean = content.replace(/```json/gi, '').replace(/```/g, '').trim();
       parsed = JSON.parse(clean);
     } catch (e) {
-      parsed = {
-        summary: `Cross-referenced telemetry indicates workforce variance driven by shift overtime and scheduling imbalances.`,
-        rootCauses: [
-          {
-            title: "Overtime & Shift Overlap Spike",
-            description: "Shift overlap increased overtime expenditure by 28% without corresponding revenue expansion.",
-            confidence: "High Confidence",
-            evidence: "Overtime telemetry: $42.6k spent over benchmark."
-          },
-          {
-            title: "Frontline Compensation Disparity",
-            description: "Compensation lags regional benchmark by 8.4%, causing attrition spikes in frontline retail.",
-            confidence: "High Confidence",
-            evidence: "Exit interview feedback: 68% citing compensation benchmark."
-          },
-          {
-            title: "Manager Supervision & Fatigue",
-            description: "Consecutive closing and opening shifts lead to scheduling fatigue.",
-            confidence: "Medium Confidence",
-            evidence: "Shift roster records in West & Central branches."
-          }
-        ]
-      };
+      console.error('Failed to parse AI diagnosis JSON:', e.message, content);
+      return res.status(500).json({ success: false, error: 'AI diagnosis returned invalid JSON format. Please retry.' });
     }
 
     return res.json({ success: true, data: parsed, model: usedModel });
@@ -735,40 +776,8 @@ Return ONLY valid JSON. No surrounding markdown backticks.`;
       const clean = content.replace(/```json/gi, '').replace(/```/g, '').trim();
       parsed = JSON.parse(clean);
     } catch (e) {
-      parsed = {
-        options: [
-          {
-            id: "opt-a",
-            badge: "Option A - Revenue Growth",
-            title: "Implement targeted retention incentive & productivity coaching",
-            description: "Provide $1,200 retention stipend tied to retail sales targets and frontline coaching.",
-            impact: "Potential +$32k revenue retention",
-            effort: "Medium",
-            risk: "Low Risk",
-            cost: "$7.2k investment"
-          },
-          {
-            id: "opt-b",
-            badge: "Option B - Cost Optimisation",
-            title: "Eliminate shift overlap & restrict non-emergency overtime",
-            description: "Restructure weekly roster to align staffing hours with customer footfall curves.",
-            impact: "Save $18.4k/month in payroll cost",
-            effort: "Low",
-            risk: "Low Risk",
-            cost: "Zero cost"
-          },
-          {
-            id: "opt-c",
-            badge: "Option C - Combined Turnaround",
-            title: "Cross-branch capacity rebalancing & shift fatigue rotation",
-            description: "Transfer 2 under-utilized staff from Central to West branch and implement 10-hour rest rules.",
-            impact: "EBITDA improvement +$22.5k/month",
-            effort: "Medium",
-            risk: "Medium Risk",
-            cost: "Minimal"
-          }
-        ]
-      };
+      console.error('Failed to parse AI options JSON:', e.message, content);
+      return res.status(500).json({ success: false, error: 'AI decision generator returned invalid JSON format. Please retry.' });
     }
 
     return res.json({ success: true, data: parsed, model: usedModel });
