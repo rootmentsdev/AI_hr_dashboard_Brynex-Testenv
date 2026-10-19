@@ -254,9 +254,9 @@ export default function HrIntelligence() {
     productivity: <Activity size={14} />
   };
 
-  // Resolve attention items strictly from live ingested datasets
+  // Resolve attention items strictly from live ingested datasets and AI analysis (filter out items without valid title)
   const resolvedAttentionItems = (liveAnalysis?.attentionItems && Array.isArray(liveAnalysis.attentionItems))
-    ? liveAnalysis.attentionItems
+    ? liveAnalysis.attentionItems.filter((item) => item && item.title && item.title.trim())
     : [];
 
   // Extract or infer source CSV file for an issue
@@ -328,9 +328,14 @@ export default function HrIntelligence() {
         let trend = kpi.trend;
         if (kpi.id === 'issues') {
           val = String(resolvedAttentionItems.length);
-          trend = `${resolvedAttentionItems.length} active risks across datasets`;
+          trend = resolvedAttentionItems.length > 0
+            ? `${resolvedAttentionItems.length} active risk${resolvedAttentionItems.length === 1 ? '' : 's'} across datasets`
+            : (isAiAnalyzing ? 'Synthesizing telemetry...' : 'No active risks logged');
         } else if (kpi.id === 'decisions') {
           val = String(resolvedAttentionItems.length);
+          trend = resolvedAttentionItems.length > 0
+            ? `${resolvedAttentionItems.length} management action${resolvedAttentionItems.length === 1 ? '' : 's'} ready for approval`
+            : 'No pending decisions';
         }
         return {
           ...kpi,
@@ -894,9 +899,11 @@ export default function HrIntelligence() {
               <span>
                 {analysisError
                   ? 'API connection failure'
-                  : resolvedAttentionItems.length > 0
-                    ? `${resolvedAttentionItems.length} area${resolvedAttentionItems.length === 1 ? '' : 's'} need attention`
-                    : 'No active issues detected'}
+                  : isAiAnalyzing && resolvedAttentionItems.length === 0
+                    ? 'AI synthesis in progress...'
+                    : resolvedAttentionItems.length > 0
+                      ? `${resolvedAttentionItems.length} area${resolvedAttentionItems.length === 1 ? '' : 's'} need attention`
+                      : 'All metrics within nominal thresholds'}
               </span>
             </div>
           </div>
@@ -1056,6 +1063,11 @@ export default function HrIntelligence() {
                 <span style={{ color: '#dc2626', fontWeight: 500 }}>
                   API Error: {analysisError}. Please verify backend connection.
                 </span>
+              ) : isAiAnalyzing && resolvedAttentionItems.length === 0 ? (
+                <span style={{ color: '#047857', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <Loader2 size={13} className="hr-spin-animation" />
+                  Claude AI is actively synthesizing workforce telemetry... Issues and action options will appear once analysis completes.
+                </span>
               ) : (
                 liveAnalysis?.attentionSummary || (
                   isLoadingAnalysis
@@ -1116,36 +1128,50 @@ export default function HrIntelligence() {
                   marginTop: '12px'
                 }}
               >
-                <AlertCircle size={32} color="#0ca678" style={{ margin: '0 auto 12px' }} />
-                <h4 style={{ margin: '0 0 6px', fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>
-                  {!liveAnalysis || (liveAnalysis.attentionItems || []).length === 0
-                    ? 'No Datasets Connected'
-                    : 'No Issues in Selected Filter'}
-                </h4>
-                <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
-                  {!liveAnalysis || (liveAnalysis.attentionItems || []).length === 0
-                    ? 'All dataset telemetry has been cleared. Connect an Employee Master, Attendance Roster, or Sales CSV in Data Management to activate AI diagnostics.'
-                    : 'All workforce metrics and attendance rosters for this filter are currently within nominal thresholds.'}
-                </p>
-                <button
-                  onClick={() => navigate('/intelligence/hr/data')}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 16px',
-                    background: '#0ca678',
-                    color: '#fff',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '13px'
-                  }}
-                >
-                  <UploadCloud size={16} />
-                  <span>Go to Data Management</span>
-                </button>
+                {isAiAnalyzing ? (
+                  <>
+                    <Loader2 size={32} className="hr-spin-animation" color="#0ca678" style={{ margin: '0 auto 12px' }} />
+                    <h4 style={{ margin: '0 0 6px', fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>
+                      Claude AI Telemetry Synthesis in Progress
+                    </h4>
+                    <p style={{ margin: '0 0 0', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
+                      Correlating employee records, shift turnaround intervals, and performance telemetry. Problems and recommended decisions will appear here as soon as AI analysis completes.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle size={32} color="#0ca678" style={{ margin: '0 auto 12px' }} />
+                    <h4 style={{ margin: '0 0 6px', fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>
+                      {!liveAnalysis || resolvedAttentionItems.length === 0
+                        ? 'No Workforce Issues Detected'
+                        : 'No Issues in Selected Filter'}
+                    </h4>
+                    <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
+                      {!liveAnalysis || resolvedAttentionItems.length === 0
+                        ? 'All workforce metrics, attendance rosters, and store telemetry are within nominal thresholds. Upload datasets or run custom inquiries to diagnose specific cohorts.'
+                        : 'All workforce metrics and attendance rosters for this filter are currently within nominal thresholds.'}
+                    </p>
+                    <button
+                      onClick={() => navigate('/intelligence/hr/data')}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 16px',
+                        background: '#0ca678',
+                        color: '#fff',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: '13px'
+                      }}
+                    >
+                      <UploadCloud size={16} />
+                      <span>Go to Data Management</span>
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
               filteredItems.map((item) => (

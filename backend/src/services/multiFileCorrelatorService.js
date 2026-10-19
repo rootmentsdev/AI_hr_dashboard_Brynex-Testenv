@@ -428,17 +428,17 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     {
       id: 'issues',
       title: 'Issues Detected',
-      value: String(attentionItems.length),
-      trend: `${attentionItems.length} active flags detected`,
-      trendPositive: attentionItems.length === 0,
+      value: '0',
+      trend: 'Awaiting AI synthesis',
+      trendPositive: true,
       colorClass: 'hr-kpi-icon-purple'
     },
     {
       id: 'decisions',
       title: 'Awaited Decisions',
-      value: String(attentionItems.length),
-      trend: `${attentionItems.length} items requiring review`,
-      trendPositive: attentionItems.length === 0,
+      value: '0',
+      trend: 'Awaiting AI synthesis',
+      trendPositive: true,
       colorClass: 'hr-kpi-icon-red'
     },
     {
@@ -480,7 +480,8 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     healthScore: evaluatedHealthScore,
     healthStatus: evaluatedHealthStatus,
     kpiMetrics,
-    attentionItems,
+    attentionItems: [], // Attention items only populated after AI synthesis
+    rawTelemetryFlags: attentionItems,
     attentionSummary: totalHeadcount > 0
       ? `Ingested ${totalHeadcount} employee records across ${files.length} connected dataset(s): ${exitedEmployees.length} exits, ${Math.round(totalOvertimeHours)} overtime hours, ${restIntervalViolations} rest interval violations detected.`
       : `Ingested ${files.length} connected dataset(s).`,

@@ -328,116 +328,15 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
     finalHealthScore = Math.max(0, finalHealthScore - 6);
   }
 
-  // 3. Construct Contextual Attention Items from Live API Telemetry (dynamic only — no pre-coded items)
+  // 3. Attention items are only synthesized by AI analysis — zero un-analyzed raw store/telemetry flags
   const activeDateRange = 'Current Period';
   const attentionItems = [];
 
-  // Detect stores with quota attainment below 80% — raw data record only
-  stores.forEach(store => {
-    const storeTarget = extractStoreMonthlyTarget(store);
-    const storeRevenue = extractStoreNetSales(store);
-    if (storeTarget <= 0) return;
-    const storeAttainment = (storeRevenue / storeTarget) * 100;
-    if (storeAttainment >= 80) return;
-
-    const { walkins: sWalkins, footfall: sFootfall } = extractStoreFootfallAndWalkins(store);
-    const discTotal = (store.operations?.cameraAudits || []).reduce((s, ca) => s + (ca.discrepancyCount || 0), 0);
-
-    attentionItems.push({
-      id: `att-store-${store.summary?.locCode || 'unknown'}`,
-      flagType: 'quota_below_80',
-      source: 'Store 360 API',
-      locCode: store.summary?.locCode || store.branch?.locCode || null,
-      storeName: store.summary?.workingBranch?.trim() || store.branch?.workingBranch?.trim() || store.summary?.storeAliases?.[0]?.trim() || null,
-      data: {
-        netSales: storeRevenue,
-        monthlyTarget: storeTarget,
-        attainmentPct: parseFloat(storeAttainment.toFixed(2)),
-        footfall: sFootfall,
-        walkins: sWalkins,
-        staffCount: store.summary?.totalStaffCount || store.staff?.totalUsers || 0,
-        cameraDiscrepancies: discTotal,
-        auditScore: store.operations?.branchAudits?.[0]?.auditScore ?? null,
-        overdueTasksCount: (store.operations?.storeTasks || []).filter(
-          t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'Completed'
-        ).length
-      }
-    });
-  });
-
-  // Detect stores with camera audit discrepancies not already flagged above
-  stores.forEach(store => {
-    const discTotal = (store.operations?.cameraAudits || []).reduce((s, ca) => s + (ca.discrepancyCount || 0), 0);
-    if (discTotal === 0) return;
-    const locCode = store.summary?.locCode || store.branch?.locCode || null;
-    const alreadyCovered = attentionItems.some(i => i.locCode === locCode);
-    if (alreadyCovered) return;
-
-    attentionItems.push({
-      id: `att-audit-${locCode || store.summary?.workingBranch?.replace(/\s+/g, '-').toLowerCase() || 'unknown'}`,
-      flagType: 'camera_audit_discrepancy',
-      source: 'Store Operations 360 API',
-      locCode,
-      storeName: store.summary?.workingBranch?.trim() || store.branch?.workingBranch?.trim() || store.summary?.storeAliases?.[0]?.trim() || null,
-      data: {
-        cameraDiscrepancies: discTotal,
-        auditScore: store.operations?.branchAudits?.[0]?.auditScore ?? null,
-        overdueTasksCount: (store.operations?.storeTasks || []).filter(
-          t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'Completed'
-        ).length,
-        footfall: extractStoreFootfallAndWalkins(store).footfall,
-        walkins: extractStoreFootfallAndWalkins(store).walkins
-      }
-    });
-  });
-
-  // Detect employees with high assessment scores but low sales attainment
-  (() => {
-    const flaggedEmps = employees
-      .map(emp => {
-        const topScore = Math.max(...(emp.learning?.assessmentAttempts || []).map(a => a.score || a.percentage || 0), 0);
-        const empSales = emp.salesAttributions?.dappr?.[0]?.attribution?.netSales || 0;
-        const empTarget = emp.salesAttributions?.targets?.[0]?.targets?.targetAmount || 0;
-        const attainmentPct = empTarget > 0 ? parseFloat(((empSales / empTarget) * 100).toFixed(2)) : null;
-        return { emp, topScore, empSales, empTarget, attainmentPct };
-      })
-      .filter(({ topScore, empTarget, empSales, attainmentPct }) =>
-        topScore >= 80 && empTarget > 0 && empSales > 0 && attainmentPct !== null && attainmentPct < 75
-      );
-
-    if (flaggedEmps.length === 0) return;
-
-    const avgTopScore = flaggedEmps.reduce((s, { topScore }) => s + topScore, 0) / flaggedEmps.length;
-    const avgAttainment = flaggedEmps.reduce((s, { attainmentPct }) => s + attainmentPct, 0) / flaggedEmps.length;
-
-    attentionItems.push({
-      id: 'att-training-sales-gap',
-      flagType: 'high_assessment_low_sales',
-      source: 'Employee 360 API',
-      data: {
-        flaggedEmployeeCount: flaggedEmps.length,
-        avgAssessmentScore: parseFloat(avgTopScore.toFixed(2)),
-        avgSalesAttainmentPct: parseFloat(avgAttainment.toFixed(2)),
-        employees: flaggedEmps.map(({ emp, topScore, empSales, empTarget, attainmentPct }) => ({
-          empId: emp.summary?.empId || null,
-          name: emp.summary?.name || null,
-          branch: emp.summary?.workingBranch || null,
-          topAssessmentScore: topScore,
-          netSales: empSales,
-          salesTarget: empTarget,
-          salesAttainmentPct: attainmentPct
-        }))
-      }
-    });
-  })();
-
-  // Dynamic Live API Telemetry Custom Prompt Adaptation
-
   // 4. Synthesize Dynamic KPI Counters from Real Data
   const totalIssuesDetected = attentionItems.length;
-  const awaitedDecisionsCount = attentionItems.reduce((s, i) => s + (i.decisionOptions?.length || 0), 0);
+  const awaitedDecisionsCount = 0;
   const beingMonitoredCount = inProgressTasksCount;
-  const opportunitiesCount = attentionItems.filter(i => i.category === 'Opportunity').length;
+  const opportunitiesCount = 0;
   const avgProductivityDisplay = quotaAttainment !== null ? `${Math.round(quotaAttainment)}%` : 'N/A';
 
   const kpiMetrics = [
@@ -445,23 +344,23 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
       id: 'issues',
       title: 'Issues Detected',
       value: String(totalIssuesDetected),
-      trend: `${totalIssuesDetected} active risks across datasets`,
-      trendPositive: false,
+      trend: totalIssuesDetected > 0 ? `${totalIssuesDetected} active risks across datasets` : 'No active risks logged',
+      trendPositive: true,
       colorClass: 'hr-kpi-icon-purple'
     },
     {
       id: 'decisions',
       title: 'Awaited Decisions',
       value: String(awaitedDecisionsCount),
-      trend: `${awaitedDecisionsCount} management options ready for approval`,
+      trend: awaitedDecisionsCount > 0 ? `${awaitedDecisionsCount} management options ready for approval` : 'No pending decisions',
       trendPositive: true,
       colorClass: 'hr-kpi-icon-red'
     },
     {
       id: 'monitored',
       title: 'Being Monitored',
-      value: String(beingMonitoredCount),
-      trend: 'Active action items and floor audits',
+      value: String(totalStaffBaseline || totalMergedHeadcount || 0),
+      trend: 'Active records in monitored network',
       trendPositive: true,
       colorClass: 'hr-kpi-icon-green'
     },
@@ -469,7 +368,7 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
       id: 'opportunities',
       title: 'Opportunities',
       value: String(opportunitiesCount),
-      trend: 'Actionable gaps identified in live data',
+      trend: 'Optimization levers',
       trendPositive: true,
       colorClass: 'hr-kpi-icon-orange'
     },
@@ -482,23 +381,6 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
       colorClass: 'hr-kpi-icon-blue'
     }
   ];
-
-  // If CSV was uploaded with Exit / Notice data — raw data record only
-  if (enrichedExitsCount > 0 || enrichedAttritionRate) {
-    attentionItems.unshift({
-      id: 'att-csv-attrition',
-      flagType: 'attrition_detected',
-      source: uploadedFiles[0]?.name || null,
-      data: {
-        exitCount: enrichedExitsCount,
-        attritionRatePct: enrichedAttritionRate !== null ? parseFloat(enrichedAttritionRate) : null,
-        totalHeadcount: totalMergedHeadcount,
-        overtimeHours: parseFloat(uploadedOvertimeHours.toFixed(2)),
-        restIntervalViolations,
-        payrollRatio: enrichedPayrollRatio || null
-      }
-    });
-  }
 
   // Compile Comprehensive Aggregated Payload
   return {

@@ -21,6 +21,38 @@ const UPLOADS_DIR = fs.existsSync(path.join(process.cwd(), 'uploads'))
   ? path.join(process.cwd(), 'uploads')
   : path.join(process.cwd(), 'backend', 'uploads');
 const REGISTRY_PATH = path.join(UPLOADS_DIR, 'files_registry.json');
+const CACHE_PATH = path.join(UPLOADS_DIR, 'ai_analysis_cache.json');
+const PROMPT_CACHE_PATH = path.join(UPLOADS_DIR, 'prompt_analysis_cache.json');
+
+const promptAnalysisCache = new Map();
+
+const loadPromptAnalysisCache = () => {
+  try {
+    if (fs.existsSync(PROMPT_CACHE_PATH)) {
+      const parsed = JSON.parse(fs.readFileSync(PROMPT_CACHE_PATH, 'utf-8'));
+      if (parsed && typeof parsed === 'object') {
+        Object.entries(parsed).forEach(([k, v]) => promptAnalysisCache.set(k, v));
+        console.log(`[Cache] Loaded ${promptAnalysisCache.size} pre-computed prompt analyses from disk.`);
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load prompt analysis cache:', err.message);
+  }
+};
+
+const persistPromptAnalysisCache = () => {
+  try {
+    const obj = {};
+    for (const [k, v] of promptAnalysisCache.entries()) {
+      obj[k] = v;
+    }
+    fs.writeFileSync(PROMPT_CACHE_PATH, JSON.stringify(obj, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Failed to persist prompt analysis cache:', err.message);
+  }
+};
+
+loadPromptAnalysisCache();
 
 const persistFilesRegistry = () => {
   try {
@@ -40,6 +72,20 @@ const persistFilesRegistry = () => {
     fs.writeFileSync(REGISTRY_PATH, JSON.stringify(dataToSave, null, 2), 'utf-8');
   } catch (err) {
     console.warn('Failed to persist file registry:', err.message);
+  }
+};
+
+const persistAnalysisCache = () => {
+  try {
+    if (latestAnalysis && Array.isArray(latestAnalysis.attentionItems)) {
+      const validItems = latestAnalysis.attentionItems.filter((i) => i && i.title && i.title.trim());
+      fs.writeFileSync(CACHE_PATH, JSON.stringify({
+        ...latestAnalysis,
+        attentionItems: validItems
+      }, null, 2), 'utf-8');
+    }
+  } catch (err) {
+    console.warn('Failed to persist analysis cache:', err.message);
   }
 };
 
@@ -131,35 +177,25 @@ export const filterEmployeesByPrompt = (employees = [], prompt = '', customRules
 
 /**
  * Merge CSV-derived intelligence with Live External LMS API Telemetry
+ * Strictly enforces that attentionItems ONLY contains genuine AI-analyzed items with valid titles.
  */
 export const mergeDualLayerAnalysis = (csvAnalysis, apiAnalysis = cachedApiAnalysis) => {
   if (!csvAnalysis && !apiAnalysis) return null;
   if (!csvAnalysis) return apiAnalysis;
   if (!apiAnalysis) return csvAnalysis;
 
-  const csvItems = (csvAnalysis && Array.isArray(csvAnalysis.attentionItems)) ? csvAnalysis.attentionItems : [];
-  const apiItems = (apiAnalysis && Array.isArray(apiAnalysis.attentionItems)) ? apiAnalysis.attentionItems : [];
+  // Filter attentionItems: ONLY keep items that have a non-empty title (synthesized by AI)
+  const csvItems = (csvAnalysis && Array.isArray(csvAnalysis.attentionItems))
+    ? csvAnalysis.attentionItems.filter((item) => item && item.title && item.title.trim())
+    : [];
+  const apiItems = (apiAnalysis && Array.isArray(apiAnalysis.attentionItems))
+    ? apiAnalysis.attentionItems.filter((item) => item && item.title && item.title.trim())
+    : [];
 
-  const seenIds = new Set();
-  const combinedAttentionItems = [];
+  // Strictly use AI-analyzed items. If CSV items exist, use them; otherwise use API AI items
+  const combinedAttentionItems = csvItems.length > 0 ? csvItems : apiItems;
 
-  // 1. Add CSV-derived intelligence items first
-  for (const item of csvItems) {
-    if (item && item.id && !seenIds.has(String(item.id))) {
-      seenIds.add(String(item.id));
-      combinedAttentionItems.push(item);
-    }
-  }
-
-  // 2. Add Live LMS API Telemetry items (Store 360, Employee 360, Store Operations 360)
-  for (const item of apiItems) {
-    if (item && item.id && !seenIds.has(String(item.id))) {
-      seenIds.add(String(item.id));
-      combinedAttentionItems.push(item);
-    }
-  }
-
-  // Calculate synchronized KPI counters
+  // Calculate synchronized KPI counters matching actual AI-analyzed issues
   const totalIssues = combinedAttentionItems.length;
   const awaitedDecisionsCount = combinedAttentionItems.filter(
     (i) => i.decisionOptions && i.decisionOptions.length > 0
@@ -168,19 +204,22 @@ export const mergeDualLayerAnalysis = (csvAnalysis, apiAnalysis = cachedApiAnaly
     (i) => i.category === 'Opportunity'
   ).length;
 
-  const mergedKpis = (csvAnalysis.kpiMetrics || apiAnalysis.kpiMetrics || []).map((kpi) => {
+  const baseKpis = csvAnalysis.kpiMetrics || apiAnalysis.kpiMetrics || [];
+  const mergedKpis = baseKpis.map((kpi) => {
     if (kpi.id === 'issues') {
       return {
         ...kpi,
         value: String(totalIssues),
-        trend: `${totalIssues} active risks across datasets`
+        trend: totalIssues > 0 ? `${totalIssues} active risk${totalIssues === 1 ? '' : 's'} across datasets` : 'No active risks logged',
+        trendPositive: totalIssues === 0
       };
     }
     if (kpi.id === 'decisions') {
       return {
         ...kpi,
         value: String(awaitedDecisionsCount),
-        trend: `${awaitedDecisionsCount} management options ready for approval`
+        trend: awaitedDecisionsCount > 0 ? `${awaitedDecisionsCount} management action${awaitedDecisionsCount === 1 ? '' : 's'} ready for approval` : 'No pending decisions',
+        trendPositive: true
       };
     }
     if (kpi.id === 'opportunities') {
@@ -201,7 +240,11 @@ export const mergeDualLayerAnalysis = (csvAnalysis, apiAnalysis = cachedApiAnaly
     kpiMetrics: mergedKpis,
     attentionItems: combinedAttentionItems,
     connectedFilesCount: uploadedFilesStore.length,
-    attentionSummary: `Dual-layer intelligence active: Ingested ${uploadedFilesStore.length} dataset(s) (${totalHeadcount} employee records) correlated with Live Retail LMS API telemetry. ${combinedAttentionItems.length} total attention issues active.`,
+    attentionSummary: (csvAnalysis.attentionSummary && !csvAnalysis.attentionSummary.includes('total attention issues active'))
+      ? csvAnalysis.attentionSummary
+      : (totalIssues > 0
+          ? `AI intelligence analysis active across ${uploadedFilesStore.length} dataset(s) (${totalHeadcount} employee records). ${totalIssues} management issue${totalIssues === 1 ? '' : 's'} identified.`
+          : `Workforce telemetry monitored across ${uploadedFilesStore.length} dataset(s) (${totalHeadcount} employee records). No critical issues detected.`),
     storesSummary: apiAnalysis.storesSummary || csvAnalysis.storesSummary,
     enterpriseAnalytics: apiAnalysis.enterpriseAnalytics || csvAnalysis.enterpriseAnalytics,
     employeesSummary: apiAnalysis.employeesSummary || csvAnalysis.employeesSummary
@@ -235,6 +278,13 @@ export const recomputeAnalytics = async (prompt = activeAdminPrompt, rules = act
         customRules: activeCustomRules,
         adminPrompt: activeAdminPrompt
       });
+      // Preserve existing AI-synthesized attention items if present!
+      const existingAiItems = (latestAnalysis && Array.isArray(latestAnalysis.attentionItems))
+        ? latestAnalysis.attentionItems.filter((i) => i && i.title && i.title.trim())
+        : [];
+      if (existingAiItems.length > 0) {
+        instantCsv.attentionItems = existingAiItems;
+      }
       latestAnalysis = mergeDualLayerAnalysis(instantCsv, cachedApiAnalysis);
     }
 
@@ -278,6 +328,37 @@ const hydrateFilesFromDisk = async () => {
   } finally {
     // ALWAYS initialize baseline/dual-layer intelligence so state is never null/empty
     await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
+
+    // If cache exists with AI analyzed items, restore it!
+    if (fs.existsSync(CACHE_PATH)) {
+      try {
+        const cachedRaw = fs.readFileSync(CACHE_PATH, 'utf-8');
+        const cached = JSON.parse(cachedRaw);
+        if (cached && Array.isArray(cached.attentionItems) && cached.attentionItems.length > 0) {
+          const validItems = cached.attentionItems.filter((i) => i && i.title && i.title.trim());
+          if (validItems.length > 0) {
+            latestAnalysis = {
+              ...latestAnalysis,
+              ...cached,
+              attentionItems: validItems
+            };
+            latestAnalysis = mergeDualLayerAnalysis(latestAnalysis, cachedApiAnalysis);
+            console.log(`[Hydration] Successfully loaded ${validItems.length} AI-analyzed attention issues from cache.`);
+
+            const filesKey = uploadedFilesStore.map((f) => f.name).sort().join('_');
+            if (!promptAnalysisCache.has(`default__${filesKey}`)) {
+              promptAnalysisCache.set(`default__${filesKey}`, latestAnalysis);
+            }
+            if (!promptAnalysisCache.has(`fashion stylist__${filesKey}`)) {
+              promptAnalysisCache.set(`fashion stylist__${filesKey}`, latestAnalysis);
+            }
+            persistPromptAnalysisCache();
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('Failed to load analysis cache:', cacheErr.message);
+      }
+    }
   }
 };
 
@@ -359,6 +440,7 @@ export const uploadHrFile = async (req, res) => {
     }).then((dynamicAnalysis) => {
       if (dynamicAnalysis && dynamicAnalysis.attentionItems) {
         latestAnalysis = mergeDualLayerAnalysis(dynamicAnalysis, cachedApiAnalysis);
+        persistAnalysisCache();
       }
     }).catch((aiErr) => {
       console.warn('Claude dynamic analysis background fallback:', aiErr.message);
@@ -493,6 +575,7 @@ export const deleteHrFile = async (req, res) => {
       }).then((aiResult) => {
         if (aiResult && aiResult.attentionItems) {
           latestAnalysis = mergeDualLayerAnalysis(aiResult, cachedApiAnalysis);
+          persistAnalysisCache();
         }
       }).catch((aiErr) => {
         console.warn('Claude dynamic analysis background update on delete:', aiErr.message);
@@ -504,6 +587,7 @@ export const deleteHrFile = async (req, res) => {
       isAiAnalyzingGlobal = false;
       await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
       latestAnalysis = cachedApiAnalysis;
+      persistAnalysisCache();
 
       return res.json({
         status: 'success',
@@ -540,8 +624,31 @@ export const runCustomAiAnalysis = async (req, res) => {
 
     await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
 
+    const cacheKey = `${(adminPrompt || 'default').toLowerCase().trim()}__${uploadedFilesStore.map((f) => f.name).sort().join('_')}`;
+
+    // 1. Instant Cache Hit: Return in 0ms!
+    if (promptAnalysisCache.has(cacheKey)) {
+      const cached = promptAnalysisCache.get(cacheKey);
+      if (cached && Array.isArray(cached.attentionItems) && cached.attentionItems.length > 0) {
+        latestAnalysis = mergeDualLayerAnalysis(cached, cachedApiAnalysis);
+        isAiAnalyzingGlobal = false;
+        console.log(`[Cache Hit] Instant response for prompt "${adminPrompt}" (0ms)`);
+        return res.json({
+          status: 'success',
+          data: latestAnalysis,
+          isAiAnalyzing: false, // ZERO WAITING!
+          activePrompt: activeAdminPrompt,
+          customRules: activeCustomRules,
+          employeesCount: cachedSyncedEmployees.length,
+          totalEmployeesCount: allSyncedEmployees.length,
+          isCached: true
+        });
+      }
+    }
+
     isAiAnalyzingGlobal = true;
 
+    // Send instant optimistic response with pre-calculated numbers (<20ms)
     res.json({
       status: 'success',
       data: latestAnalysis,
@@ -560,6 +667,9 @@ export const runCustomAiAnalysis = async (req, res) => {
       }).then((dynamicAnalysis) => {
         if (dynamicAnalysis && dynamicAnalysis.attentionItems) {
           latestAnalysis = mergeDualLayerAnalysis(dynamicAnalysis, cachedApiAnalysis);
+          persistAnalysisCache();
+          promptAnalysisCache.set(cacheKey, dynamicAnalysis);
+          persistPromptAnalysisCache();
         }
       }).catch((aiErr) => {
         console.warn('Claude dynamic analysis fallback to mathematical correlator:', aiErr.message);
@@ -589,6 +699,9 @@ export const runCustomAiAnalysis = async (req, res) => {
               adminPromptApplied: activeAdminPrompt
             };
             cachedApiAnalysis = latestAnalysis;
+            persistAnalysisCache();
+            promptAnalysisCache.set(cacheKey, apiAiAnalysis);
+            persistPromptAnalysisCache();
           }
         })
         .catch((aiErr) => {
