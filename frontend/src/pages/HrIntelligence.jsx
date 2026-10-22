@@ -113,10 +113,19 @@ export default function HrIntelligence() {
       if (json.status === 'success') {
         setLiveAnalysis(json.data || null);
         setIsAiAnalyzing(Boolean(json.isAiAnalyzing));
+        const systemLabels = [
+          'Autonomous Analysis',
+          'Autonomous Multi-Dataset Synthesis',
+          'Live External Retail LMS API Telemetry',
+          'File Ingestion Synthesis',
+          'Live Retail LMS API Ingestion'
+        ];
         if (json.activePrompt) {
           setActiveApiPrompt(json.activePrompt);
-        } else if (json.data?.adminPromptApplied && json.data.adminPromptApplied !== 'Live External Retail LMS API Telemetry' && json.data.adminPromptApplied !== 'File Ingestion Synthesis') {
+        } else if (json.data?.adminPromptApplied && !systemLabels.includes(json.data.adminPromptApplied)) {
           setActiveApiPrompt(json.data.adminPromptApplied);
+        } else {
+          setActiveApiPrompt('');
         }
         if (json.data?.reportingPeriod) {
           setDateRange(json.data.reportingPeriod);
@@ -254,9 +263,9 @@ export default function HrIntelligence() {
     productivity: <Activity size={14} />
   };
 
-  // Resolve attention items strictly from live ingested datasets
+  // Resolve attention items strictly from genuine AI-analyzed items (must have valid title)
   const resolvedAttentionItems = (liveAnalysis?.attentionItems && Array.isArray(liveAnalysis.attentionItems))
-    ? liveAnalysis.attentionItems
+    ? liveAnalysis.attentionItems.filter((i) => i && typeof i.title === 'string' && i.title.trim().length > 0)
     : [];
 
   // Extract or infer source CSV file for an issue
@@ -328,9 +337,14 @@ export default function HrIntelligence() {
         let trend = kpi.trend;
         if (kpi.id === 'issues') {
           val = String(resolvedAttentionItems.length);
-          trend = `${resolvedAttentionItems.length} active risks across datasets`;
+          trend = resolvedAttentionItems.length > 0
+            ? `${resolvedAttentionItems.length} active risks across datasets`
+            : (isAiAnalyzing ? 'Synthesizing telemetry...' : 'No active risks logged');
         } else if (kpi.id === 'decisions') {
           val = String(resolvedAttentionItems.length);
+          trend = resolvedAttentionItems.length > 0
+            ? `${resolvedAttentionItems.length} management options ready for approval`
+            : (isAiAnalyzing ? 'Synthesizing options...' : 'No pending decisions');
         }
         return {
           ...kpi,

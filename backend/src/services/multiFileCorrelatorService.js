@@ -197,14 +197,14 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
   const attritionGap = Math.max(0, parseFloat(calculatedAttrition) - targetAttrition);
   const healthScoreNum = Math.max(50, Math.min(100, Math.round(100 - (attritionGap * 4) - (productivityGap * 2))));
 
-  // Pure raw data anomaly detection — zero pre-written narrative sentences or fake decision options
-  const attentionItems = [];
+  // Pure raw data anomaly detection — stored as raw telemetry flags, NOT attention items
+  const rawTelemetryFlags = [];
   let issueCounter = 1;
 
   // 1. DATASET 1: EMPLOYEES MASTER (Raw data records only)
   if (empFile) {
     if (exitedEmployees.length > 0) {
-      attentionItems.push({
+      rawTelemetryFlags.push({
         id: `flag-emp-attrition-${issueCounter++}`,
         flagType: 'attrition_detected',
         sourceFile: empFile.name,
@@ -228,7 +228,7 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
 
     if (totalPayrollSpend > 0) {
       const deptKeys = Object.keys(departmentStats);
-      attentionItems.push({
+      rawTelemetryFlags.push({
         id: `flag-emp-payroll-${issueCounter++}`,
         flagType: 'payroll_distribution',
         sourceFile: empFile.name,
@@ -243,7 +243,7 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     }
 
     if (totalHeadcount > 0) {
-      attentionItems.push({
+      rawTelemetryFlags.push({
         id: `flag-emp-headcount-${issueCounter++}`,
         flagType: 'workforce_headcount_distribution',
         sourceFile: empFile.name,
@@ -260,7 +260,7 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     const aRows = attFile.parsedRows || [];
 
     if (restIntervalViolations > 0) {
-      attentionItems.push({
+      rawTelemetryFlags.push({
         id: `flag-att-rest-${issueCounter++}`,
         flagType: 'rest_interval_violations',
         sourceFile: attFile.name,
@@ -274,7 +274,7 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     }
 
     if (totalOvertimeHours > 0) {
-      attentionItems.push({
+      rawTelemetryFlags.push({
         id: `flag-att-overtime-${issueCounter++}`,
         flagType: 'overtime_concentration',
         sourceFile: attFile.name,
@@ -293,7 +293,7 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     }
 
     if (highAbsenceEmployees.length > 0) {
-      attentionItems.push({
+      rawTelemetryFlags.push({
         id: `flag-att-absence-${issueCounter++}`,
         flagType: 'absence_detected',
         sourceFile: attFile.name,
@@ -339,14 +339,14 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     };
 
     if (zeroRevBranches.length > 0) {
-      attentionItems.push({
+      rawTelemetryFlags.push({
         id: `flag-sales-zero-${issueCounter++}`,
         flagType: 'zero_revenue_branches',
         sourceFile: salesFile.name,
         branch: zeroRevBranches[0] || null,
         data: {
           zeroRevenueBranchCount: zeroRevBranches.length,
-          zeroRevenueBranches,
+          zeroRevenueBranches: zeroRevBranches,
           totalBranches: branchRevs.length,
           totalDailyRevenue: totalDailyRev
         }
@@ -354,7 +354,7 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     }
 
     if (totalDailyRev > 0 || totalTx > 0) {
-      attentionItems.push({
+      rawTelemetryFlags.push({
         id: `flag-sales-summary-${issueCounter++}`,
         flagType: 'sales_telemetry_distribution',
         sourceFile: salesFile.name,
@@ -374,7 +374,7 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     const aRows = attFile.parsedRows || [];
     const totalDailyRev = sRows.reduce((sum, r) => sum + (parseFloat(String(r.daily_revenue || r.revenue || 0).replace(/[^0-9.-]/g, '')) || 0), 0);
 
-    attentionItems.push({
+    rawTelemetryFlags.push({
       id: `flag-cross-att-sales-${issueCounter++}`,
       flagType: 'cross_dataset_fatigue_sales',
       sourceFile: `${attFile.name} + ${salesFile.name}`,
@@ -396,7 +396,7 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
         JSON.stringify(e).toLowerCase().includes(pClean)
       );
       if (matched.length > 0) {
-        attentionItems.unshift({
+        rawTelemetryFlags.unshift({
           id: `flag-prompt-match-${issueCounter++}`,
           flagType: 'prompt_filter_match',
           sourceFile: 'Ingested Datasets',
@@ -428,17 +428,17 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     {
       id: 'issues',
       title: 'Issues Detected',
-      value: String(attentionItems.length),
-      trend: `${attentionItems.length} active flags detected`,
-      trendPositive: attentionItems.length === 0,
+      value: '0',
+      trend: 'Awaiting AI analysis',
+      trendPositive: true,
       colorClass: 'hr-kpi-icon-purple'
     },
     {
       id: 'decisions',
       title: 'Awaited Decisions',
-      value: String(attentionItems.length),
-      trend: `${attentionItems.length} items requiring review`,
-      trendPositive: attentionItems.length === 0,
+      value: '0',
+      trend: 'Awaiting AI analysis',
+      trendPositive: true,
       colorClass: 'hr-kpi-icon-red'
     },
     {
@@ -480,9 +480,10 @@ export const analyzeMultiFileHrData = async ({ files = [], customRules = null, a
     healthScore: evaluatedHealthScore,
     healthStatus: evaluatedHealthStatus,
     kpiMetrics,
-    attentionItems,
+    attentionItems: [], // Pure real AI data only — zero mock/fallback items
+    rawTelemetryFlags,
     attentionSummary: totalHeadcount > 0
-      ? `Ingested ${totalHeadcount} employee records across ${files.length} connected dataset(s): ${exitedEmployees.length} exits, ${Math.round(totalOvertimeHours)} overtime hours, ${restIntervalViolations} rest interval violations detected.`
+      ? `Ingested ${totalHeadcount} employee records across ${files.length} connected dataset(s): ${exitedEmployees.length} exits, ${Math.round(totalOvertimeHours)} overtime hours, ${restIntervalViolations} rest interval violations detected. Ready for AI synthesis.`
       : `Ingested ${files.length} connected dataset(s).`,
     departmentBreakdown: departmentStats
   };

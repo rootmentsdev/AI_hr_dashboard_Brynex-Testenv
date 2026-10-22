@@ -340,7 +340,7 @@ Respond ONLY with a single valid, parseable JSON object matching this exact sche
   parsedAnalysis.totalRecords = totalHeadcountOrRows;
   parsedAnalysis.fileNames = files.map((f) => f.name);
   parsedAnalysis.connectedFilesCount = files.length;
-  parsedAnalysis.adminPromptApplied = adminPrompt || 'Autonomous Analysis';
+  parsedAnalysis.adminPromptApplied = adminPrompt || null;
 
   // Guarantee that kpiMetrics "issues" and "decisions" strictly match parsedAnalysis.attentionItems.length!
   if (parsedAnalysis.attentionItems && Array.isArray(parsedAnalysis.attentionItems)) {
@@ -546,7 +546,7 @@ Respond ONLY with a single valid, parseable JSON object matching this exact sche
 
   let parsedAnalysis = JSON.parse(cleanJsonText);
   parsedAnalysis.analyzedAt = new Date().toISOString();
-  parsedAnalysis.adminPromptApplied = adminPrompt || 'Live Retail LMS API Ingestion';
+  parsedAnalysis.adminPromptApplied = adminPrompt || null;
 
   if (parsedAnalysis.attentionItems && Array.isArray(parsedAnalysis.attentionItems)) {
     if (parsedAnalysis.kpiMetrics && Array.isArray(parsedAnalysis.kpiMetrics)) {

@@ -328,9 +328,9 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
     finalHealthScore = Math.max(0, finalHealthScore - 6);
   }
 
-  // 3. Construct Contextual Attention Items from Live API Telemetry (dynamic only — no pre-coded items)
+  // 3. Construct Raw Telemetry Flags for AI Diagnostic synthesis (stored in rawTelemetryFlags, not attentionItems)
   const activeDateRange = 'Current Period';
-  const attentionItems = [];
+  const rawTelemetryFlags = [];
 
   // Detect stores with quota attainment below 80% — raw data record only
   stores.forEach(store => {
@@ -343,7 +343,7 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
     const { walkins: sWalkins, footfall: sFootfall } = extractStoreFootfallAndWalkins(store);
     const discTotal = (store.operations?.cameraAudits || []).reduce((s, ca) => s + (ca.discrepancyCount || 0), 0);
 
-    attentionItems.push({
+    rawTelemetryFlags.push({
       id: `att-store-${store.summary?.locCode || 'unknown'}`,
       flagType: 'quota_below_80',
       source: 'Store 360 API',
@@ -370,10 +370,10 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
     const discTotal = (store.operations?.cameraAudits || []).reduce((s, ca) => s + (ca.discrepancyCount || 0), 0);
     if (discTotal === 0) return;
     const locCode = store.summary?.locCode || store.branch?.locCode || null;
-    const alreadyCovered = attentionItems.some(i => i.locCode === locCode);
+    const alreadyCovered = rawTelemetryFlags.some(i => i.locCode === locCode);
     if (alreadyCovered) return;
 
-    attentionItems.push({
+    rawTelemetryFlags.push({
       id: `att-audit-${locCode || store.summary?.workingBranch?.replace(/\s+/g, '-').toLowerCase() || 'unknown'}`,
       flagType: 'camera_audit_discrepancy',
       source: 'Store Operations 360 API',
@@ -410,7 +410,7 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
     const avgTopScore = flaggedEmps.reduce((s, { topScore }) => s + topScore, 0) / flaggedEmps.length;
     const avgAttainment = flaggedEmps.reduce((s, { attainmentPct }) => s + attainmentPct, 0) / flaggedEmps.length;
 
-    attentionItems.push({
+    rawTelemetryFlags.push({
       id: 'att-training-sales-gap',
       flagType: 'high_assessment_low_sales',
       source: 'Employee 360 API',
@@ -431,61 +431,9 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
     });
   })();
 
-  // Dynamic Live API Telemetry Custom Prompt Adaptation
-
-  // 4. Synthesize Dynamic KPI Counters from Real Data
-  const totalIssuesDetected = attentionItems.length;
-  const awaitedDecisionsCount = attentionItems.reduce((s, i) => s + (i.decisionOptions?.length || 0), 0);
-  const beingMonitoredCount = inProgressTasksCount;
-  const opportunitiesCount = attentionItems.filter(i => i.category === 'Opportunity').length;
-  const avgProductivityDisplay = quotaAttainment !== null ? `${Math.round(quotaAttainment)}%` : 'N/A';
-
-  const kpiMetrics = [
-    {
-      id: 'issues',
-      title: 'Issues Detected',
-      value: String(totalIssuesDetected),
-      trend: `${totalIssuesDetected} active risks across datasets`,
-      trendPositive: false,
-      colorClass: 'hr-kpi-icon-purple'
-    },
-    {
-      id: 'decisions',
-      title: 'Awaited Decisions',
-      value: String(awaitedDecisionsCount),
-      trend: `${awaitedDecisionsCount} management options ready for approval`,
-      trendPositive: true,
-      colorClass: 'hr-kpi-icon-red'
-    },
-    {
-      id: 'monitored',
-      title: 'Being Monitored',
-      value: String(beingMonitoredCount),
-      trend: 'Active action items and floor audits',
-      trendPositive: true,
-      colorClass: 'hr-kpi-icon-green'
-    },
-    {
-      id: 'opportunities',
-      title: 'Opportunities',
-      value: String(opportunitiesCount),
-      trend: 'Actionable gaps identified in live data',
-      trendPositive: true,
-      colorClass: 'hr-kpi-icon-orange'
-    },
-    {
-      id: 'productivity',
-      title: 'Avg. Productivity',
-      value: avgProductivityDisplay,
-      trend: quotaAttainment !== null ? `${quotaAttainment.toFixed(1)}% quota attainment across network` : 'No target data available',
-      trendPositive: true,
-      colorClass: 'hr-kpi-icon-blue'
-    }
-  ];
-
   // If CSV was uploaded with Exit / Notice data — raw data record only
   if (enrichedExitsCount > 0 || enrichedAttritionRate) {
-    attentionItems.unshift({
+    rawTelemetryFlags.unshift({
       id: 'att-csv-attrition',
       flagType: 'attrition_detected',
       source: uploadedFiles[0]?.name || null,
@@ -500,6 +448,53 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
     });
   }
 
+  // 4. Synthesize Dynamic KPI Counters strictly for initial un-analyzed baseline
+  const beingMonitoredCount = inProgressTasksCount;
+  const avgProductivityDisplay = quotaAttainment !== null ? `${Math.round(quotaAttainment)}%` : 'N/A';
+
+  const kpiMetrics = [
+    {
+      id: 'issues',
+      title: 'Issues Detected',
+      value: '0',
+      trend: 'No AI issues fetched yet',
+      trendPositive: true,
+      colorClass: 'hr-kpi-icon-purple'
+    },
+    {
+      id: 'decisions',
+      title: 'Awaited Decisions',
+      value: '0',
+      trend: 'No pending decisions',
+      trendPositive: true,
+      colorClass: 'hr-kpi-icon-red'
+    },
+    {
+      id: 'monitored',
+      title: 'Being Monitored',
+      value: String(beingMonitoredCount),
+      trend: 'Active action items and floor audits',
+      trendPositive: true,
+      colorClass: 'hr-kpi-icon-green'
+    },
+    {
+      id: 'opportunities',
+      title: 'Opportunities',
+      value: '0',
+      trend: 'Actionable gaps identified in live data',
+      trendPositive: true,
+      colorClass: 'hr-kpi-icon-orange'
+    },
+    {
+      id: 'productivity',
+      title: 'Avg. Productivity',
+      value: avgProductivityDisplay,
+      trend: quotaAttainment !== null ? `${quotaAttainment.toFixed(1)}% quota attainment across network` : 'No target data available',
+      trendPositive: true,
+      colorClass: 'hr-kpi-icon-blue'
+    }
+  ];
+
   // Compile Comprehensive Aggregated Payload
   return {
     status: 'success',
@@ -509,11 +504,12 @@ export async function aggregateHrIntelligence({ uploadedFiles = [], customRules 
     reportingPeriod: activeDateRange,
     healthScore: finalHealthScore !== null ? `${finalHealthScore}%` : 'N/A',
     healthStatus: finalHealthScore !== null ? (finalHealthScore >= 80 ? 'Healthy' : 'Needs Attention') : 'Insufficient Data',
-    adminPromptApplied: adminPrompt || (isFileUploaded ? 'File Ingestion Synthesis' : 'Live External Retail LMS API Telemetry'),
+    adminPromptApplied: adminPrompt || null,
     kpiMetrics,
-    attentionItems,
+    attentionItems: [], // Pure real AI data only — zero mock/fallback items
+    rawTelemetryFlags,
     attentionSummary: isFileUploaded
-      ? `Dual-layer intelligence active: Ingested ${uploadedFiles.length} file(s) with ${totalMergedHeadcount} employee records (${enrichedExitsCount} exit records).`
+      ? `Dual-layer intelligence active: Ingested ${uploadedFiles.length} file(s) with ${totalMergedHeadcount} employee records. Ready for AI synthesis.`
       : (stores.length > 0
           ? `Live external retail ingestion active: Monitoring ${stores.length} retail branches (${totalStaffBaseline} staff). Upload workforce records in Data Management to activate AI anomaly detection.`
           : `No workforce datasets currently synced. Upload employee and attendance records in Data Management to detect live management issues.`),

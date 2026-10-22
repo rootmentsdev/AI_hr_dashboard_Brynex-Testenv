@@ -1,22 +1,13 @@
 {
   "files": [
     {
-      "id": "f_1792330753706",
-      "name": "attendance_and_roster (2).csv",
-      "savedFilename": "1792330753661-651970110-attendance_and_roster (2).csv",
-      "holds": "Attendance & Shifts",
-      "period": "Current Upload",
-      "status": "All rows valid",
-      "uploadedAt": "2026-10-18T13:39:13.706Z"
-    },
-    {
-      "id": "f_1792330627536",
+      "id": "f_1792402620755",
       "name": "employees_master (2).csv",
-      "savedFilename": "1792330627472-461560477-employees_master (2).csv",
+      "savedFilename": "1792402620663-818240969-employees_master (2).csv",
       "holds": "Payroll & Compensation",
       "period": "Current Upload",
       "status": "All rows valid",
-      "uploadedAt": "2026-10-18T13:37:07.536Z"
+      "uploadedAt": "2026-10-19T09:37:00.755Z"
     }
   ],
   "activeAdminPrompt": "",
