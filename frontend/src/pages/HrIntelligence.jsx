@@ -261,88 +261,27 @@ export default function HrIntelligence() {
     ? liveAnalysis.attentionItems
     : [];
 
-  // Extract or infer source CSV file for an issue
-  const getIssueSourceFile = (item) => {
-    if (!item) return '';
-    if (item.sourceFile && item.sourceFile.trim()) {
-      return item.sourceFile;
-    }
-    const combined = `${item.title || ''} ${item.description || ''} ${item.topic || ''} ${item.department || ''}`.toLowerCase();
-    
-    // Check for multi-dataset correlation first
-    if (
-      (combined.includes('correlation') || combined.includes('multi-dataset') || combined.includes('dual-dataset')) ||
-      (combined.includes('attendance') && combined.includes('sales')) ||
-      (combined.includes('roster') && combined.includes('revenue')) ||
-      (combined.includes('fatigue') && combined.includes('sales'))
-    ) {
-      return 'attendance_and_roster.csv + business_output_and_sales.csv';
-    }
-
-    // Check for attendance / roster telemetry
-    if (
-      combined.includes('attendance') ||
-      combined.includes('roster') ||
-      combined.includes('shift') ||
-      combined.includes('overtime') ||
-      combined.includes('rest violation') ||
-      combined.includes('rest interval') ||
-      combined.includes('fatigue') ||
-      combined.includes('productivity') ||
-      combined.includes('turnaround')
-    ) {
-      return 'attendance_and_roster.csv';
-    }
-
-    // Check for sales / store revenue telemetry
-    if (
-      combined.includes('sales') ||
-      combined.includes('revenue') ||
-      combined.includes('store') ||
-      combined.includes('branch') ||
-      combined.includes('footfall') ||
-      combined.includes('pos') ||
-      combined.includes('transaction') ||
-      combined.includes('conversion') ||
-      combined.includes('inventory')
-    ) {
-      return 'business_output_and_sales.csv';
-    }
-
-    // Check for employee master records
-    if (
-      combined.includes('employee') ||
-      combined.includes('resignation') ||
-      combined.includes('attrition') ||
-      combined.includes('notice') ||
-      combined.includes('headcount') ||
-      combined.includes('staff')
-    ) {
-      return 'employees_master.csv';
-    }
-
-    return liveAnalysis?.fileNames?.[0] || 'Connected Dataset';
-  };
-
   const resolvedKpiMetrics = (liveAnalysis?.kpiMetrics && Array.isArray(liveAnalysis.kpiMetrics) && liveAnalysis.kpiMetrics.length > 0)
     ? liveAnalysis.kpiMetrics.map((kpi) => {
         let val = kpi.value;
         let trend = kpi.trend;
         if (kpi.id === 'issues') {
-          val = String(resolvedAttentionItems.length || 3);
-          trend = '3%';
+          val = String(resolvedAttentionItems.length);
+          trend = resolvedAttentionItems.length > 0 ? `${resolvedAttentionItems.length} active risks` : 'No risks detected';
         } else if (kpi.id === 'decisions') {
-          val = '2';
-          trend = '3%';
+          const decCount = resolvedAttentionItems.filter((i) => i.decisionOptions && i.decisionOptions.length > 0).length;
+          val = String(decCount);
+          trend = decCount > 0 ? `${decCount} ready for review` : 'No pending decisions';
         } else if (kpi.id === 'monitored') {
-          val = '1';
-          trend = '2%';
+          val = kpi.value || '25';
+          trend = kpi.trend || '25 retail stores synced';
         } else if (kpi.id === 'opportunities') {
-          val = '2';
-          trend = '3%';
+          const oppCount = resolvedAttentionItems.filter((i) => i.category === 'Opportunity').length;
+          val = String(oppCount);
+          trend = oppCount > 0 ? `${oppCount} optimization areas` : 'Awaiting prompt';
         } else if (kpi.id === 'productivity') {
-          val = '87%';
-          trend = '3%';
+          val = kpi.value || '—';
+          trend = kpi.trend || 'Target benchmark';
         }
         return {
           ...kpi,
@@ -352,11 +291,11 @@ export default function HrIntelligence() {
         };
       })
     : [
-        { id: 'issues', title: 'Issues Detected', value: '3', trend: '3%', trendPositive: true, colorClass: 'hr-kpi-icon-purple', icon: <User size={13} /> },
-        { id: 'decisions', title: 'Awaited Decisions', value: '2', trend: '3%', trendPositive: true, colorClass: 'hr-kpi-icon-red', icon: <Calendar size={13} /> },
-        { id: 'monitored', title: 'Being Monitored', value: '1', trend: '2%', trendPositive: true, colorClass: 'hr-kpi-icon-green', icon: <Calendar size={13} /> },
-        { id: 'opportunities', title: 'Opportunities', value: '2', trend: '3%', trendPositive: true, colorClass: 'hr-kpi-icon-orange', icon: <UserPlus size={13} /> },
-        { id: 'productivity', title: 'Avg. Productivity', value: '87%', trend: '3%', trendPositive: true, colorClass: 'hr-kpi-icon-blue', icon: <Coins size={13} /> }
+        { id: 'issues', title: 'Issues Detected', value: String(resolvedAttentionItems.length), trend: 'No risks detected', trendPositive: true, colorClass: 'hr-kpi-icon-purple', icon: <User size={13} /> },
+        { id: 'decisions', title: 'Awaited Decisions', value: '0', trend: 'No pending decisions', trendPositive: true, colorClass: 'hr-kpi-icon-red', icon: <Calendar size={13} /> },
+        { id: 'monitored', title: 'Being Monitored', value: '25', trend: '25 live stores synced', trendPositive: true, colorClass: 'hr-kpi-icon-green', icon: <Calendar size={13} /> },
+        { id: 'opportunities', title: 'Opportunities', value: '0', trend: 'Awaiting prompt', trendPositive: true, colorClass: 'hr-kpi-icon-orange', icon: <UserPlus size={13} /> },
+        { id: 'productivity', title: 'Avg. Productivity', value: '—', trend: 'Awaiting prompt', trendPositive: true, colorClass: 'hr-kpi-icon-blue', icon: <Coins size={13} /> }
       ];
 
   // Filter list
@@ -841,13 +780,15 @@ export default function HrIntelligence() {
           <div className="hr-health-header">
             <span className="hr-health-title">HR Health Score</span>
             <span className="hr-health-badge">
-              {liveAnalysis?.healthStatus || (analysisError ? 'API Error' : 'Healthy')}
+              {resolvedAttentionItems.length > 0
+                ? (liveAnalysis?.healthStatus || 'Needs Attention')
+                : (analysisError ? 'API Error' : 'Standby')}
             </span>
           </div>
           <div className="hr-health-value">
-            {liveAnalysis?.healthScore
+            {resolvedAttentionItems.length > 0 && liveAnalysis?.healthScore && liveAnalysis.healthScore !== 'N/A'
               ? (String(liveAnalysis.healthScore).includes('%') ? liveAnalysis.healthScore : `${liveAnalysis.healthScore}%`)
-              : (analysisError ? 'ERR' : '82%')}
+              : (analysisError ? 'ERR' : '—')}
           </div>
           <div className="hr-health-footer">
             <TrendingUp size={14} />
@@ -856,7 +797,7 @@ export default function HrIntelligence() {
                 ? 'API connection failure'
                 : resolvedAttentionItems.length > 0
                   ? `${resolvedAttentionItems.length} area${resolvedAttentionItems.length === 1 ? '' : 's'} need attention`
-                  : '3 areas need attention'}
+                  : 'Awaiting prompt analysis'}
             </span>
           </div>
         </div>
@@ -954,7 +895,7 @@ export default function HrIntelligence() {
               <div
                 className="hr-empty-state-card"
                 style={{
-                  padding: '36px 20px',
+                  padding: '40px 24px',
                   textAlign: 'center',
                   background: '#ffffff',
                   borderRadius: '12px',
@@ -962,36 +903,64 @@ export default function HrIntelligence() {
                   marginTop: '12px'
                 }}
               >
-                <AlertCircle size={32} color="#0ca678" style={{ margin: '0 auto 12px' }} />
-                <h4 style={{ margin: '0 0 6px', fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>
-                  {!liveAnalysis || (liveAnalysis.attentionItems || []).length === 0
-                    ? 'No Datasets Connected'
-                    : 'No Issues in Selected Filter'}
-                </h4>
-                <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
-                  {!liveAnalysis || (liveAnalysis.attentionItems || []).length === 0
-                    ? 'All dataset telemetry has been cleared. Connect an Employee Master, Attendance Roster, or Sales CSV in Data Management to activate AI diagnostics.'
-                    : 'All workforce metrics and attendance rosters for this filter are currently within nominal thresholds.'}
-                </p>
-                <button
-                  onClick={() => navigate('/intelligence/hr/data')}
+                <div
                   style={{
-                    display: 'inline-flex',
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '50%',
+                    background: '#f5f3ff',
+                    display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 16px',
-                    background: '#0ca678',
-                    color: '#fff',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '13px'
+                    justifyContent: 'center',
+                    margin: '0 auto 14px'
                   }}
                 >
-                  <UploadCloud size={16} />
-                  <span>Go to Data Management</span>
-                </button>
+                  <Sparkles size={26} color="#7c3aed" />
+                </div>
+                <h4 style={{ margin: '0 0 6px', fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>
+                  {resolvedAttentionItems.length === 0
+                    ? 'Live Retail API Connected • Awaiting Prompt'
+                    : 'No Issues in Selected Filter'}
+                </h4>
+                <p style={{ margin: '0 auto 18px', fontSize: '13px', color: '#64748b', lineHeight: 1.5, maxWidth: '420px' }}>
+                  {resolvedAttentionItems.length === 0
+                    ? 'Live telemetry across 25 retail branches and 204 staff profiles is synchronized. Enter a prompt above or choose a quick inquiry to generate AI management diagnostics.'
+                    : 'All workforce metrics and attendance rosters for this filter are currently within nominal thresholds.'}
+                </p>
+                {resolvedAttentionItems.length === 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                    <button
+                      type="button"
+                      className="hr-api-chip"
+                      onClick={() => {
+                        setApiPromptInput('Top Lagging Stores');
+                        handleApplyApiPrompt('Top Lagging Stores');
+                      }}
+                    >
+                      🎯 Top Lagging Stores
+                    </button>
+                    <button
+                      type="button"
+                      className="hr-api-chip"
+                      onClick={() => {
+                        setApiPromptInput('Suitor Guy Edappally');
+                        handleApplyApiPrompt('Suitor Guy Edappally');
+                      }}
+                    >
+                      🏬 Suitor Guy Edappally
+                    </button>
+                    <button
+                      type="button"
+                      className="hr-api-chip"
+                      onClick={() => {
+                        setApiPromptInput('Accessories Basket Gap');
+                        handleApplyApiPrompt('Accessories Basket Gap');
+                      }}
+                    >
+                      👔 Accessories Basket Gap
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               filteredItems.map((item) => (
@@ -1052,36 +1021,30 @@ export default function HrIntelligence() {
               minHeight: '450px'
             }}
           >
-            <BrainCircuit size={48} color="#0ca678" style={{ marginBottom: '16px' }} />
+            <div
+              style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                background: '#f5f3ff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px'
+              }}
+            >
+              <BrainCircuit size={32} color="#7c3aed" />
+            </div>
             <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px 0' }}>
               {resolvedAttentionItems.length === 0
-                ? 'Workforce Diagnostics on Standby'
+                ? 'AI Workforce Diagnostics on Standby'
                 : 'Select an Issue to Investigate'}
             </h3>
             <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '440px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
               {resolvedAttentionItems.length === 0
-                ? 'The HR Dashboard analyzes workforce data (Employees, Attendance, Shift Rosters). When only sales data is connected, upload your Employee Master CSV in Data Management to activate live employee retention analytics, risk scoring, and productivity diagnostics.'
+                ? 'Telemetry across 25 retail branches (targets, net sales, footfall, audit discrepancies) and 204 employee records is active. Enter an executive prompt above to identify anomalies, root causes, and decision options.'
                 : 'Click on any detected attention item in the left column to inspect telemetry evidence, Claude AI root causes, and decision options.'}
             </p>
-            <button
-              onClick={() => navigate('/intelligence/hr/data')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '9px 18px',
-                background: '#0f172a',
-                color: '#fff',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '13px'
-              }}
-            >
-              <UploadCloud size={16} />
-              <span>Go to Data Management</span>
-            </button>
           </div>
         ) : (
           <div className="hr-detail-card">
@@ -1118,7 +1081,7 @@ export default function HrIntelligence() {
                 </div>
                 <div className="hr-meta-item">
                   <Calendar size={14} color="#d97706" />
-                  <span>{selectedItem.dateRange || 'Apr 2026 - May 2026'}</span>
+                  <span>{selectedItem.dateRange || dateRange || 'Current Period'}</span>
                 </div>
               </div>
             </div>
@@ -1128,7 +1091,7 @@ export default function HrIntelligence() {
               <span className={`hr-priority-tag ${selectedItem.priority?.includes('Low') ? 'hr-priority-low' : 'hr-priority-high'}`}>
                 ● {selectedItem.priority || 'High Priority'}
               </span>
-              <span className="hr-confidence-badge">Confidence: {selectedItem.confidence || '78%'}</span>
+              <span className="hr-confidence-badge">Confidence: {selectedItem.confidence || 'N/A'}</span>
             </div>
 
             {/* All 6 Navigation Tabs */}

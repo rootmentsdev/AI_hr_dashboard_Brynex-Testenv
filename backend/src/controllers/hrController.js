@@ -522,6 +522,12 @@ export const getLatestHrAnalysis = async (req, res) => {
   if (!latestAnalysis) {
     await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
   }
+  // Enforce idle state if no active admin prompt and no uploaded files
+  if (!activeAdminPrompt && uploadedFilesStore.length === 0) {
+    if (latestAnalysis?.attentionItems?.length > 0) {
+      await recomputeAnalytics('', activeCustomRules);
+    }
+  }
   res.json({
     status: 'success',
     data: latestAnalysis,
@@ -536,10 +542,24 @@ export const getLatestHrAnalysis = async (req, res) => {
 export const runCustomAiAnalysis = async (req, res) => {
   try {
     const { adminPrompt = '', customRules = null } = req.body;
-    activeAdminPrompt = adminPrompt;
+    activeAdminPrompt = (adminPrompt || '').trim();
     activeCustomRules = customRules;
 
     await recomputeAnalytics(activeAdminPrompt, activeCustomRules);
+
+    // If prompt is empty and no uploaded files exist, return clean idle baseline immediately
+    if (!activeAdminPrompt && uploadedFilesStore.length === 0) {
+      isAiAnalyzingGlobal = false;
+      return res.json({
+        status: 'success',
+        data: latestAnalysis,
+        isAiAnalyzing: false,
+        activePrompt: '',
+        customRules: activeCustomRules,
+        employeesCount: cachedSyncedEmployees.length,
+        totalEmployeesCount: allSyncedEmployees.length
+      });
+    }
 
     isAiAnalyzingGlobal = true;
 

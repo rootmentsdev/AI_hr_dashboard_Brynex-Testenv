@@ -6,7 +6,6 @@
  * Zero hardcoded text, zero mock datasets.
  */
 
-import { analyzeMultiFileHrData } from './multiFileCorrelatorService.js';
 import { extractStoreMonthlyTarget, extractStoreNetSales, extractStoreFootfallAndWalkins } from './hrIntelligenceAggregator.js';
 
 // Helper to extract a statistical profile and representative rows from tabular data
@@ -341,69 +340,7 @@ Respond ONLY with a single valid, parseable JSON object matching this exact sche
   parsedAnalysis.totalRecords = totalHeadcountOrRows;
   parsedAnalysis.fileNames = files.map((f) => f.name);
   parsedAnalysis.connectedFilesCount = files.length;
-  parsedAnalysis.adminPromptApplied = adminPrompt || 'Autonomous Analysis';
-
-  // Guarantee that every connected CSV file has AT LEAST 3 attention items
-  try {
-    const baseline = await analyzeMultiFileHrData({ files, customRules, adminPrompt });
-    if (baseline && Array.isArray(baseline.attentionItems)) {
-      if (!Array.isArray(parsedAnalysis.attentionItems)) {
-        parsedAnalysis.attentionItems = [];
-      }
-
-      files.forEach((file) => {
-        const fileItems = parsedAnalysis.attentionItems.filter((item) => {
-          const s = (item.sourceFile || '').toLowerCase();
-          const f = file.name.toLowerCase();
-          return s.includes(f) || f.includes(s);
-        });
-
-        if (fileItems.length < 3) {
-          const needed = 3 - fileItems.length;
-          const fileBaselines = baseline.attentionItems.filter((bItem) => {
-            const bs = (bItem.sourceFile || '').toLowerCase();
-            const f = file.name.toLowerCase();
-            return bs.includes(f) || f.includes(bs);
-          });
-
-          let added = 0;
-          fileBaselines.forEach((bItem) => {
-            if (added < needed) {
-              const alreadyExists = parsedAnalysis.attentionItems.some((ai) => 
-                ai.title?.toLowerCase() === bItem.title?.toLowerCase()
-              );
-              if (!alreadyExists) {
-                parsedAnalysis.attentionItems.push({
-                  ...bItem,
-                  id: `suppl-${file.name}-${added + 1}`
-                });
-                added++;
-              }
-            }
-          });
-        }
-      });
-
-      // If multiple files connected, ensure at least 1 cross-dataset correlation item is included
-      if (files.length > 1) {
-        const hasCorrelation = parsedAnalysis.attentionItems.some((ai) => {
-          const s = (ai.sourceFile || '').toLowerCase();
-          const t = (ai.title || '').toLowerCase();
-          return s.includes('+') || t.includes('cross-dataset') || t.includes('correlation');
-        });
-        if (!hasCorrelation) {
-          const corrItem = baseline.attentionItems.find((bItem) => 
-            (bItem.sourceFile || '').includes('+') || (bItem.title || '').includes('Cross-Dataset')
-          );
-          if (corrItem) {
-            parsedAnalysis.attentionItems.push(corrItem);
-          }
-        }
-      }
-    }
-  } catch (supplErr) {
-    console.warn('Could not supplement attention items:', supplErr.message);
-  }
+  parsedAnalysis.adminPromptApplied = adminPrompt || null;
 
   // Guarantee that kpiMetrics "issues" and "decisions" strictly match parsedAnalysis.attentionItems.length!
   if (parsedAnalysis.attentionItems && Array.isArray(parsedAnalysis.attentionItems)) {
@@ -443,7 +380,7 @@ export const runClaudeApiAnalysis = async ({ stores = [], employees = [], adminP
       s.branch?.workingBranch?.trim() ||
       s.staff?.users?.[0]?.workingBranch?.trim() ||
       s.summary?.storeAliases?.[0]?.trim() ||
-      (s.summary?.locCode === '785' ? 'SG Kollam' : `Store ${s.summary?.locCode || 'N/A'}`)
+      (s.summary?.locCode ? `Store ${s.summary.locCode}` : 'N/A')
     );
     const monthlyTarget = extractStoreMonthlyTarget(s);
     const netSales = extractStoreNetSales(s);
@@ -460,31 +397,31 @@ export const runClaudeApiAnalysis = async ({ stores = [], employees = [], adminP
       footfall,
       walkins,
       discrepancies: s.operations?.cameraAudits?.[0]?.discrepancyCount || 0,
-      auditScore: s.operations?.branchAudits?.[0]?.auditScore || 85,
+      auditScore: s.operations?.branchAudits?.[0]?.auditScore ?? null,
       staffCount: s.summary?.totalStaffCount || s.staff?.totalUsers || 0
     };
   });
 
   // Extract representative staff members from real employees
   const staffSample = employees.slice(0, 35).map((e) => ({
-    name: e.summary?.name,
-    id: e.summary?.empId,
-    role: e.summary?.designation,
-    dept: e.summary?.department,
-    branch: e.summary?.workingBranch,
+    name: e.summary?.name || null,
+    id: e.summary?.empId || null,
+    role: e.summary?.designation || null,
+    dept: e.summary?.department || null,
+    branch: e.summary?.workingBranch || null,
     target: e.salesAttributions?.targets?.[0]?.targets?.targetAmount || 0,
     sales: e.salesAttributions?.dappr?.[0]?.attribution?.netSales || 0,
-    assessmentScore: e.learning?.assessmentAttempts?.[0]?.percentage || e.learning?.assessmentAttempts?.[0]?.score || 92,
-    trainingStatus: e.learning?.trainingProgress?.[0]?.status || 'Completed'
+    assessmentScore: e.learning?.assessmentAttempts?.[0]?.percentage ?? e.learning?.assessmentAttempts?.[0]?.score ?? null,
+    trainingStatus: e.learning?.trainingProgress?.[0]?.status || null
   }));
 
   const prompt = `You are the Chief AI Retail Workforce & Management Intelligence Brain for Brynex One AI.
-You are evaluating LIVE LMS retail telemetry across 25 store branches and 204 employee profiles.
+You are evaluating LIVE LMS retail telemetry across ${stores.length} store branches and ${employees.length} employee profiles.
 
-EXTERNAL RETAIL TELEMETRY (25 STORES):
+EXTERNAL RETAIL TELEMETRY (${stores.length} STORES):
 ${JSON.stringify(storeSummaries, null, 2)}
 
-EMPLOYEE PROFILES TELEMETRY (Sample of 35 frontline consultants & staff):
+EMPLOYEE PROFILES TELEMETRY (Sample of ${staffSample.length} frontline consultants & staff):
 ${JSON.stringify(staffSample, null, 2)}
 
 USER CUSTOM PROMPT / INSTRUCTION:
@@ -609,7 +546,7 @@ Respond ONLY with a single valid, parseable JSON object matching this exact sche
 
   let parsedAnalysis = JSON.parse(cleanJsonText);
   parsedAnalysis.analyzedAt = new Date().toISOString();
-  parsedAnalysis.adminPromptApplied = adminPrompt || 'Live Retail LMS API Ingestion';
+  parsedAnalysis.adminPromptApplied = adminPrompt || null;
 
   if (parsedAnalysis.attentionItems && Array.isArray(parsedAnalysis.attentionItems)) {
     if (parsedAnalysis.kpiMetrics && Array.isArray(parsedAnalysis.kpiMetrics)) {
